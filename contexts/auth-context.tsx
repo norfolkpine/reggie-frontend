@@ -1,83 +1,116 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-import { getCurrentUser, login, logout } from "@/lib/auth"
+import * as React from 'react'
+import { flushSync } from 'react-dom'
+import { Login, CustomUser } from '@/types/api'
+import { api } from '@/lib/api-client'
 
-type User = {
-  id: string
-  username: string
-  email: string
-} | null
-
-type AuthContextType = {
-  user: User
-  isLoading: boolean
-  login: (username: string, password: string) => Promise<void>
+export interface AuthContext {
+  isAuthenticated: boolean
+  login: (credentials: Login) => Promise<void>
   logout: () => Promise<void>
+  user: CustomUser | null
+  loading: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = React.createContext<AuthContext | null>(null)
+
+export const TOKEN_KEY = 'reggie.auth.token'
+export const REFRESH_TOKEN_KEY = 'reggie.auth.refresh.token'
+export const USER_KEY = 'reggie.auth.user'
+
+function getStoredUser(): CustomUser | null {
+  const userStr = localStorage.getItem(USER_KEY)
+  return userStr ? JSON.parse(userStr) : null
+}
+
+function getStoredToken(): { access: string | null; refresh: string | null } {
+  return {
+    access: localStorage.getItem(TOKEN_KEY),
+    refresh: localStorage.getItem(REFRESH_TOKEN_KEY)
+  }
+}
+
+function setStoredAuth(tokens: { access: string | null; refresh: string | null }, user: CustomUser | null) {
+  if (tokens.access && tokens.refresh && user) {
+    localStorage.setItem(TOKEN_KEY, tokens.access)
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh)
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = React.useState<CustomUser | null>(getStoredUser())
+  const [loading, setLoading] = React.useState(true)
+  const isAuthenticated = !!user
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    const checkUser = async () => {
-      try {
-        const userData = await getCurrentUser()
-        setUser(userData)
-      } catch (error) {
+  const logout = React.useCallback(async () => {
+    try {
+      await api.post('/auth/logout')
+      setStoredAuth({ access: null, refresh: null }, null)
+      flushSync(() => {
         setUser(null)
-      } finally {
-        setIsLoading(false)
-      }
+      })
+    } catch (error) {
+      console.error('Logout failed:', error)
     }
-
-    checkUser()
   }, [])
 
-  const handleLogin = async (username: string, password: string) => {
-    setIsLoading(true)
+  const login = async (credentials: Login) => {
     try {
-      const userData = await login(username, password)
-      setUser(userData)
-    } finally {
-      setIsLoading(false)
+      const response = await api.post('/auth/login', credentials)
+      setStoredAuth({ 
+        access: response.jwt.access, 
+        refresh: response.jwt.refresh 
+      }, response.jwt.user)
+      flushSync(() => {
+        setUser(response.jwt.user)
+      })
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw error
     }
   }
 
-  const handleLogout = async () => {
-    setIsLoading(true)
-    try {
-      await logout()
-      setUser(null)
-    } finally {
-      setIsLoading(false)
+  React.useEffect(() => {
+    async function initializeAuth() {
+      const tokens = getStoredToken()
+      if (tokens.access) {
+        try {
+          await api.post('/auth/verify', { token: tokens.access })
+          const currentUser = await api.get('/auth/me')
+          flushSync(() => {
+            setUser(currentUser)
+          })
+        } catch (error) {
+          console.error('Token validation failed:', error)
+          setStoredAuth({ access: null, refresh: null }, null)
+          flushSync(() => {
+            setUser(null)
+          })
+        }
+      }
+      setLoading(false)
     }
-  }
+
+    initializeAuth()
+  }, [])
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login: handleLogin,
-        logout: handleLogout,
-      }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+  const context = React.useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }
-
