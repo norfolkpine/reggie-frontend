@@ -2,7 +2,6 @@ import { HTMLAttributes, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { useRouter } from 'next/router'
 import { PinInput, PinInputField } from '@/components/pin-input'
 
 type OtpFormProps = HTMLAttributes<HTMLDivElement>
@@ -24,9 +24,9 @@ const formSchema = z.object({
 })
 
 export function OtpForm({ className, ...props }: OtpFormProps) {
-  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [disabledBtn, setDisabledBtn] = useState(true)
+  const router = useRouter()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,7 +46,7 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
 
     setTimeout(() => {
       setIsLoading(false)
-      navigate({ to: '/' })
+      router.replace('/')
     }, 1000)
   }
 

@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import { Login, CustomUser } from '@/types/api';
+import { Login, CustomUser, Register, JWT } from '@/types/api';
 
 interface LoginResponse {
   jwt: {
@@ -10,19 +10,25 @@ interface LoginResponse {
 }
 
 export async function login(credentials: Login): Promise<LoginResponse> {
-  const response = await api.post('/auth/login', credentials);
+  const response = await api.post('/api/auth/login/', credentials);
   return response as LoginResponse;
 }
 
-export async function logout(): Promise<void> {
-  await api.post('/auth/logout');
+export async function register(credentials: Register): Promise<CustomUser> {
+  const response = await api.post('/api/auth/register/', credentials);
+  return response as CustomUser;
 }
 
-export async function verifyToken(token: string): Promise<void> {
-  await api.post('/auth/verify', { token });
+export async function logout(): Promise<void> {
+  await api.post('/api/auth/logout/');
+}
+
+export async function verifyToken(token: string): Promise<JWT> {
+  const response = await api.post('/api/auth/token/verify/', { token });
+  return response as JWT;
 }
 
 export async function getCurrentUser(): Promise<CustomUser> {
-  const response = await api.get('/auth/me');
+  const response = await api.get('/api/auth/user/');
   return response as CustomUser;
 }

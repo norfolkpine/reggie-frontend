@@ -1,13 +1,13 @@
+'use client'
+
 import { HTMLAttributes, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { IconBrandFacebook, IconBrandGithub, IconBrandGoogle, IconMail } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/context/auth-context'
 import {
   Form,
   FormControl,
@@ -17,11 +17,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { handleApiError } from '@/lib/utils/handle-api-error'
 import { PasswordInput } from '@/components/password-input'
-import { LinkButton } from '@/components/ui/link-button'
-import { handleApiError } from '@/utils/handle-api-error'
-import { Route } from '@/routes/(auth)/sign-in'
-import { sleep } from '@/utils/commons'
+import { LinkButton } from '@/components/link-button'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
 
 type UserAuthFormProps = HTMLAttributes<HTMLDivElement>
 
@@ -43,11 +44,9 @@ const formSchema = z.object({
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
-  const navigate = Route.useNavigate()
   const router = useRouter()
   const { toast } = useToast()
-  const search = Route.useSearch()
-  const pageLoading = useRouterState({ select: (s) => s.isLoading })
+  const search = useSearchParams()
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -70,7 +69,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         description: 'You have successfully logged in',
       })
 
-      navigate({ to: search.redirect || '/', replace: true  })
+      router.replace(search.get('redirect') || '/')
     } catch (error: any) {
       const { hasFieldErrors, message } = handleApiError(error, form.setError)
       
@@ -112,7 +111,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                   <div className='flex items-center justify-between'>
                     <FormLabel>Password</FormLabel>
                     <Link
-                      to='/forgot-password'
+                      href='/forgot-password'
                       className='text-sm font-medium text-muted-foreground hover:opacity-75'
                     >
                       Forgot password?
@@ -145,16 +144,16 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 variant='outline'
                 className='w-full'
                 type='button'
-                disabled={pageLoading}
+                disabled={isLoading}
               >
                 <IconBrandGoogle className='h-4 w-4' /> Google
               </Button>
               <LinkButton
                 variant='outline'
                 type='button'
-                to='/sign-up'
+                href='/sign-up'
                 className='w-full'
-                loading={pageLoading}
+                loading={isLoading}
               >
                 <IconMail className='h-4 w-4' /> Email
               </LinkButton>

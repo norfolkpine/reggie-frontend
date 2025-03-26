@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 5173",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -38,6 +38,7 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
+    "@tabler/icons-react": "^3.31.0",
     "@tailwindcss/typography": "latest",
     "@tanstack/react-table": "latest",
     "@tiptap/react": "^2.11.5",
@@ -50,6 +51,7 @@
     "date-fns": "latest",
     "embla-carousel-react": "latest",
     "input-otp": "latest",
+    "iron-session": "^8.0.4",
     "lucide-react": "^0.454.0",
     "next": "15.1.0",
     "next-themes": "latest",

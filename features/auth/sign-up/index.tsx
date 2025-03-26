@@ -1,7 +1,7 @@
-import { Link } from '@tanstack/react-router'
 import { Card } from '@/components/ui/card'
-import AuthLayout from '../auth-layout'
 import { SignUpForm } from './components/sign-up-form'
+import AuthLayout from '../auth-layout'
+import Link from 'next/link'
 
 export default function SignUp() {
   return (
@@ -15,7 +15,7 @@ export default function SignUp() {
             Enter your email and password to create an account. <br />
             Already have an account?{' '}
             <Link
-              to='/sign-in'
+              href='/sign-in'
               className='underline underline-offset-4 hover:text-primary'
             >
               Sign In

@@ -1,9 +1,9 @@
 'use client'
 
 import * as React from 'react'
+import { CustomUser, Login } from '@/types/api'
+import * as authApi from '@/api/auth'
 import { flushSync } from 'react-dom'
-import { Login, CustomUser } from '@/types/api'
-import { api } from '@/lib/api-client'
 
 export interface AuthContext {
   isAuthenticated: boolean
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = React.useCallback(async () => {
     try {
-      await api.post('/auth/logout')
+      await authApi.logout()
       setStoredAuth({ access: null, refresh: null }, null)
       flushSync(() => {
         setUser(null)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: Login) => {
     try {
-      const response = await api.post('/auth/login', credentials)
+      const response = await authApi.login(credentials)
       setStoredAuth({ 
         access: response.jwt.access, 
         refresh: response.jwt.refresh 
@@ -81,8 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokens = getStoredToken()
       if (tokens.access) {
         try {
-          await api.post('/auth/verify', { token: tokens.access })
-          const currentUser = await api.get('/auth/me')
+          await authApi.verifyToken(tokens.access)
+          const currentUser = await authApi.getCurrentUser()
           flushSync(() => {
             setUser(currentUser)
           })

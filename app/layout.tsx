@@ -13,6 +13,12 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
+const allowedRoutes = [
+  "/sign-in", 
+  "/sign-up",
+  "/forgot-password",
+]
+
 export default function RootLayout({
   children,
 }: {
@@ -21,7 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <AuthGuard allowedRoutes={allowedRoutes}>
+          {children}
+          </AuthGuard>
+          </AuthProvider>
         <Toaster />
       </body>
     </html>
@@ -31,3 +41,4 @@ export default function RootLayout({
 
 
 import './globals.css'
+import AuthGuard from "@/components/auth-guard"

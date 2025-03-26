@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card'
-import AuthLayout from '../auth-layout'
 import { UserAuthForm } from './components/user-auth-form'
+import AuthLayout from '@/features/auth/auth-layout'
 
 export default function SignIn() {
   return (
