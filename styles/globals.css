@@ -87,8 +87,13 @@ body {
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  html {
+    @apply overflow-x-hidden;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-svh w-full bg-background text-foreground;
   }
 }
