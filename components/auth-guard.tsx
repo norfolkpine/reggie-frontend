@@ -17,10 +17,19 @@ const AuthGuard = ({ children, allowedRoutes = [] }: AuthGuardProps) => {
     if (!loading) {
       const currentPath = window.location.pathname
       const authRoutes = ['/sign-in', '/sign-up', '/forgot-password', '/otp']
-
+      const protectedRoutes = ['/agents', '/projects']
+      const publicRoutes = ['/', ...allowedRoutes]
+      
+      const isApiRoute = currentPath.startsWith('/api/')
+      
       if (isAuthenticated && authRoutes.includes(currentPath)) {
         router.push('/')
-      } else if (!isAuthenticated && !allowedRoutes.includes(currentPath)) {
+      } 
+      else if (!isAuthenticated && 
+        !isApiRoute && 
+        !publicRoutes.includes(currentPath) && 
+        !allowedRoutes.includes(currentPath)
+      ) {
         router.push('/sign-in')
       }
     }
