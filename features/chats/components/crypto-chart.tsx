@@ -40,7 +40,7 @@ export default function CryptoChart({
 
   // Format functions for different data types
   const formatPrice = (value: number) => `$${value.toLocaleString()}`
-  const formatBillions = (value: number) => `$${value.toFixed(2)}B`
+  const formatBillions = (value: string) => `$${(Number(value)).toFixed(2)}B`
 
   return (
     <Card className="w-full">
@@ -71,7 +71,7 @@ export default function CryptoChart({
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                  <ChartTooltip content={<ChartTooltipContent formatters={{ price: formatPrice }} />} />
+                  <ChartTooltip content={<ChartTooltipContent  />} />
                   <Legend />
                   <Line
                     type="monotone"
@@ -102,7 +102,7 @@ export default function CryptoChart({
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis tickFormatter={(value) => `$${value.toFixed(0)}B`} />
-                  <ChartTooltip content={<ChartTooltipContent formatters={{ market_cap: formatBillions }} />} />
+                  <ChartTooltip content={<ChartTooltipContent  />} />
                   <Legend />
                   <Line
                     type="monotone"
@@ -133,7 +133,7 @@ export default function CryptoChart({
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis tickFormatter={(value) => `$${value.toFixed(0)}B`} />
-                  <ChartTooltip content={<ChartTooltipContent formatters={{ total_volume: formatBillions }} />} />
+                  <ChartTooltip content={<ChartTooltipContent/>} />
                   <Legend />
                   <Line
                     type="monotone"

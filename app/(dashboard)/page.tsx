@@ -1,5 +1,5 @@
 "use client"
-import ChatInterface from "@/components/chat-interface"
+import ChatInterface from "@/features/chats/chat-interface"
 import { Header } from "@/components/layout/header"
 import { Main } from "@/components/layout/main"
 import { ProfileDropdown } from "@/components/profile-dropdown"

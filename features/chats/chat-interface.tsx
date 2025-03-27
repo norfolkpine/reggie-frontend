@@ -26,8 +26,8 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { toast } from "@/components/ui/use-toast"
-import CryptoChart from "./crypto-chart"
-import TipTapEditor from "./tiptap-editor"
+import CryptoChart from "./components/crypto-chart"
+import TipTapEditor from "./components/tiptap-editor"
 
 // Define markdown components for better styling
 const MarkdownComponents = {
