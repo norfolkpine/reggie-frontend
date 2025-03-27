@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import "./globals.css"
+import "../styles/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
 
@@ -29,7 +29,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <AuthGuard allowedRoutes={allowedRoutes}>
-          {children}
+            <SearchProvider>
+            {children}
+            </SearchProvider>
           </AuthGuard>
           </AuthProvider>
         <Toaster />
@@ -40,5 +42,7 @@ export default function RootLayout({
 
 
 
-import './globals.css'
 import AuthGuard from "@/components/auth-guard"
+import { SearchProvider } from "@/contexts/search-context"
+import { cn } from "@/lib/utils"
+

@@ -1,3 +1,5 @@
+import { LucideIcon } from "lucide-react";
+
 export interface TokenRefresh {
   refresh: string;
   access: string;
@@ -8,15 +10,22 @@ export interface TokenVerify {
 }
 
 export interface Project {
-  id: number;
-  created_at: string;
-  updated_at: string;
-  name: string;
-  description: string;
-  owner: number;
-  team: number;
-  tags: number[];
-  starred_by: number[];
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+  name?: string;
+  description?: string;
+  owner?: number;
+  team?: number;
+  tags?: string[];
+  starred_by?: number[];
+  icon?: LucideIcon
+  color?: string
+  starred?: boolean
+  lastUpdated?: string
+  teamSize?: number
+  chatCount?: number
+  chatIcon?: LucideIcon
 }
 
 export interface PaginatedProjectList {

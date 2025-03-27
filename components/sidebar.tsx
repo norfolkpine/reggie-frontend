@@ -64,7 +64,10 @@ const historySections: HistorySection[] = [
 ]
 
 // Update the sidebar component to handle chat item clicks
-export default function Sidebar({ onViewChange, activeView }) {
+export default function Sidebar({ onViewChange, activeView } : {
+  onViewChange: (view: string) => void,
+  activeView: string,
+}) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [activeHistoryItem, setActiveHistoryItem] = useState<string | null>(null)
   const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(null)
@@ -88,11 +91,11 @@ export default function Sidebar({ onViewChange, activeView }) {
     setIsExpanded(!isExpanded)
   }
 
-  const handleNavItemClick = (view) => {
+  const handleNavItemClick = (view: string) => {
     onViewChange(view)
   }
 
-  const handleChatItemClick = (view) => {
+  const handleChatItemClick = (view: string) => {
     onViewChange(view)
   }
 
@@ -146,10 +149,9 @@ export default function Sidebar({ onViewChange, activeView }) {
               // Change the onClick handler to properly handle navigation vs. dialog opening */}
 
               {navigationItems.map((item, index) => (
-                <Button
+                <div
                   key={index}
-                  variant="ghost"
-                  className={`w-full justify-between gap-2 font-normal ${activeView === item.view ? "bg-gray-200" : ""}`}
+                  className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${activeView === item.view ? "bg-gray-200" : ""}`}
                   onClick={() => handleNavItemClick(item.view)}
                 >
                   <div className="flex items-center gap-2">
@@ -169,7 +171,7 @@ export default function Sidebar({ onViewChange, activeView }) {
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                </Button>
+                </div>
               ))}
             </div>
           </div>
@@ -181,7 +183,7 @@ export default function Sidebar({ onViewChange, activeView }) {
                 <div
                   key={index}
                   className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${activeView === chat.view ? "bg-gray-200" : ""}`}
-                  onClick={() => handleChatItemClick(chat.view)}
+                  onClick={() => handleChatItemClick(chat.view ?? '')}
                 >
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-300 text-xs">
                     {chat.icon}
@@ -322,7 +324,7 @@ export default function Sidebar({ onViewChange, activeView }) {
                   key={index}
                   className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-lg cursor-pointer hover:bg-gray-400 ${activeView === chat.view ? "ring-2 ring-primary" : ""}`}
                   title={chat.name}
-                  onClick={() => handleChatItemClick(chat.view)}
+                  onClick={() => handleChatItemClick(chat.view ?? '')}
                 >
                   {chat.icon}
                 </div>

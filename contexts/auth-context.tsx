@@ -4,6 +4,7 @@ import * as React from 'react'
 import { CustomUser, Login } from '@/types/api'
 import * as authApi from '@/api/auth'
 import { flushSync } from 'react-dom'
+import { useEffect } from 'react'
 
 export interface AuthContext {
   isAuthenticated: boolean
@@ -19,34 +20,42 @@ export const TOKEN_KEY = 'reggie.auth.token'
 export const REFRESH_TOKEN_KEY = 'reggie.auth.refresh.token'
 export const USER_KEY = 'reggie.auth.user'
 
-function getStoredUser(): CustomUser | null {
-  const userStr = localStorage.getItem(USER_KEY)
-  return userStr ? JSON.parse(userStr) : null
-}
-
-function getStoredToken(): { access: string | null; refresh: string | null } {
-  return {
-    access: localStorage.getItem(TOKEN_KEY),
-    refresh: localStorage.getItem(REFRESH_TOKEN_KEY)
-  }
-}
-
-function setStoredAuth(tokens: { access: string | null; refresh: string | null }, user: CustomUser | null) {
-  if (tokens.access && tokens.refresh && user) {
-    localStorage.setItem(TOKEN_KEY, tokens.access)
-    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh)
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
-  } else {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<CustomUser | null>(getStoredUser())
+  const [user, setUser] = React.useState<CustomUser | null>(null)
   const [loading, setLoading] = React.useState(true)
   const isAuthenticated = !!user
+
+  useEffect(() => {
+    const storedUser = getStoredUser()
+    if (storedUser) {
+      setUser(storedUser)
+    }
+  }, [])
+
+  function getStoredUser(): CustomUser | null {
+    const userStr = localStorage.getItem(USER_KEY)
+    return userStr ? JSON.parse(userStr) : null
+  }
+  
+  function getStoredToken(): { access: string | null; refresh: string | null } {
+    return {
+      access: localStorage.getItem(TOKEN_KEY),
+      refresh: localStorage.getItem(REFRESH_TOKEN_KEY)
+    }
+  }
+  
+  function setStoredAuth(tokens: { access: string | null; refresh: string | null }, user: CustomUser | null) {
+    if (tokens.access && tokens.refresh && user) {
+      localStorage.setItem(TOKEN_KEY, tokens.access)
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh)
+      localStorage.setItem(USER_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
+      localStorage.removeItem(USER_KEY)
+    }
+  }
 
   const logout = React.useCallback(async () => {
     try {
@@ -78,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     async function initializeAuth() {
+      console.log('Initializing auth...')
       const tokens = getStoredToken()
       if (tokens.access) {
         try {

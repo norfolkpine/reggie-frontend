@@ -97,3 +97,88 @@ body {
     @apply min-h-svh w-full bg-background text-foreground;
   }
 }
+
+/* Markdown Styles */
+.markdown {
+  @apply text-sm leading-normal text-foreground;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  @apply font-bold my-4;
+}
+
+.markdown h1 {
+  @apply text-2xl;
+}
+
+.markdown h2 {
+  @apply text-xl;
+}
+
+.markdown h3 {
+  @apply text-lg;
+}
+
+.markdown p {
+  @apply my-2;
+}
+
+.markdown ul {
+  @apply list-disc pl-5 my-2;
+}
+
+.markdown ol {
+  @apply list-decimal pl-5 my-2;
+}
+
+.markdown li {
+  @apply my-1;
+}
+
+.markdown pre {
+  @apply rounded-md p-3 my-3 overflow-x-auto bg-gray-800 text-gray-200;
+}
+
+.markdown code {
+  @apply font-mono text-sm rounded px-1;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.markdown pre code {
+  @apply p-0 bg-transparent text-gray-200;
+}
+
+.markdown blockquote {
+  @apply pl-4 border-l-4 border-gray-300 italic my-4;
+}
+
+.markdown a {
+  @apply text-blue-600 hover:underline;
+}
+
+.markdown table {
+  @apply w-full border-collapse my-4;
+}
+
+.markdown th,
+.markdown td {
+  @apply border border-gray-300 px-3 py-2;
+}
+
+.markdown th {
+  @apply bg-gray-100;
+}
+
+.markdown img {
+  @apply max-w-full h-auto my-4;
+}
+
+.markdown hr {
+  @apply my-4 border-t border-gray-300;
+}
+
