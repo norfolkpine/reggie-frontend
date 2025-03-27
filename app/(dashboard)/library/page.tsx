@@ -1,6 +1,7 @@
 "use client"
 
-import Library from "@/components/library"
+import Library from "@/features/library"
+
 
 export default function LibraryPage() {
   return <Library />

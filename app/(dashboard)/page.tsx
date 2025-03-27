@@ -2,12 +2,12 @@
 import ChatInterface from "@/components/chat-interface"
 import { Header } from "@/components/layout/header"
 import { Main } from "@/components/layout/main"
-import Library from "@/components/library"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import { Search } from "@/components/search"
 import Sidebar from "@/components/sidebar"
 import { TopNav } from "@/components/top-nav"
 import ExploreAgents from "@/features/explore"
+import Library from "@/features/library"
 import Projects from "@/features/project"
 import { useState } from "react"
 
