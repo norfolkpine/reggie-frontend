@@ -1,6 +1,7 @@
 "use client"
 
-import ExploreAgents from "@/components/explore-agents"
+import ExploreAgents from "@/features/explore"
+
 
 export default function ExploreAgentsPage() {
   return <ExploreAgents />
