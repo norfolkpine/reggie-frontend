@@ -14,7 +14,7 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   return (
     <Card 
-      className={`overflow-hidden flex flex-col ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
+      className={`overflow-hidden flex flex-col  ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
       onClick={() => onSelect?.(project.name ?? '')}
     >
       <CardHeader className={`p-4 pb-2 flex-1 ${project.color || 'bg-muted'}`}>
@@ -23,15 +23,15 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
             <div className="p-2 rounded-full bg-white">
               {project.icon && <project.icon className="h-5 w-5" />}
             </div>
-            <CardTitle className="text-lg">{project.name}</CardTitle>
+            <CardTitle className="text-lg line-clamp-2">{project.name}</CardTitle>
           </div>
           {project.starred && (
-            <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
+            <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 shrink-0">
               <Star className="h-3 w-3 mr-1 fill-primary" /> Popular
             </Badge>
           )}
         </div>
-        <CardDescription className="mt-2">{project.description}</CardDescription>
+        <CardDescription className="mt-2 line-clamp-3 h-12">{project.description}</CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="flex flex-wrap gap-2 mt-2">

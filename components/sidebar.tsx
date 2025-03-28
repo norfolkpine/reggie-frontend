@@ -26,7 +26,7 @@ import {
 
 // Import the TeamSwitcher component at the top of the file
 import { TeamSwitcher } from "@/components/team-switcher"
-import { CreateProjectDialog } from "@/components/create-project-dialog"
+import { CreateProjectDialog } from "@/features/project/components/create-project-dialog"
 
 interface ChatItem {
   name: string
