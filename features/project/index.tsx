@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   Plus,
   MessageSquare,
@@ -210,18 +211,20 @@ export default function Projects() {
       {/* Main content */}
       <div className="flex-1 overflow-auto p-4">
         {filteredProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <h3 className="text-lg font-medium mb-2">No projects found</h3>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery || selectedTags.length > 0
-                ? "Try adjusting your search or filters"
-                : "Create your first project to get started"}
-            </p>
-            <Button onClick={() => setCreateProjectOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Project
-            </Button>
-          </div>
+          <EmptyState
+            icon={<FileText className="h-8 w-8 text-muted-foreground" />}
+            title="No projects found"
+            description={searchQuery || selectedTags.length > 0
+              ? "Try adjusting your search or filters"
+              : "Create your first project to get started"}
+            action={
+              <Button onClick={() => setCreateProjectOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Project
+              </Button>
+            }
+            onRefresh={fetchProjects}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => (

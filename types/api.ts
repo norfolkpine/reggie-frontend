@@ -136,10 +136,25 @@ export interface PatchedInvitation extends Partial<Invitation> {}
 
 export interface Agent {
   id: number;
+  instructions: string[];
   name: string;
   description: string;
+  unique_code: string;
+  session_table: string;
+  search_knowledge: boolean;
+  add_datetime_to_instructions: boolean;
+  show_tool_calls: boolean;
+  markdown_enabled: boolean;
+  debug_mode: boolean;
+  num_history_responses: number;
+  is_global: boolean;
   created_at: string;
   updated_at: string;
+  user: number;
+  model: number;
+  knowledge_base: number;
+  team: number;
+  subscriptions: number[];
 }
 
 export interface PaginatedAgentList {

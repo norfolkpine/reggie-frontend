@@ -1,6 +1,6 @@
 "use client"
 
-import { Agent } from "../store/agents"
+import { Agent } from "@/types/api"
 import { AgentCard } from "./agent-card"
 
 interface AgentListProps {
