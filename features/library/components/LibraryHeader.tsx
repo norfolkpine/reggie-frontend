@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Team } from "../types"
+import SearchInput from "@/components/ui/search-input"
 
 interface LibraryHeaderProps {
   searchQuery: string
@@ -24,15 +25,16 @@ export function LibraryHeader({
   return (
     <div className="p-4 border-b">
       <div className="flex gap-2 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <SearchInput />
+        {/* <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search documents, legislation, or tax information..."
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
+        </div> */}
         <Button variant="outline">
           <Plus className="h-4 w-4 mr-2" />
           {documentType === "public" ? "Add to My Library" : "Upload Document"}
