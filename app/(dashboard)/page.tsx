@@ -63,17 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen bg-background">
       <Sidebar onViewChange={handleViewChange} activeView={activeView} />
-      <div className="flex flex-col flex-1">
-      <Header>
-        <div className='ml-auto flex items-center space-x-4'>
-          <Search />
-          <ProfileDropdown />
-        </div>
-      </Header>
-      <Main className="flex-1 overflow-y-auto">
-        {renderView()}
-      </Main>
-      </div>
+      {renderView()}
     </div>
   )
 }
