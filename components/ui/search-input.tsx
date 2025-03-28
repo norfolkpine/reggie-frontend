@@ -1,10 +1,24 @@
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
-export default function SearchInput() {
+interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  className?: string
+  inputClassName?: string
+}
+
+export default function SearchInput({ className, inputClassName, ...props }: SearchInputProps) {
   return (
-    <div className="flex items-center w-full max-w-sm space-x-2 rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-900 px-3.5 py-2">
+    <div className={cn(
+      "flex items-center w-full space-x-2 rounded-lg border border-gray-300 px-3.5 ",
+      className
+    )}>
       <SearchIcon className="h-4 w-4" />
-      <Input type="search" placeholder="Search" className="w-full border-0 h-8 font-semibold" />
+      <Input 
+        type="search" 
+        placeholder="Search" 
+        className={cn("w-full border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-10 md:h-9", inputClassName)}
+        {...props}
+      />
     </div>
   )
 }

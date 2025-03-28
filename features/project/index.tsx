@@ -26,6 +26,7 @@ import { Project } from "@/types/api"
 import { formatDateVariants } from "@/lib/utils/date-formatter"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
+import SearchInput from "@/components/ui/search-input"
 
 export default function Projects() {
   const { toast } = useToast()
@@ -154,15 +155,11 @@ export default function Projects() {
       {/* Search and filters */}
       <div className="p-4 border-b">
         <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <SearchInput 
+          placeholder="Search projects..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
           <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Project

@@ -1,15 +1,14 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Filter } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import SearchInput from "@/components/ui/search-input";
 
 interface SearchFilterProps {
-  searchQuery: string
-  setSearchQuery: (query: string) => void
-  activeCategory: string
-  setActiveCategory: (category: string) => void
-  categories: string[]
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  activeCategory: string;
+  setActiveCategory: (category: string) => void;
+  categories: string[];
 }
 
 export function SearchFilter({
@@ -21,15 +20,12 @@ export function SearchFilter({
 }: SearchFilterProps) {
   return (
     <div className="p-4 border-b">
-      <div className="relative mb-4">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search for specialized agents..."
-          className="pl-8"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      <SearchInput
+        placeholder="Search for specialized agents..."
+        value={searchQuery}
+        className="mb-4"
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
 
       <div className="flex flex-wrap gap-2">
         {categories.map((category) => (
@@ -45,5 +41,5 @@ export function SearchFilter({
         ))}
       </div>
     </div>
-  )
+  );
 }
