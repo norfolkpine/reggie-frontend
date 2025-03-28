@@ -13,8 +13,23 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { useState } from 'react'
+import { ProfileDialog } from '@/components/profile-dialog'
+// Add this import at the top with other imports
+import { BillingDialog } from '@/components/billing-dialog'
+// Add to imports
+import { TeamDialog } from '@/components/team-dialog'
+// Add to imports
+import { ConfirmationDialog } from '@/components/confirmation-dialog'
 
 export function ProfileDropdown() {
+  // Add this state
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showTeam, setShowTeam] = useState(false)
+  const [showBilling, setShowBilling] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)  // Add this line
   const { user, logout, isAuthenticated } = useAuth()
   const router = useRouter()
 
@@ -34,6 +49,10 @@ export function ProfileDropdown() {
         </Button>
       </div>
     )
+  }
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true)
   }
 
   return (
@@ -57,32 +76,54 @@ export function ProfileDropdown() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href='/settings'>
-              Profile
-              <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-            </Link>
+          <DropdownMenuItem onSelect={(e) => {
+            e.preventDefault()
+            setShowProfile(true)
+          }}>
+            Profile
+            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href='/settings'>
-              Billing
-              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-            </Link>
+          <DropdownMenuItem onSelect={(e) => {
+            e.preventDefault()
+            setShowBilling(true)
+          }}>
+            Billing
+            <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href='/settings'>
-              Settings
-              <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-            </Link>
+          <DropdownMenuItem onSelect={(e) => {
+            e.preventDefault()
+            setShowSettings(true)
+          }}>
+            Settings
+            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>New Team</DropdownMenuItem>
+          <DropdownMenuItem onSelect={(e) => {
+            e.preventDefault()
+            setShowTeam(true)
+          }}>
+            Teams
+            <DropdownMenuShortcut>⌘T</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <ProfileDialog open={showProfile} onOpenChange={setShowProfile} />
+          <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+          <BillingDialog open={showBilling} onOpenChange={setShowBilling} />
+          <TeamDialog open={showTeam} onOpenChange={setShowTeam} />
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem onClick={handleLogoutClick}>
           Log out
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <ConfirmationDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        title="Confirm Logout"
+        description="Are you sure you want to log out? You'll need to sign in again to access your account."
+        confirmText="Log out"
+        variant="destructive"
+        onConfirm={handleLogout}
+      />
     </DropdownMenu>
   )
 }
