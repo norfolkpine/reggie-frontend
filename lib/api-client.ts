@@ -1,6 +1,7 @@
-import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/contexts/auth-context';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -13,18 +14,17 @@ async function handleResponse(response: Response) {
       if (refreshTokenLocal) {
         try {
           const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({ refresh: refreshTokenLocal }),
           });
 
           if (!refreshResponse.ok) {
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            window.location.href = '/sign-in';
-            throw new Error('Refresh token failed');
+            localStorage.clear();
+            window.location.href = "/sign-in";
+            throw new Error("Refresh token failed");
           }
 
           const { access, refresh } = await refreshResponse.json();
@@ -42,9 +42,8 @@ async function handleResponse(response: Response) {
 
           return handleResponse(retryResponse);
         } catch (error) {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          window.location.href = '/sign-in';
+          localStorage.clear();
+          window.location.href = "/sign-in";
           throw error;
         }
       }
@@ -57,7 +56,7 @@ async function handleResponse(response: Response) {
 async function apiClient(endpoint: string, config: RequestConfig = {}) {
   const { params, ...requestConfig } = config;
   const token = localStorage.getItem(TOKEN_KEY);
-  
+
   const url = new URL(`${BASE_URL}${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -66,7 +65,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
   }
 
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
     ...config.headers,
   };
@@ -81,33 +80,32 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
 
 export const api = {
   // Base HTTP methods
-  get: (endpoint: string, config?: RequestConfig) => 
-    apiClient(endpoint, { ...config, method: 'GET' }),
-  
+  get: (endpoint: string, config?: RequestConfig) =>
+    apiClient(endpoint, { ...config, method: "GET" }),
+
   post: (endpoint: string, data?: any, config?: RequestConfig) =>
-    apiClient(endpoint, { 
-      ...config, 
-      method: 'POST',
-      body: JSON.stringify(data)
+    apiClient(endpoint, {
+      ...config,
+      method: "POST",
+      body: JSON.stringify(data),
     }),
-  
+
   put: (endpoint: string, data?: any, config?: RequestConfig) =>
     apiClient(endpoint, {
       ...config,
-      method: 'PUT',
-      body: JSON.stringify(data)
+      method: "PUT",
+      body: JSON.stringify(data),
     }),
 
   patch: (endpoint: string, data?: any, config?: RequestConfig) =>
     apiClient(endpoint, {
       ...config,
-      method: 'PATCH',
-      body: JSON.stringify(data)
+      method: "PATCH",
+      body: JSON.stringify(data),
     }),
-  
-  delete: (endpoint: string, config?: RequestConfig) =>
-    apiClient(endpoint, { ...config, method: 'DELETE' }),
 
+  delete: (endpoint: string, config?: RequestConfig) =>
+    apiClient(endpoint, { ...config, method: "DELETE" }),
 };
 
 export default api;
