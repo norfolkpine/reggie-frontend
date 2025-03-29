@@ -15,25 +15,49 @@ import {
   MessageSquare,
   ArrowLeft,
 } from "lucide-react"
-import { useRouter } from "@tanstack/react-router"
-import { Route } from "@/routes/_authenticated/projects/$projectId/route"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { InstructionDialog } from "./instructions-dialog"
+import { useRouter } from "next/navigation"
+import { Project } from "@/types/api"
+import { getProject } from "@/api/projects"
+import { handleApiError } from "@/lib/utils/handle-api-error"
+import { useToast } from "@/components/ui/use-toast"
 
-export default function ProjectView() {
-  const { projectId } = Route.useParams()
-  const project = Route.useLoaderData()
+export default function ProjectView({projectId}: {projectId: number}) {
+ 
+  const [project, setProject] = useState<Project| null>(null)
   const router = useRouter()
   const [instructionDialogOpen, setInstructionDialogOpen] = useState(false)
+  const {toast} = useToast()
+
 
   const onBack = () => {
-    router.history.back()
+    router.back()
   }
+
+  const fetchProject = async () => {
+    try{
+      const response = await getProject(projectId)
+      setProject(response)
+    }catch(error){
+      const {message} = handleApiError(error)
+      if(message){
+        toast({
+          title: message,
+          description: "Failed to fetch project",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  useEffect(() => {
+    fetchProject()
+  }, [])
 
   return (
     <>
     <div className="flex-1 flex flex-col h-full max-w-6xl mx-auto w-full px-4">
-      {/* Project Header - Add back button */}
       <div className="py-6 flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-full mr-1" onClick={onBack} title="Back to projects">
           <ArrowLeft className="h-5 w-5" />
@@ -41,10 +65,9 @@ export default function ProjectView() {
         <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center">
           <FolderIcon className="h-6 w-6 text-red-500" />
         </div>
-        <h1 className="text-2xl font-semibold">{project.name}</h1>
+        <h1 className="text-2xl font-semibold">{project?.name}</h1>
       </div>
 
-      {/* New Chat Input */}
       <Card className="p-2 shadow-lg border-gray-200 rounded-2xl mb-6">
         <form className="flex items-center">
           <Button type="button" variant="ghost" size="icon" className="rounded-full">

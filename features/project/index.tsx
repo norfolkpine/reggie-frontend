@@ -230,7 +230,7 @@ export default function Projects() {
             {filteredProjects.map((project) => (
               <Link
                 key={project.id}
-                href={`/projects/${project.id?.toString()}`}
+                href={`/project/${project.id?.toString()}`}
               >
                 <ProjectCard
                   key={project.id}
