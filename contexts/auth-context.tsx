@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CustomUser, Login } from "@/types/api";
+import { User, Login } from "@/types/api";
 import * as authApi from "@/api/auth";
 import { flushSync } from "react-dom";
 import { useEffect } from "react";
@@ -10,7 +10,7 @@ export interface AuthContext {
   isAuthenticated: boolean;
   login: (credentials: Login) => Promise<void>;
   logout: () => Promise<void>;
-  user: CustomUser | null;
+  user: User | null;
   loading: boolean;
 }
 
@@ -21,7 +21,7 @@ export const REFRESH_TOKEN_KEY = "reggie.auth.refresh.token";
 export const USER_KEY = "reggie.auth.user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<CustomUser | null>(null);
+  const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const isAuthenticated = !!user;
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  function getStoredUser(): CustomUser | null {
+  function getStoredUser(): User | null {
     const userStr = localStorage.getItem(USER_KEY);
     return userStr ? JSON.parse(userStr) : null;
   }
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function setStoredAuth(
     tokens: { access: string | null; refresh: string | null },
-    user: CustomUser | null
+    user: User | null
   ) {
     if (tokens.access && tokens.refresh && user) {
       localStorage.setItem(TOKEN_KEY, tokens.access);

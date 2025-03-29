@@ -48,9 +48,9 @@ import {
   deleteTeamInvitation,
 } from "@/api/team-invitations";
 import { handleApiError } from "@/lib/utils/handle-api-error";
-import { Badge } from "./ui/badge";
+import { Badge } from "../ui/badge";
 import { useAuth } from "@/contexts/auth-context";
-import { useToast } from "./ui/use-toast";
+import { useToast } from "../ui/use-toast";
 
 export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
   const [teamToDelete, setTeamToDelete] = React.useState<Team | null>(null);

@@ -1,11 +1,11 @@
 import { api } from '@/lib/api-client';
-import { Login, CustomUser, Register, JWT } from '@/types/api';
+import { Login, User, Register, JWT } from '@/types/api';
 
 interface LoginResponse {
   jwt: {
     access: string;
     refresh: string;
-    user: CustomUser;
+    user: User;
   };
   [key: string]: any;
 }
@@ -15,9 +15,9 @@ export async function login(credentials: Login): Promise<LoginResponse> {
   return response as LoginResponse;
 }
 
-export async function register(credentials: Register): Promise<CustomUser> {
+export async function register(credentials: Register): Promise<User> {
   const response = await api.post('/api/auth/register/', credentials);
-  return response as CustomUser;
+  return response as User;
 }
 
 export async function logout(): Promise<void> {
@@ -29,7 +29,7 @@ export async function verifyToken(token: string): Promise<JWT> {
   return response as JWT;
 }
 
-export async function getCurrentUser(): Promise<CustomUser> {
+export async function getCurrentUser(): Promise<User> {
   const response = await api.get('/api/auth/user/');
-  return response as CustomUser;
+  return response as User;
 }

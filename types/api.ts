@@ -286,10 +286,10 @@ export interface RestAuthDetail {
 export interface JWT {
   access: string;
   refresh: string;
-  user: CustomUser;
+  user: User;
 }
 
-export interface CustomUser {
+export interface User {
   id: number;
   email: string;
   first_name: string;
@@ -301,7 +301,7 @@ export interface CustomUser {
   updated_at: string;
 }
 
-export interface PatchedCustomUser extends Partial<CustomUser> {}
+export interface PatchedUser extends Partial<User> {}
 
 export interface UserSignupStats {
   date: string;

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 // Import the TeamSwitcher component at the top of the file
-import { TeamSwitcher } from "@/components/team-switcher"
+import { TeamSwitcher } from "@/components/team/team-switcher"
 import { CreateProjectDialog } from "@/features/project/components/create-project-dialog"
 
 interface ChatItem {

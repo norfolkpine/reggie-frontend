@@ -19,7 +19,7 @@ import { ProfileDialog } from '@/components/profile-dialog'
 // Add this import at the top with other imports
 import { BillingDialog } from '@/components/billing-dialog'
 // Add to imports
-import { TeamDialog } from '@/components/team-dialog'
+import { TeamDialog } from '@/components/team/team-dialog'
 // Add to imports
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
 
