@@ -53,7 +53,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
     logoutConfirm: false,
   });
 
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -65,6 +65,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
   );
 
   const fetchTeams = React.useCallback(async () => {
+    if(!isAuthenticated) return
     try {
       const teamList = await getTeams();
       setTeams(teamList.results);
