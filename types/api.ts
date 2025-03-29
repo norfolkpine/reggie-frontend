@@ -100,12 +100,65 @@ export interface PaginatedStorageBucketList {
 
 export interface PatchedStorageBucket extends Partial<StorageBucket> {}
 
+export interface TeamMember {
+  id: number;
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  display_name: string;
+  role: string;
+}
+
+export interface TeamInvitation {
+  id: string;
+  team: number;
+  email: string;
+  role: string;
+  invited_by: string;
+  is_accepted: boolean;
+}
+
+export interface SubscriptionPrice {
+  id: string;
+  product_name: string;
+  human_readable_price: string;
+  payment_amount: string;
+  nickname: string;
+  unit_amount: number;
+}
+
+export interface SubscriptionItem {
+  id: string;
+  price: SubscriptionPrice;
+  quantity: number;
+}
+
+export interface TeamSubscription {
+  id: string;
+  display_name: string;
+  start_date: string;
+  billing_interval: string;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  status: string;
+  quantity: number;
+  items: SubscriptionItem[];
+}
+
 export interface Team {
   id: number;
   name: string;
-  description: string;
+  slug: string;
+  members: TeamMember[];
+  invitations: TeamInvitation[];
+  dashboard_url: string;
+  is_admin: boolean;
+  subscription?: TeamSubscription;
+  has_active_subscription: boolean;
   created_at: string;
   updated_at: string;
+  is_current?: boolean;
 }
 
 export interface PaginatedTeamList {
@@ -118,11 +171,12 @@ export interface PaginatedTeamList {
 export interface PatchedTeam extends Partial<Team> {}
 
 export interface Invitation {
-  id: number;
+  id: string;
+  team: number;
   email: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
+  role: string;
+  invited_by: string;
+  is_accepted: boolean;
 }
 
 export interface PaginatedInvitationList {

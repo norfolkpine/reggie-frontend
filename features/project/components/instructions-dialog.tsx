@@ -29,8 +29,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
+import { useToast } from '@/components/ui/use-toast';
 
 
 const formSchema = z.object({

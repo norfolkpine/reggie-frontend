@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { IconBrandFacebook, IconBrandGithub, IconBrandGoogle, IconMail } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/hooks/use-toast'
 import {
   Form,
   FormControl,
@@ -23,6 +22,7 @@ import { LinkButton } from '@/components/link-button'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { useToast } from '@/components/ui/use-toast'
 
 type UserAuthFormProps = HTMLAttributes<HTMLDivElement>
 

@@ -22,11 +22,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
-import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { register } from "@/api/auth";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { LinkButton } from "@/components/link-button";
+import { useToast } from "@/components/ui/use-toast";
 
 type SignUpFormProps = HTMLAttributes<HTMLDivElement>;
 
@@ -60,6 +60,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      username: "",
       email: "",
       password1: "",
       password2: "",

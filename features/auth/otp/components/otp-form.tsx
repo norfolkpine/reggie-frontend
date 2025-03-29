@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { cn } from '@/lib/utils'
-import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -16,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useRouter } from 'next/router'
 import { PinInput, PinInputField } from '@/components/pin-input'
+import { toast } from '@/components/ui/use-toast'
 
 type OtpFormProps = HTMLAttributes<HTMLDivElement>
 

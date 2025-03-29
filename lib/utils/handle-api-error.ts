@@ -14,31 +14,32 @@ export function handleApiError(
   error: any,
   setFormError?: UseFormSetError<any>
 ): ErrorHandlingResult {
-  let errorData: ApiErrorResponse;
+  let errorData: ApiErrorResponse = error;
 
   // Handle Next.js fetch API errors
-  if (error instanceof Error) {
-    if ('cause' in error && typeof error.cause === 'object' && error.cause !== null) {
-      errorData = error.cause as ApiErrorResponse;
-    } else {
-      return {
-        hasFieldErrors: false,
-        message: error.message || 'An unexpected error occurred'
-      };
-    }
-  } 
-  // Handle Axios errors (legacy support)
-  else if (error.response?.data) {
-    errorData = error.response.data;
-  } 
-  else {
-    return {
-      hasFieldErrors: false,
-      message: 'An unexpected error occurred'
-    };
-  }
+  // if (error instanceof Error) {
+  //   if ('cause' in error && typeof error.cause === 'object' && error.cause !== null) {
+  //     errorData = error.cause as ApiErrorResponse;
+  //   } else {
+  //     return {
+  //       hasFieldErrors: false,
+  //       message: error.message || 'An unexpected error occurred'
+  //     };
+  //   }
+  // } 
+  // // Handle Axios errors (legacy support)
+  // else if (error.response?.data) {
+  //   errorData = error.response.data;
+  // } 
+  // else {
+  //   return {
+  //     hasFieldErrors: false,
+  //     message: 'An unexpected error occurred'
+  //   };
+  // }
 
   // Handle non-field errors first
+
   if (errorData.non_field_errors?.length) {
     return {
       hasFieldErrors: false,

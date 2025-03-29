@@ -22,30 +22,13 @@ import { BillingDialog } from '@/components/billing-dialog'
 import { TeamDialog } from '@/components/team-dialog'
 import { ConfirmationDialog } from '@/components/confirmation-dialog'
 import { IconSwitch, IconSwitch2 } from "@tabler/icons-react"
+import { getTeams } from "@/api/teams"
+import { handleApiError } from "@/lib/utils/handle-api-error"
+import { Team } from "@/types/api"
+import { teamStorage } from "@/lib/utils/team-storage";
+import { useToast } from "./ui/use-toast"
 
-interface Team {
-  name: string
-  logo: string
-  plan: string
-}
 
-const teams: Team[] = [
-  {
-    name: "Acme Inc",
-    logo: "🏢",
-    plan: "Pro Plan",
-  },
-  {
-    name: "Personal",
-    logo: "👤",
-    plan: "Free Plan",
-  },
-  {
-    name: "Startup Co",
-    logo: "🚀",
-    plan: "Team Plan",
-  },
-]
 
 const MENU_ITEMS = [
   { key: 'profile', label: 'Profile', shortcut: '⇧⌘P' },
@@ -75,11 +58,51 @@ interface TeamSwitcherProps {
 }
 
 export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
-  const [activeTeam, setActiveTeam] = React.useState<Team>(teams[0])
+  const [activeTeam, setActiveTeam] = React.useState<Team | null>(() => teamStorage.getActiveTeam());
   const [showTeamList, setShowTeamList] = React.useState(false)
   const { states, setDialogState } = useDialogStates()
   const { user, logout } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
+  const [teams, setTeams] = React.useState<Team[]>([]);
+
+  const fetchTeams = async () => {
+    try {
+      const teamList = await getTeams();
+      setTeams(teamList.results);
+      
+      if (!activeTeam && teamList.results.length > 0) {
+        const firstTeam = teamList.results[0];
+        setActiveTeam(firstTeam);
+        teamStorage.setActiveTeam(firstTeam);
+      }
+    } catch (err) {
+      const { message } = handleApiError(err);
+      if (message) {
+        toast({
+          title: message,
+          description: "Failed to fetch teams. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    
+
+    fetchTeams();
+  }, [open, toast, activeTeam]);
+
+  React.useEffect(() => {
+    if (showTeamList) {
+      fetchTeams();
+    }
+  }, [showTeamList]);
+
+  React.useEffect(() => {
+    teamStorage.setActiveTeam(activeTeam);
+  }, [activeTeam]);
 
   const handleLogout = React.useCallback(async () => {
     await logout()
@@ -131,6 +154,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
     </DropdownMenuLabel>
   )
 
+  // Update the team selection handler in renderTeamList
   const renderTeamList = () => (
     <>
       <DropdownMenuItem
@@ -150,19 +174,20 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
           key={team.name}
           className="py-2"
           onSelect={() => {
-            setActiveTeam(team)
-            setShowTeamList(false)
+            setActiveTeam(team);
+            teamStorage.setActiveTeam(team);
+            setShowTeamList(false);
           }}
         >
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
-              {team.logo}
+              {team.name.charAt(0).toUpperCase()}
             </div>
             <div className="grid flex-1">
-              <span className="font-medium">{team.name}</span>
-              <span className="text-xs text-muted-foreground">{team.plan}</span>
+              <span className="font-medium truncate">{team.name}</span>
+              <span className="text-xs text-muted-foreground">{team.subscription?.display_name  ?? 'Free Plan'}</span>
             </div>
-            {activeTeam.name === team.name && (
+            {activeTeam?.name === team.name && (
               <span className="ml-auto text-primary">✓</span>
             )}
           </div>
@@ -218,19 +243,19 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
       <DropdownMenuTrigger asChild>
         {isCollapsed ? (
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-primary text-xs">
-              {activeTeam.logo}
+             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
+              {activeTeam?.name.charAt(0).toUpperCase()}
             </div>
           </Button>
         ) : (
           <Button variant="ghost" className="w-full justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
-                {activeTeam.logo}
-              </div>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
+              {activeTeam?.name.charAt(0).toUpperCase()}
+            </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="font-semibold">{activeTeam.name}</span>
-                <span className="text-xs text-muted-foreground">{activeTeam.plan}</span>
+                <span className="font-semibold truncate">{activeTeam?.name}</span>
+                <span className="text-xs text-muted-foreground">{activeTeam?.subscription?.display_name ?? 'Free Plan'}</span>
               </div>
             </div>
             <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />

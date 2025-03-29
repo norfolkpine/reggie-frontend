@@ -21,13 +21,13 @@ import {
 } from "lucide-react"
 import { CreateProjectDialog } from "./components/create-project-dialog"
 import { getProjects, createProject } from "@/api/projects"
-import { useToast } from "@/hooks/use-toast"
 import { ProjectCard } from "./components/project-card"
 import { Project } from "@/types/api"
 import { formatDateVariants } from "@/lib/utils/date-formatter"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import SearchInput from "@/components/ui/search-input"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function Projects() {
   const { toast } = useToast()

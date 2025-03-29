@@ -8,7 +8,7 @@ interface RequestConfig extends RequestInit {
 
 async function handleResponse(response: Response) {
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
       if (refreshTokenLocal) {
         try {
@@ -49,7 +49,7 @@ async function handleResponse(response: Response) {
         }
       }
     }
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw await response.json();
   }
   return response.json();
 }

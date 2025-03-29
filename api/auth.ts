@@ -7,6 +7,7 @@ interface LoginResponse {
     refresh: string;
     user: CustomUser;
   };
+  [key: string]: any;
 }
 
 export async function login(credentials: Login): Promise<LoginResponse> {
