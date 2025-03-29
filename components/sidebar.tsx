@@ -29,6 +29,9 @@ import {
 import { TeamSwitcher } from "@/components/team/team-switcher";
 import { CreateProjectDialog } from "@/features/project/components/create-project-dialog";
 import { usePathname, useRouter } from "next/navigation";
+import { createProject } from "@/api/projects";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "./ui/use-toast";
 
 interface ChatItem {
   name: string;
@@ -85,6 +88,8 @@ const historySections: HistorySection[] = [
 // Update the sidebar component to handle chat item clicks
 export default function Sidebar() {
   const pathname = usePathname();
+  const {user } = useAuth()
+  const {toast} = useToast()
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(true);
   const [activeHistoryItem, setActiveHistoryItem] = useState<string | null>(
@@ -123,10 +128,31 @@ export default function Sidebar() {
     return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
   };
 
-  const handleCreateProject = (name: string) => {
-    // In a real app, this would make an API call
-    console.log("Creating project:", name);
-  };
+
+  const handleCreateProject = async (name: string, description: string) => {
+    try {
+      await createProject({
+        name,
+        description: description,
+        owner: user?.id
+      })
+      if(pathname === "/project"){
+        router.refresh()
+      }else{
+        router.push("/project")
+      }
+      toast({
+        title: "Success",
+        description: "Project created successfully"
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create project. Please try again later.",
+        variant: "destructive"
+      })
+    }
+  }
 
   return (
     <div
