@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertCircle, Search } from "lucide-react"
+import { AlertCircle, Plus, Search } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { SearchFilter } from "./components/search-filter"
 import { AgentList } from "./components/agent-list"
@@ -9,6 +9,8 @@ import { getAgents } from "@/api/agents"
 import { Agent } from "@/types/api"
 import { handleApiError } from "@/lib/utils/handle-api-error"
 import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 
@@ -19,6 +21,7 @@ export default function ExploreAgents() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const {toast} = useToast()
+  const router = useRouter()
 
   const fetchAgents = async () => {
     try {
@@ -59,8 +62,12 @@ export default function ExploreAgents() {
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex items-center justify-between">
         <h1 className="text-xl font-medium">Explore AI Agents</h1>
+        <Button onClick={() => router.push('/agent/create')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Agent
+        </Button>
       </div>
 
       {/* Search and filters */}

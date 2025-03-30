@@ -51,7 +51,7 @@ interface HistorySection {
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
   { name: "ChatGPT", icon: "🤖", url: "/chat" },
-  { name: "Explore Agents", icon: "🔍", url: "/explore-agents" },
+  { name: "Explore Agents", icon: "🔍", url: "/agent" },
 ];
 
 const navigationItems: ChatItem[] = [
@@ -64,7 +64,6 @@ const navigationItems: ChatItem[] = [
   },
 ];
 
-const projects = ["Databricks"];
 
 const historySections: HistorySection[] = [
   {
@@ -197,7 +196,7 @@ export default function Sidebar() {
                 <div
                   key={index}
                   className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${
-                    pathname === item.url ? "bg-gray-200" : ""
+                    pathname.includes(item.url) ? "bg-gray-200" : ""
                   }`}
                   onClick={() => handleNavItemClick(item.url)}
                 >
@@ -230,7 +229,7 @@ export default function Sidebar() {
                 <div
                   key={index}
                   className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${
-                    pathname === chat.url ? "bg-gray-200" : ""
+                    pathname.includes(chat.url) ? "bg-gray-200" : ""
                   }`}
                   onClick={() => handleChatItemClick(chat.url ?? "")}
                 >
@@ -348,7 +347,7 @@ export default function Sidebar() {
                     variant="ghost"
                     size="icon"
                     className={`rounded-full w-10 h-10 ${
-                      pathname === item.url ? "bg-gray-200" : ""
+                      pathname.includes(item.url) ? "bg-gray-200" : ""
                     }`}
                     title={item.name}
                     onClick={() => handleNavItemClick(item.url)}
@@ -379,7 +378,7 @@ export default function Sidebar() {
                 <div
                   key={index}
                   className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-lg cursor-pointer hover:bg-gray-400 ${
-                    pathname === chat.url ? "ring-2 ring-primary" : ""
+                    pathname.includes(chat.url) ? "ring-2 ring-primary" : ""
                   }`}
                   title={chat.name}
                   onClick={() => handleChatItemClick(chat.url ?? "")}
