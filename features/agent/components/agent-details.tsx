@@ -5,16 +5,29 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Info, Server } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { AgentForm } from "./types"
 
-export default function AgentDetails() {
-  const [agentData, setAgentData] = useState({
-    name: "AUSTRAC Compliance Assistant",
-    description: "Helps organizations navigate AML/CTF compliance requirements and reporting obligations",
+interface AgentDetailsProps {
+  onChange: (agentData: Partial<AgentForm>) => void
+}
+
+export default function AgentDetails(
+  {  
+    onChange
+  }: AgentDetailsProps
+) {
+  const [agentData, setAgentData] = useState<AgentForm>({
+    name: "",
+    description: "",
     information:
-      "Get guidance on AUSTRAC reporting requirements, KYC procedures, and regulatory compliance for Australian financial services",
+      "",
   })
+
+  useEffect(() => {
+    onChange(agentData)
+  }, [agentData])
 
   const handleChange = (field: string, value: string) => {
     setAgentData((prev) => ({
@@ -27,14 +40,6 @@ export default function AgentDetails() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Agent details</CardTitle>
-        <div className="flex space-x-2">
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> POST /api/agents/
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> PUT /api/agents/:id/
-          </Badge>
-        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -46,6 +51,7 @@ export default function AgentDetails() {
           <Input
             id="agent-name"
             className="bg-muted"
+            placeholder="Enter agent name"
             value={agentData.name}
             onChange={(e) => handleChange("name", e.target.value)}
           />
@@ -68,6 +74,7 @@ export default function AgentDetails() {
           <Textarea
             id="agent-description"
             className="bg-muted min-h-[100px]"
+            placeholder="Describe what tasks or functions this agent can perform"
             value={agentData.description}
             onChange={(e) => handleChange("description", e.target.value)}
           />
@@ -90,6 +97,7 @@ export default function AgentDetails() {
           <Textarea
             id="agent-info"
             className="bg-muted min-h-[100px]"
+            placeholder="Add any additional information or instructions for users interacting with this agent"
             value={agentData.information}
             onChange={(e) => handleChange("information", e.target.value)}
           />

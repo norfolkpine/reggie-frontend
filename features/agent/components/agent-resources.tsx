@@ -10,30 +10,33 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Info, Upload, X, FileText, File, Globe, Plus, Server } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { AgentForm, UploadedFile, UrlResource } from "./types"
 
-type UploadedFile = {
-  id: string
-  name: string
-  size: number
-  type: string
+
+
+interface AgentResourcesProps {
+  onChange: (agentData: AgentForm) => void
 }
 
-type UrlResource = {
-  id: string
-  url: string
-  status: "pending" | "scraped" | "error"
-  addedAt: Date
-}
-
-export default function AgentResources() {
+export default function AgentResources({ onChange }: AgentResourcesProps) {
+ 
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [urls, setUrls] = useState<UrlResource[]>([])
   const [newUrl, setNewUrl] = useState("")
   const [urlError, setUrlError] = useState("")
   const [citeResources, setCiteResources] = useState(false)
+
+  useEffect(() => {
+    onChange({
+      files: files,
+      urls: urls,
+      isCite: citeResources,
+    })
+  }, [files, urls, citeResources])
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -141,14 +144,6 @@ export default function AgentResources() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Agent resources</CardTitle>
-        <div className="flex flex-col space-y-1">
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> Documents: POST/GET/DELETE /api/documents/
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> Websites: POST/GET/DELETE /api/websites/
-          </Badge>
-        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center space-x-2">

@@ -307,3 +307,21 @@ export interface UserSignupStats {
   date: string;
   count: number;
 }
+
+export interface ExpectedOutput {
+  id: number;
+  expected_output: string;
+  category: string;
+  is_enabled: boolean;
+  is_global: boolean;
+  created_at: string;
+  user: number;
+  agent: number;
+}
+
+export interface PaginatedExpectedOutputs {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ExpectedOutput[];
+}

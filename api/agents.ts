@@ -13,7 +13,7 @@ export const getAgent = async (id: number) => {
   return response.data as Agent;
 };
 
-export const createAgent = async (agent: Omit<Agent, 'id' | 'created_at' | 'updated_at'>) => {
+export const createAgent = async (agent: Omit<Partial<Agent>, 'id' | 'created_at' | 'updated_at'>) => {
   const response = await api.post('/reggie/api/agents/', agent);
   return response.data as Agent;
 };

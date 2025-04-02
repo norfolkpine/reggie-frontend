@@ -5,11 +5,16 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Info, Server } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { AgentForm } from "./types"
 
-export default function AgentLimits() {
+interface AgentLimitsProps {
+  onChange: (agentData: AgentForm) => void
+}
+
+export default function AgentLimits({ onChange }: AgentLimitsProps) {
   const [limitPrompts, setLimitPrompts] = useState(false)
   const [limitCompletions, setLimitCompletions] = useState(false)
   const [overrideMessages, setOverrideMessages] = useState(false)
@@ -17,13 +22,18 @@ export default function AgentLimits() {
   const [completionLimit, setCompletionLimit] = useState(2000)
   const [messageLimit, setMessageLimit] = useState(50)
 
+  useEffect(() => {
+    onChange({
+      limitPrompts: limitPrompts ? promptLimit : undefined,
+      limitCompletions: limitCompletions ? completionLimit: undefined,
+      limitMessages: overrideMessages ? messageLimit : undefined,
+    })
+  }, [limitPrompts, limitCompletions, overrideMessages, promptLimit, completionLimit, messageLimit])
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Limits</CardTitle>
-        <Badge variant="outline" className="flex items-center gap-1 text-xs">
-          <Server className="h-3 w-3" /> PUT /api/agents/:id/limits/
-        </Badge>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">

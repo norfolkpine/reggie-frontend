@@ -7,58 +7,30 @@ import { Slider } from "@/components/ui/slider"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Badge } from "@/components/ui/badge"
 import { Info, Server } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { models } from "../data/models"
+import { AgentForm } from "./types"
 
-export default function AgentEngine() {
+interface AgentEngineProps {
+  onChange: (agentData: AgentForm) => void
+}
+
+export default function AgentEngine({ onChange }: AgentEngineProps) {
   const [temperature, setTemperature] = useState(0.4)
   const [selectedModel, setSelectedModel] = useState("gpt4-turbo")
-  const [models, setModels] = useState([
-    {
-      id: "gpt35",
-      name: "GPT-3.5",
-      description: "Released in November 2022. A capable model for understanding and generating natural language.",
-      tokens: 200,
-    },
-    {
-      id: "gpt35-16k",
-      name: "GPT-3.5 16K",
-      description: "Same as GPT-3.5 but with an extended 16,385-token context window.",
-      tokens: 300,
-    },
-    {
-      id: "gpt4",
-      name: "GPT-4",
-      description: "Released in March 2023. A state-of-the-art model with enhanced reasoning capabilities.",
-      tokens: 100,
-    },
-    {
-      id: "gpt4-turbo",
-      name: "GPT-4 Turbo",
-      description:
-        "Released in April 2024. Faster than GPT-4 with improved reasoning and a 96,000-word context window.",
-      tokens: 250,
-    },
-    {
-      id: "o3-mini",
-      name: "[Experimental] o3 mini",
-      description:
-        "Released in January 2025. Designed for reasoning and problem-solving with a 150,000-word context window. Stronger in STEM fields.",
-      tokens: 90,
-    },
-  ])
+
+  useEffect(() => {
+    onChange({
+      temperature,
+      model: selectedModel
+    })
+  }, [temperature, selectedModel])
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>AI engine</CardTitle>
-        <div className="flex space-x-2">
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> GET /api/model-providers/
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            <Server className="h-3 w-3" /> PUT /api/agents/:id/model/
-          </Badge>
-        </div>
+        
       </CardHeader>
       <CardContent className="space-y-8">
         <div className="space-y-4">
