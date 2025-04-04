@@ -27,7 +27,7 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { toast } from "@/components/ui/use-toast"
 import CryptoChart from "./components/crypto-chart"
-import TipTapEditor from "./components/tiptap-editor"
+import { EditorPanel } from "./components/tiptap-editor"
 
 // Define markdown components for better styling
 const MarkdownComponents = {
@@ -424,8 +424,13 @@ export default function ChatInterface() {
             style={{ width: `${100 - splitPosition}%` }}
           >
             {editingMessage && (
-              <TipTapEditor
-                content={editingMessage.content as string}
+              <EditorPanel
+                content={{
+                  content: editingMessage.content,
+                  role: editingMessage.role as "user" | "assistant",
+                  id: editingMessage.id,
+                }}
+                show
                 onSave={handleSaveEdit}
                 onClose={() => setEditingMessageId(null)}
               />
