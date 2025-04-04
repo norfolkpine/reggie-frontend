@@ -176,10 +176,12 @@ function isCryptoData(content: string): boolean {
 export default function ChatInterface() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageListRef = useRef<HTMLDivElement>(null)
   const [showWelcome, setShowWelcome] = useState(true)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [splitPosition, setSplitPosition] = useState(50) // percentage
+  const [isNearBottom, setIsNearBottom] = useState(true)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -212,9 +214,30 @@ export default function ChatInterface() {
   useEffect(() => {
     if (messages.length > 0) {
       setShowWelcome(false)
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      if (isNearBottom) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
     }
-  }, [messages])
+  }, [messages, isNearBottom])
+
+  // Handle scroll position tracking
+  const handleScroll = () => {
+    if (!messageListRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = messageListRef.current
+    const scrollPosition = scrollTop + clientHeight
+    const isCloseToBottom = scrollHeight - scrollPosition < 100
+    setIsNearBottom(isCloseToBottom)
+  }
+
+  useEffect(() => {
+    const messageList = messageListRef.current
+    if (messageList) {
+      messageList.addEventListener('scroll', handleScroll)
+      return () => messageList.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   const copyToClipboard = async (text: string, messageId: string) => {
     try {
@@ -311,11 +334,16 @@ export default function ChatInterface() {
           ) : (
             // Chat screen with messages
             <>
-              <div className="flex-1 overflow-y-auto">
-                <div className="max-w-3xl mx-auto w-full space-y-6 p-4">
+              <div className="flex-1 overflow-y-auto" ref={messageListRef}>
+                <div className="max-w-3xl mx-auto w-full space-y-6 p-4" style={{ willChange: 'transform' }}>
                   {messages.map((message) => (
                     <div
                       key={message.id}
+                      style={{
+                        transform: 'translate3d(0, 0, 0)',
+                        willChange: 'transform',
+                        contain: 'content'
+                      }}
                       className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
