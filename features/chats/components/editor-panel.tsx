@@ -1,18 +1,44 @@
 'use client'
 
 import { EditorContent, useEditor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Highlight from '@tiptap/extension-highlight'
+import CharacterCount from '@tiptap/extension-character-count'
+import Underline from '@tiptap/extension-underline'
+import Placeholder from '@tiptap/extension-placeholder'
+import TextAlign from '@tiptap/extension-text-align'
+import TextStyle from '@tiptap/extension-text-style'
+import FontFamily from '@tiptap/extension-font-family'
+import Typography from '@tiptap/extension-typography'
+import Color from '@tiptap/extension-color'
+import Focus from '@tiptap/extension-focus'
+import Dropcursor from '@tiptap/extension-dropcursor'
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
+import Paragraph from '@tiptap/extension-paragraph'
+import BulletList from '@tiptap/extension-bullet-list'
+import OrderedList from '@tiptap/extension-ordered-list'
+import Collaboration from '@tiptap/extension-collaboration'
+import TaskItem from '@tiptap/extension-task-item'
+import TaskList from '@tiptap/extension-task-list'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, BookOpen, Check, Copy, RefreshCw, Volume2, Undo, Redo, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import '@/styles/editor.css'
-import MarkdownIt from 'markdown-it'
 import { Message } from '@/types/message'
 import { useToast } from '@/components/ui/use-toast'
 import { useSpeechSynthesis } from '@/hooks/use-speech-synthesis'
 import { ActionButton } from './action-button'
-import { History } from  '@tiptap/extension-history'
-import StarterKit from '@tiptap/starter-kit'
+import TiptapTable from '@tiptap/extension-table'
+import TiptapTableRow from '@tiptap/extension-table-row'
+import { TableCell, TableHeader } from './Table'
+import { Link } from './Link'
+import { BlockquoteFigure } from './BlockquoteFigure'
+import { HorizontalRule } from './HorizontalRule'
+import { Markdown } from 'tiptap-markdown';
+import MarkdownIt from 'markdown-it'
 
 
 interface EditorPanelProps {
@@ -27,13 +53,60 @@ export function EditorPanel({
   onClose, 
   title = 'Document Preview',
   show = false, 
+  onSave,
   content
 }: EditorPanelProps) {
   const [isCopied, setIsCopied] = useState(false)
   const [isJournalSaved, setIsJournalSaved] = useState(false)
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+      }),
+      Markdown.configure({
+        html: true,
+        tightLists: true,
+      }),
+      Highlight.configure({}),
+      CharacterCount.configure({}),
+      Underline.configure({}),
+      TextAlign.configure({
+        types: ['heading', 'paragraph', 'table'],
+      }),
+      Link,
+      HorizontalRule,
+      BlockquoteFigure,
+      TextStyle.configure({}),
+      FontFamily.configure({}),
+      Typography.configure({}),
+      Color.configure({}),
+      Focus.configure({}),
+      TiptapTable.configure({
+        resizable: true,
+        lastColumnResizable: true,
+        HTMLAttributes: {
+          class: 'table',
+        },
+      }),
+      TiptapTableRow,
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'table-cell',
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'table-header',
+        }
+      }),
+      Subscript,
+      Superscript,
+      Paragraph,
+      BulletList,
+      OrderedList,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
     ]
   })
 
@@ -82,7 +155,15 @@ export function EditorPanel({
         <Button
           variant="ghost"
           size="icon"
-          onClick={onClose}
+          onClick={() => {
+            if (onClose) {
+              onClose()
+              
+            }
+            if(onSave){
+              onSave(editor?.storage.markdown.getMarkdown() ?? '')
+            }
+          }}
           className="h-9 w-9"
         >
           <ArrowLeft className="h-4 w-4" />

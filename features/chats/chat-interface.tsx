@@ -27,7 +27,7 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { toast } from "@/components/ui/use-toast"
 import CryptoChart from "./components/crypto-chart"
-import { EditorPanel } from "./components/tiptap-editor"
+import { EditorPanel } from "./components/editor-panel"
 
 // Define markdown components for better styling
 const MarkdownComponents = {
@@ -243,6 +243,15 @@ export default function ChatInterface() {
       description: "Your edits have been saved.",
       duration: 3000,
     })
+
+    messages.map((message) => {
+      if (message.id === editingMessageId) {
+        message.content = content
+      }
+      return message
+    })
+
+    setEditingMessageId(null)
   }
 
   // Find the message being edited
@@ -432,7 +441,7 @@ export default function ChatInterface() {
                 }}
                 show
                 onSave={handleSaveEdit}
-                onClose={() => setEditingMessageId(null)}
+                onClose={() => {}}
               />
             )}
           </div>
