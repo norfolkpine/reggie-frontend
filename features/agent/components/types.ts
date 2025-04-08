@@ -1,7 +1,6 @@
 export type AgentForm = {
   name?: string;
   description?: string;
-  information?: string;
   initialMessage?: string;
   systemMessage?: string;
   expectedOutput?: string;

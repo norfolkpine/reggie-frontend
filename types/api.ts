@@ -190,10 +190,11 @@ export interface PatchedInvitation extends Partial<Invitation> {}
 
 export interface Agent {
   id: number;
-  instructions: string[];
+  instructions: Instruction;
   name: string;
   description: string;
   unique_code: string;
+  agent_id: string; 
   session_table: string;
   search_knowledge: boolean;
   add_datetime_to_instructions: boolean;
@@ -210,6 +211,37 @@ export interface Agent {
   team: number;
   subscriptions: number[];
 }
+
+export interface AgentCreate {
+  name: string;
+  description: string;
+  category: number;
+  model: number;
+  instructions_id: number;
+  custom_instruction: string;
+  expected_output_id: number;
+  expected_output_data: {
+    title: string;
+    expected_output: string;
+    category: string;
+    is_enabled: boolean;
+    is_global: boolean;
+    user: number;
+    agent: number;
+  };
+  knowledge_base: number;
+  search_knowledge: boolean;
+  cite_knowledge: boolean;
+  add_datetime_to_instructions: boolean;
+  show_tool_calls: boolean;
+  markdown_enabled: boolean;
+  debug_mode: boolean;
+  num_history_responses: number;
+  is_global: boolean;
+  team: number;
+  subscriptions: number[];
+}
+
 
 export interface PaginatedAgentList {
   count: number;
@@ -308,20 +340,41 @@ export interface UserSignupStats {
   count: number;
 }
 
+export interface PaginatedExpectedOutputs {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ExpectedOutput[];
+}
+
+export interface AgentTemplateResponse {
+  instructions: Instruction[];
+  expected_outputs: ExpectedOutput[];
+}
+
+export interface Instruction {
+  id: number;
+  updated_at: string;
+  title: string;
+  instruction: string;
+  category: string;
+  is_template: boolean;
+  is_enabled: boolean;
+  is_global: boolean;
+  is_system: boolean;
+  created_at: string;
+  user: number;
+}
+
 export interface ExpectedOutput {
   id: number;
+  updated_at: string;
+  title: string;
   expected_output: string;
   category: string;
   is_enabled: boolean;
   is_global: boolean;
   created_at: string;
   user: number;
-  agent: number;
-}
-
-export interface PaginatedExpectedOutputs {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: ExpectedOutput[];
+  agent: number | null;
 }

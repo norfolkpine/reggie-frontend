@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge"
 import { Star, ArrowRight, LucideIcon } from "lucide-react"
 
 import { Agent } from "@/types/api"
+import { useRouter } from "next/navigation"
 
 interface AgentCardProps {
   agent: Agent
 }
 
 export function AgentCard({ agent }: AgentCardProps) {
+  const router = useRouter()
   return (
     <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50">
       <CardHeader className="p-4 pb-2">
@@ -32,18 +34,18 @@ export function AgentCard({ agent }: AgentCardProps) {
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="flex flex-wrap gap-2 mt-2">
-          {agent.instructions.slice(0, 3).map((instruction, index) => (
-            <Badge key={index} variant="outline" className="bg-white">
-              {instruction}
+          {/* {agent.instructions.slice(0, 3).map((instruction, index) => ( */}
+            <Badge  variant="outline" className="bg-white">
+              {agent.instructions.title}
             </Badge>
-          ))}
+          {/* ))} */}
         </div>
       </CardContent>
       <CardFooter className="p-2 bg-white/80 flex justify-between">
         <Badge variant="outline" className="bg-transparent">
           {agent.session_table}
         </Badge>
-        <Button variant="ghost" size="sm" className="gap-1">
+        <Button onClick={() => router.push(`/chat?agentId=${agent.agent_id}`)} variant="ghost" size="sm" className="gap-1">
           Chat now <ArrowRight className="h-4 w-4" />
         </Button>
       </CardFooter>

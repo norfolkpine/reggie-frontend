@@ -13,7 +13,7 @@ import AgentLimits from "./components/agent-limits";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { AgentForm } from "./components/types";
-import { Agent } from "@/types/api";
+import { Agent, AgentCreate } from "@/types/api";
 import { teamStorage } from "@/lib/utils/team-storage";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
@@ -57,13 +57,12 @@ export default function AgentCreationView() {
     setIsSubmitting(true);
 
     try {
-      const agentPayload: Partial<Agent> = {
+      const agentPayload: Partial<AgentCreate> = {
         name: agentData.name || '',
         description: agentData.description || '',
-        instructions: [agentData.systemMessage ?? ''],
+        custom_instruction: agentData.systemMessage,
         model:  1,
         team: teamStorage.getActiveTeam()?.id || 0,
-        user: user?.id
       };
 
       await createAgent(agentPayload);

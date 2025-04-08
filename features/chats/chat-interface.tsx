@@ -32,6 +32,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { ChatRequestOptions } from "ai";
 import { useRouter } from "next/navigation";
 
+// Add these imports at the top
+import { useSearchParams } from 'next/navigation';
+import { createChatSession } from '@/api/chat-sessions';
+
 // Define markdown components for better styling
 const MarkdownComponents = {
   h1: ({ node, ...props }: any) => (
@@ -210,6 +214,9 @@ function isCryptoData(content: string): boolean {
 }
 
 export default function ChatInterface() {
+  const [sessionCreated, setSessionCreated] = useState(false);
+  const searchParams = useSearchParams();
+  
   const {
     messages,
     input,
@@ -229,17 +236,38 @@ export default function ChatInterface() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = (
+  const handleSubmit = async (
     event?: {
       preventDefault?: () => void;
     },
     chatRequestOptions?: ChatRequestOptions
   ) => {
-    if (isAuthenticated) {
-      chatSubmit(event, chatRequestOptions);
-    } else {
+    if (!isAuthenticated) {
       router.push("/sign-in");
+      return;
     }
+
+    // Create chat session if not created yet
+    if (!sessionCreated) {
+      try {
+        const agentId = searchParams.get('agentId');
+        await createChatSession({
+          title: "New Chat",
+          agent_code: agentId || 'default',
+        });
+        setSessionCreated(true);
+      } catch (error) {
+        console.error('Failed to create chat session:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create chat session",
+          duration: 3000,
+        });
+        return;
+      }
+    }
+
+    chatSubmit(event, chatRequestOptions);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {

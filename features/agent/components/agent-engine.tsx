@@ -10,14 +10,36 @@ import { Info, Server } from "lucide-react"
 import { useEffect, useState } from "react"
 import { models } from "../data/models"
 import { AgentForm } from "./types"
+import { getModelProviders, ModelProvider } from "@/api/agent-providers";
 
 interface AgentEngineProps {
   onChange: (agentData: AgentForm) => void
 }
 
 export default function AgentEngine({ onChange }: AgentEngineProps) {
-  const [temperature, setTemperature] = useState(0.4)
-  const [selectedModel, setSelectedModel] = useState("gpt4-turbo")
+  const [temperature, setTemperature] = useState(0.4);
+  const [selectedModel, setSelectedModel] = useState("gpt4-turbo");
+  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchModelProviders = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await getModelProviders();
+        setModelProviders(response.results);
+      } catch (err) {
+        console.error("Failed to fetch model providers:", err);
+        setError("Failed to load model providers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModelProviders();
+  }, []);
 
   useEffect(() => {
     onChange({
@@ -71,25 +93,33 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
               </HoverCardContent>
             </HoverCard>
           </div>
-          <RadioGroup value={selectedModel} onValueChange={setSelectedModel} className="space-y-4">
-            {models.map((model) => (
-              <div
-                key={model.id}
-                className={`flex items-start space-x-2 border rounded-md p-4 ${model.id === selectedModel ? "bg-muted/50" : ""}`}
-              >
-                <RadioGroupItem value={model.id} id={model.id} className="mt-1" />
-                <div className="flex-1">
-                  <Label htmlFor={model.id} className="font-normal">
-                    {model.name}
-                    <p className="text-sm text-muted-foreground mt-1">{model.description}</p>
-                  </Label>
-                  <Badge variant="outline" className="mt-1">
-                    {model.tokens}
-                  </Badge>
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Server className="h-4 w-4 animate-spin" />
+              <span className="ml-2">Loading models...</span>
+            </div>
+          ) : error ? (
+            <div className="text-destructive text-sm p-4 text-center">{error}</div>
+          ) : (
+            <RadioGroup value={selectedModel} onValueChange={setSelectedModel} className="space-y-4">
+              {modelProviders.map((model) => (
+                <div
+                  key={model.provider}
+                  className={`flex items-start space-x-2 border rounded-md p-4 ${
+                    model.provider === selectedModel ? "bg-muted/50" : ""
+                  }`}
+                >
+                  <RadioGroupItem value={model.provider} id={model.provider} className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor={model.provider} className="font-normal">
+                      {model.model_name}
+                      <p className="text-sm text-muted-foreground mt-1">{model.description}</p>
+                    </Label>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </RadioGroup>
+              ))}
+            </RadioGroup>
+          )}
         </div>
       </CardContent>
     </Card>
