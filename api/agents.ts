@@ -37,8 +37,8 @@ export const getAgentInstructions = async (id: number) => {
   return response.data as Agent;
 };
 
-export const getAgentStreamChat = (agentId: number) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/reggie/api/v1/agent/stream-chat/${agentId}/`;
+export const getAgentStreamChat = () => {
+  const protocol = window.location.protocol; // 'http:' or 'https:'
+  const host = window.location.host;         // e.g. 'localhost:8000'
+  return `${protocol}//${host}/reggie/api/v1/agent/stream-chat/`;
 };

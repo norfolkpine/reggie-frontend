@@ -36,7 +36,7 @@ export function AgentCard({ agent }: AgentCardProps) {
         <div className="flex flex-wrap gap-2 mt-2">
           {/* {agent.instructions.slice(0, 3).map((instruction, index) => ( */}
             <Badge  variant="outline" className="bg-white">
-              {agent.instructions.title}
+              
             </Badge>
           {/* ))} */}
         </div>

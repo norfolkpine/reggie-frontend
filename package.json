@@ -76,6 +76,7 @@
     "cmdk": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
+    "event-source-polyfill": "^1.0.31",
     "input-otp": "latest",
     "iron-session": "^8.0.4",
     "lucide-react": "^0.454.0",

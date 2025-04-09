@@ -104,12 +104,12 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
             <RadioGroup value={selectedModel} onValueChange={setSelectedModel} className="space-y-4">
               {modelProviders.map((model) => (
                 <div
-                  key={model.provider}
+                  key={model.model_name}
                   className={`flex items-start space-x-2 border rounded-md p-4 ${
                     model.provider === selectedModel ? "bg-muted/50" : ""
                   }`}
                 >
-                  <RadioGroupItem value={model.provider} id={model.provider} className="mt-1" />
+                  <RadioGroupItem value={model.model_name} id={model.model_name} className="mt-1" />
                   <div className="flex-1">
                     <Label htmlFor={model.provider} className="font-normal">
                       {model.model_name}
