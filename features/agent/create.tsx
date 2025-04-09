@@ -61,7 +61,7 @@ export default function AgentCreationView() {
         name: agentData.name || '',
         description: agentData.description || '',
         custom_instruction: agentData.systemMessage,
-        model:  1,
+        model:  Number(agentData.model) || 1,
         team: teamStorage.getActiveTeam()?.id || 0,
       };
 

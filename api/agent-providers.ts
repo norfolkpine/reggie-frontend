@@ -2,6 +2,7 @@ import { api } from '@/lib/api-client';
 
 export interface ModelProvider {
   provider: string;
+  id: number;
   model_name: string;
   description: string;
 }

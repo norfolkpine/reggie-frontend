@@ -18,7 +18,7 @@ interface AgentEngineProps {
 
 export default function AgentEngine({ onChange }: AgentEngineProps) {
   const [temperature, setTemperature] = useState(0.4);
-  const [selectedModel, setSelectedModel] = useState("gpt4-turbo");
+  const [selectedModel, setSelectedModel] = useState("0");
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
                     model.model_name === selectedModel ? "bg-muted/50" : ""
                   }`}
                 >
-                  <RadioGroupItem value={model.model_name} id={model.provider} className="mt-1" />
+                  <RadioGroupItem value={model.id.toString()} id={model.provider} className="mt-1" />
                   <div className="flex-1">
                     <Label htmlFor={model.provider} className="font-normal">
                       {model.model_name}
