@@ -1,6 +1,6 @@
 import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
 
-const BASE_URL =
+export const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface RequestConfig extends RequestInit {

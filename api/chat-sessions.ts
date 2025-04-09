@@ -4,6 +4,7 @@ export interface ChatSession {
   session_id: string;
   title: string;
   agent_code: string;
+  agent_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,22 +25,22 @@ export const getChatSessions = async (page: number = 1) => {
 
 export const getChatSession = async (sessionId: string) => {
   const response = await api.get(`/reggie/api/v1/chat-sessions/${sessionId}/`);
-  return response.data as ChatSession;
+  return response as ChatSession;
 };
 
 export const createChatSession = async (session: Omit<Partial<ChatSession>, 'session_id' | 'created_at' | 'updated_at'>) => {
   const response = await api.post('/reggie/api/v1/chat-sessions/', session);
-  return response.data as ChatSession;
+  return response as ChatSession;
 };
 
 export const updateChatSession = async (sessionId: string, session: Omit<ChatSession, 'session_id' | 'created_at' | 'updated_at'>) => {
   const response = await api.put(`/reggie/api/v1/chat-sessions/${sessionId}/`, session);
-  return response.data as ChatSession;
+  return response as ChatSession;
 };
 
 export const patchChatSession = async (sessionId: string, session: Partial<Omit<ChatSession, 'session_id' | 'created_at' | 'updated_at'>>) => {
   const response = await api.patch(`/reggie/api/v1/chat-sessions/${sessionId}/`, session);
-  return response.data as ChatSession;
+  return response as ChatSession;
 };
 
 export const deleteChatSession = async (sessionId: string) => {
