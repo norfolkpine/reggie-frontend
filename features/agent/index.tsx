@@ -11,6 +11,7 @@ import { handleApiError } from "@/lib/utils/handle-api-error"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import TypingIndicator from "../chats/components/typing-indicator"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 

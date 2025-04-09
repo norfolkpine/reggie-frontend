@@ -28,6 +28,7 @@ import { useSearchParams } from 'next/navigation';
 import { createChatSession } from '@/api/chat-sessions';
 import MessageActions from "./components/message-actions";
 import { MarkdownComponents } from "./components/markdown-component";
+import TypingIndicator from './components/typing-indicator';
 
 
 // Function to check if a string is valid JSON with crypto data structure
@@ -198,6 +199,7 @@ export default function ChatInterface() {
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
+
       <div className="flex flex-1 overflow-hidden" ref={containerRef}>
         {/* Chat area */}
         <div
@@ -271,7 +273,7 @@ export default function ChatInterface() {
                   className="max-w-3xl mx-auto w-full space-y-6 p-4"
                   style={{ willChange: "transform" }}
                 >
-                  {messages.map((message) => (
+                  {messages.map((message, index) => (
                     <div
                       key={message.id}
                       style={{
@@ -279,27 +281,16 @@ export default function ChatInterface() {
                         willChange: "transform",
                         contain: "content",
                       }}
-                      className={`flex ${
-                        message.role === "user"
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
+                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
-                        }`}
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                       >
                         {message.role === "user" ? (
-                          <p className="whitespace-pre-wrap">
-                            {message.content}
-                          </p>
+                          <p className="whitespace-pre-wrap">{message.content}</p>
                         ) : (
                           <>
                             {isCryptoData(message.content as string) ? (
-                              // Render chart for crypto data
                               <div className="my-4">
                                 <CryptoChart
                                   data={JSON.parse(message.content as string)}
@@ -307,8 +298,13 @@ export default function ChatInterface() {
                                   description="Price, Market Cap, and Volume"
                                 />
                               </div>
+                            ) : isLoading && index === messages.length - 1 && message.role === "assistant" ? (
+                              <div className="flex justify-start">
+                                <div className="max-w-[80%]">
+                                  <TypingIndicator />
+                                </div>
+                              </div>
                             ) : (
-                              // Render normal markdown content
                               <div className="markdown">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
@@ -332,6 +328,7 @@ export default function ChatInterface() {
                       </div>
                     </div>
                   ))}
+                  
                   <div ref={messagesEndRef} />
                 </div>
               </div>

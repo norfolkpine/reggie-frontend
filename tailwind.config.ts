@@ -73,10 +73,17 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "typing-bounce": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "typing-dot-1": "typing-bounce 1.4s infinite 0.2s",
+        "typing-dot-2": "typing-bounce 1.4s infinite 0.4s",
+        "typing-dot-3": "typing-bounce 1.4s infinite 0.6s",
       },
       typography: {
         DEFAULT: {
