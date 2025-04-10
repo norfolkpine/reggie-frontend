@@ -15,22 +15,22 @@ export const getAgents = async (page: number = 1) => {
 
 export const getAgent = async (id: number) => {
   const response = await api.get(`/reggie/api/v1/agents/${id}/`);
-  return response.data as Agent;
+  return response as Agent;
 };
 
 export const createAgent = async (agent: Omit<Partial<Agent>, 'id' | 'created_at' | 'updated_at'>) => {
   const response = await api.post('/reggie/api/v1/agents/', agent);
-  return response.data as Agent;
+  return response as Agent;
 };
 
-export const updateAgent = async (id: number, agent: Omit<Agent, 'id' | 'created_at' | 'updated_at'>) => {
+export const updateAgent = async (id: number, agent: Omit<Partial<Agent>, 'id' | 'created_at' | 'updated_at'>) => {
   const response = await api.put(`/reggie/api/v1/agents/${id}/`, agent);
-  return response.data as Agent;
+  return response as Agent;
 };
 
 export const patchAgent = async (id: number, agent: PatchedAgent) => {
   const response = await api.patch(`/reggie/api/v1/agents/${id}/`, agent);
-  return response.data as Agent;
+  return response as Agent;
 };
 
 export const deleteAgent = async (id: number) => {
@@ -39,7 +39,7 @@ export const deleteAgent = async (id: number) => {
 
 export const getAgentInstructions = async (id: number) => {
   const response = await api.get(`/reggie/api/v1/agents/${id}/instructions/`);
-  return response.data as Agent;
+  return response as Agent;
 };
 
 interface StreamChatRequest {

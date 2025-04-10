@@ -18,26 +18,19 @@ import {
   Instruction,
 } from "@/types/api";
 import { getAgentTemplates } from "@/api/agent-templates";
+import { useAgent } from "../context/agent-context";
 
 interface AgentPromptsProps {
-  onChange: (agentData: AgentForm) => void;
-  value: AgentForm;
 }
 
-export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
+export default function AgentPrompts({}: AgentPromptsProps) {
   const [apiOutputs, setApiOutputs] = useState<ExpectedOutput[]>([]);
-  const [selectedBasicTemplate, setSelectedBasicTemplate] =
-    useState<string>(value.systemTemplateId ?? "");
-  const [selectedBasicOutput, setSelectedBasicOutput] = useState<string>(value.expectedTemplateId ?? "");
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [customSystemMessage, setCustomSystemMessage] = useState(value.systemMessage);
 
-  const [customOutputFormat, setCustomOutputFormat] = useState(value.expectedOutput);
-
-
+  const { agentData, setAgentData } = useAgent();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,15 +79,6 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    onChange({
-      systemMessage: customSystemMessage,
-      expectedOutput: customOutputFormat,
-      systemTemplateId: selectedBasicTemplate,
-      expectedTemplateId: selectedBasicOutput,
-    });
-  }, [customSystemMessage, customOutputFormat, selectedBasicTemplate, selectedBasicOutput]);
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -129,18 +113,15 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
                   key={template.id}
                   className={cn(
                     "cursor-pointer hover:border-primary transition-colors",
-                    selectedBasicTemplate === template.id.toString() &&
+                    agentData.systemTemplateId === template.id.toString() &&
                       "border-primary bg-primary/5",
                     "border-dashed"
                   )}
                   onClick={() => {
-                    setSelectedBasicTemplate(template.id.toString());
-                    
-                    if(template.id.toString() === "0") {
-                      setCustomSystemMessage("");
-                    }else{
-                      setCustomSystemMessage(template.instruction);
-                    }
+                    setAgentData({
+                      systemMessage: template.instruction,
+                      systemTemplateId: template.id.toString() === "0" ? "" : template.id.toString(),
+                    });
 
                   }}
                 >
@@ -169,7 +150,20 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
             </div>
           )}
 
-          {selectedBasicTemplate && selectedBasicTemplate === "0" && (
+        
+
+          {agentData.systemTemplateId && agentData.systemTemplateId !== "0" && instructions.map((e) => e.id.toString()).includes(agentData.systemTemplateId) ?  (
+            <div className="border rounded-md p-4 bg-muted/50 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">
+                  System Message Preview:
+                </div>
+              </div>
+              <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                  {agentData.systemMessage}
+                </div>
+            </div>
+          ): (
             <div className="mt-4">
               <label
                 htmlFor="custom-system-message"
@@ -181,33 +175,15 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
                 id="custom-system-message"
                 className="bg-muted min-h-[200px]"
                 placeholder="Enter your custom system message here..."
-                value={customSystemMessage}
+                value={agentData.systemMessage}
                 onChange={(e) => {
-                  setCustomSystemMessage(e.target.value);
+                  console.log("Typeddd")
+                  setAgentData({
+                    systemMessage: e.target.value,
+                    systemTemplateId: "0",
+                  });
                 }}
               />
-            </div>
-          )}
-
-          {selectedBasicTemplate && selectedBasicTemplate !== "0" && (
-            <div className="border rounded-md p-4 bg-muted/50 mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium">
-                  System Message Preview:
-                </div>
-              </div>
-              {selectedBasicTemplate === "0" ? (
-                <Textarea
-                  className="bg-muted min-h-[80px]"
-                  value={customSystemMessage}
-                  onChange={(e) => setCustomSystemMessage(e.target.value)}
-                  placeholder="Enter your custom instruction..."
-                />
-              ) : (
-                <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                  {customSystemMessage}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -239,17 +215,14 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
                   key={output.id}
                   className={cn(
                     "cursor-pointer hover:border-primary transition-colors",
-                    selectedBasicOutput === output.id.toString() &&
+                    agentData.expectedTemplateId === output.id.toString() &&
                       "border-primary bg-primary/5"
                   )}
                   onClick={() => {
-                    setSelectedBasicOutput(output.id.toString());
-                   
-                    if(output.id.toString() === "0") {
-                      setCustomOutputFormat("");
-                    }else{
-                      setCustomOutputFormat(output.expected_output);
-                    }
+                    setAgentData({
+                      expectedOutput: output.id.toString() === "0" ? "" : output.expected_output,
+                      expectedTemplateId: output.id.toString(),
+                    });
                   }}
                 >
                   <CardHeader className="p-4 pb-2">
@@ -276,8 +249,16 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
               </p>
             </div>
           )}
-
-          {selectedBasicOutput && selectedBasicOutput === "0" && (
+          {agentData.expectedTemplateId && agentData.expectedTemplateId !== "0" && apiOutputs.map((e) => e.id.toString()).includes(agentData.expectedTemplateId) ? (
+            <div className="border rounded-md p-4 bg-muted/50 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Format Preview:</div>
+              </div>
+              <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                  {agentData.expectedOutput}
+                </div>
+            </div>
+          ) : (
             <div className="mt-4">
               <label
                 htmlFor="custom-output-format"
@@ -289,31 +270,14 @@ export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
                 id="custom-output-format"
                 className="bg-muted min-h-[200px]"
                 placeholder="Enter your custom output format here..."
-                value={customOutputFormat}
+                value={agentData.expectedOutput}
                 onChange={(e) => {
-                  setCustomOutputFormat(e.target.value);
+                  setAgentData({
+                    expectedOutput: e.target.value,
+                    expectedTemplateId: "0",
+                  });
                 }}
               />
-            </div>
-          )}
-
-          {selectedBasicOutput && selectedBasicOutput !== "0" && (
-            <div className="border rounded-md p-4 bg-muted/50 mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium">Format Preview:</div>
-              </div>
-              {selectedBasicOutput === "0" ? (
-                <Textarea
-                  className="bg-muted min-h-[80px]"
-                  value={customOutputFormat}
-                  onChange={(e) => setCustomOutputFormat(e.target.value)}
-                  placeholder="Enter your custom response format..."
-                />
-              ) : (
-                <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                  {customOutputFormat}
-                </div>
-              )}
             </div>
           )}
         </div>

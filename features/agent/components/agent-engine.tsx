@@ -3,22 +3,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
-import { Badge } from "@/components/ui/badge"
 import { Info, Server } from "lucide-react"
 import { useEffect, useState } from "react"
-import { models } from "../data/models"
-import { AgentForm } from "./types"
 import { getModelProviders, ModelProvider } from "@/api/agent-providers";
+import { useAgent } from "../context/agent-context";
 
 interface AgentEngineProps {
-  onChange: (agentData: AgentForm) => void
-  value: AgentForm
 }
 
-export default function AgentEngine({ onChange, value }: AgentEngineProps) {
-  const [selectedModel, setSelectedModel] = useState(value.model ?? "0");
+export default function AgentEngine({  }: AgentEngineProps) {
+  const { agentData, setAgentData } = useAgent();
+
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,20 +37,13 @@ export default function AgentEngine({ onChange, value }: AgentEngineProps) {
     fetchModelProviders();
   }, []);
 
-  useEffect(() => {
-    onChange({
-      model: selectedModel
-    })
-  }, [selectedModel])
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>AI engine</CardTitle>
-        
       </CardHeader>
       <CardContent className="space-y-8">
-
         <div className="space-y-4">
           <div className="flex items-center">
             <label className="text-sm font-medium">AI model</label>
@@ -75,12 +64,12 @@ export default function AgentEngine({ onChange, value }: AgentEngineProps) {
           ) : error ? (
             <div className="text-destructive text-sm p-4 text-center">{error}</div>
           ) : (
-            <RadioGroup value={selectedModel} onValueChange={setSelectedModel} className="space-y-4">
+            <RadioGroup value={agentData.model} onValueChange={(value) => setAgentData({ model: value })} className="space-y-4">
               {modelProviders.map((model) => (
                 <div
                   key={model.model_name}
                   className={`flex items-center space-x-2 border rounded-md p-4 ${
-                    model.model_name === selectedModel ? "bg-muted/50" : ""
+                    model.model_name === agentData.model ? "bg-muted/50" : ""
                   } ${!model.is_enabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <RadioGroupItem 
@@ -108,6 +97,6 @@ export default function AgentEngine({ onChange, value }: AgentEngineProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 

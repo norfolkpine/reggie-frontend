@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { createAgent } from "@/api/agents";
+import { useEffect, useState } from "react";
+import { createAgent, getAgent, updateAgent } from "@/api/agents";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronRight, Save, Server } from "lucide-react";
-import AgentDetails from "./components/agent-details";
 import AgentPrompts from "./components/agent-prompts";
 import AgentEngine from "./components/agent-engine";
 import AgentResources from "./components/agent-resources";
@@ -16,7 +15,9 @@ import { AgentForm } from "./components/types";
 import { Agent, AgentCreate } from "@/types/api";
 import { teamStorage } from "@/lib/utils/team-storage";
 import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AgentProvider, useAgent } from "./context/agent-context";
+import { AgentDetails } from "./components/agent-details";
 
 const tabs = [
   { id: "details", label: "Details" },
@@ -26,12 +27,11 @@ const tabs = [
   { id: "limits", label: "Limits" },
 ];
 
-export default function AgentCreationView() {
+function AgentCreationContent() {
   const [activeTab, setActiveTab] = useState("details");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [agentData, setAgentData] = useState<AgentForm>({});
+  const { agentData, setAgentData, isSubmitting, setIsSubmitting, isFetchingData, setIsFetchingData } = useAgent();
 
   const getTabIndex = (tabId: string) => {
     return tabs.findIndex((tab) => tab.id === tabId);
@@ -52,6 +52,35 @@ export default function AgentCreationView() {
   };
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const agentId = searchParams.get('id') ?? '';
+
+  useEffect(() => {
+    setAgentData({})
+    if (agentId) {
+      const fetchAgentData = async () => {
+        setIsFetchingData(true);
+        try {
+          const agent = await getAgent(Number(agentId));
+          setAgentData({
+            name: agent.name,
+            description: agent.description,
+            systemMessage: agent.instructions?.instruction,
+            systemTemplateId: agent.instructions?.id.toString(),
+            expectedTemplateId: agent.expected_output?.id.toString(),
+            expectedOutput: agent.expected_output?.expected_output,
+            model: agent.model.toString(),
+          });
+        } catch (error) {
+          console.error('Error fetching agent data:', error);
+        } finally {
+          setIsFetchingData(false);
+        }
+      };
+      fetchAgentData();
+    }
+  }, [agentId]);
+
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -66,10 +95,14 @@ export default function AgentCreationView() {
         team: teamStorage.getActiveTeam()?.id || 0,
       };
 
-      await createAgent(agentPayload);
-
+      if (agentId) {
+       await updateAgent(Number(agentId), agentPayload);
+      }else{
+        await createAgent(agentPayload);
+      }
+      
       toast({
-        title: "Agent created successfully",
+        title:  `Agent ${agentId ? "edited" : "created"} successfully`,
         description: "Your agent is now ready to use.",
       });
 
@@ -77,7 +110,7 @@ export default function AgentCreationView() {
     } catch (error) {
       console.error("Error saving agent:", error);
       toast({
-        title: "Error creating agent",
+        title: "Error agent",
         description:
           "There was a problem creating your agent. Please try again.",
         variant: "destructive",
@@ -92,7 +125,7 @@ export default function AgentCreationView() {
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-medium">Create Agent</h1>
+        <h1 className="text-xl font-medium">{agentId ? "Edit Agent" : "Create Agent"}</h1>
       </div>
 
       {/* Step Tabs */}
@@ -127,39 +160,25 @@ export default function AgentCreationView() {
           <div className="mb-4">
             {activeTab === "details" && (
               <AgentDetails
-                value={agentData}
-                onChange={(data) =>
-                  setAgentData((prev) => ({ ...prev, ...data }))
-                }
               />
             )}
             {activeTab === "prompts" && (
               <AgentPrompts
-                value={agentData}
-                onChange={(data) =>
-                  setAgentData((prev) => ({ ...prev, ...data }))
-                }
               />
             )}
             {activeTab === "engine" && (
               <AgentEngine
-                value={agentData}
-                onChange={(data) =>
-                  setAgentData((prev) => ({ ...prev, ...data }))
-                }
               />
             )}
             {activeTab === "resources" && (
               <AgentResources
-                onChange={(data) =>
-                  setAgentData((prev) => ({ ...prev, ...data }))
+                onChange={(data) => {}
                 }
               />
             )}
             {activeTab === "limits" && (
               <AgentLimits
-                onChange={(data) =>
-                  setAgentData((prev) => ({ ...prev, ...data }))
+                onChange={(data) => {}
                 }
               />
             )}
@@ -190,5 +209,13 @@ export default function AgentCreationView() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AgentCreationView() {
+  return (
+    <AgentProvider>
+      <AgentCreationContent />
+    </AgentProvider>
   );
 }

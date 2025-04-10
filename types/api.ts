@@ -191,6 +191,7 @@ export interface PatchedInvitation extends Partial<Invitation> {}
 export interface Agent {
   id: number;
   instructions: Instruction;
+  expected_output: ExpectedOutput;
   name: string;
   description: string;
   unique_code: string;
