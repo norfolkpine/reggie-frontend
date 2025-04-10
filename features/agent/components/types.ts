@@ -1,10 +1,10 @@
 export type AgentForm = {
   name?: string;
   description?: string;
-  initialMessage?: string;
+  systemTemplateId?: string;
+  expectedTemplateId?: string;
   systemMessage?: string;
   expectedOutput?: string;
-  temperature?: number;
   model?: string;
   files?: UploadedFile[];
   urls?: UrlResource[];

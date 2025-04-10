@@ -5,6 +5,7 @@ export interface ModelProvider {
   id: number;
   model_name: string;
   description: string;
+  is_enabled: boolean;
 }
 
 interface PaginatedModelProviderList {

@@ -11,14 +11,16 @@ import { AgentForm } from "./types"
 
 interface AgentDetailsProps {
   onChange: (agentData: Partial<AgentForm>) => void
+  value: AgentForm | null
 }
 
 export default function AgentDetails(
   {  
-    onChange
+    onChange,
+    value
   }: AgentDetailsProps
 ) {
-  const [agentData, setAgentData] = useState<AgentForm>({
+  const [agentData, setAgentData] = useState<AgentForm>(value || {
     name: "",
     description: "",
   })

@@ -30,7 +30,7 @@ export default function AgentCreationView() {
   const [activeTab, setActiveTab] = useState("details");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const {user} = useAuth()
+  const { user } = useAuth();
   const [agentData, setAgentData] = useState<AgentForm>({});
 
   const getTabIndex = (tabId: string) => {
@@ -58,10 +58,11 @@ export default function AgentCreationView() {
 
     try {
       const agentPayload: Partial<AgentCreate> = {
-        name: agentData.name || '',
-        description: agentData.description || '',
+        name: agentData.name || "",
+        description: agentData.description || "",
         custom_instruction: agentData.systemMessage,
-        model:  Number(agentData.model) || 1,
+        custom_excpected_output: agentData.expectedOutput,
+        model: Number(agentData.model) || 1,
         team: teamStorage.getActiveTeam()?.id || 0,
       };
 
@@ -72,7 +73,7 @@ export default function AgentCreationView() {
         description: "Your agent is now ready to use.",
       });
 
-      router.push('/agent');
+      router.push("/agent");
     } catch (error) {
       console.error("Error saving agent:", error);
       toast({
@@ -96,96 +97,98 @@ export default function AgentCreationView() {
 
       {/* Step Tabs */}
       <div className="flex-1 overflow-auto p-4">
+        <Card className="mb-8">
+          <div className="flex items-center p-1">
+            {tabs.map((tab, index) => (
+              <div key={tab.id} className="flex items-center">
+                <Button
+                  variant={activeTab === tab.id ? "default" : "ghost"}
+                  className={cn(
+                    "rounded-md",
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </Button>
 
-      <Card className="mb-8">
-        <div className="flex items-center p-1">
-          {tabs.map((tab, index) => (
-            <div key={tab.id} className="flex items-center">
-              <Button
-                variant={activeTab === tab.id ? "default" : "ghost"}
-                className={cn(
-                  "rounded-md",
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground"
+                {index < tabs.length - 1 && (
+                  <ChevronRight className="mx-1 text-muted-foreground" />
                 )}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
 
-              {index < tabs.length - 1 && (
-                <ChevronRight className="mx-1 text-muted-foreground" />
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
+        {/* Content Area */}
+        <div>
+          <div className="mb-4">
+            {activeTab === "details" && (
+              <AgentDetails
+                value={agentData}
+                onChange={(data) =>
+                  setAgentData((prev) => ({ ...prev, ...data }))
+                }
+              />
+            )}
+            {activeTab === "prompts" && (
+              <AgentPrompts
+                value={agentData}
+                onChange={(data) =>
+                  setAgentData((prev) => ({ ...prev, ...data }))
+                }
+              />
+            )}
+            {activeTab === "engine" && (
+              <AgentEngine
+                value={agentData}
+                onChange={(data) =>
+                  setAgentData((prev) => ({ ...prev, ...data }))
+                }
+              />
+            )}
+            {activeTab === "resources" && (
+              <AgentResources
+                onChange={(data) =>
+                  setAgentData((prev) => ({ ...prev, ...data }))
+                }
+              />
+            )}
+            {activeTab === "limits" && (
+              <AgentLimits
+                onChange={(data) =>
+                  setAgentData((prev) => ({ ...prev, ...data }))
+                }
+              />
+            )}
+          </div>
 
-      {/* Content Area */}
-      <div>
-        <div className="mb-4">
-          {activeTab === "details" && (
-            <AgentDetails
-              onChange={(data) =>
-                setAgentData((prev) => ({ ...prev, ...data }))
-              }
-            />
-          )}
-          {activeTab === "prompts" && (
-            <AgentPrompts
-              onChange={(data) =>
-                setAgentData((prev) => ({ ...prev, ...data }))
-              }
-            />
-          )}
-          {activeTab === "engine" && (
-            <AgentEngine
-              onChange={(data) =>
-                setAgentData((prev) => ({ ...prev, ...data }))
-              }
-            />
-          )}
-          {activeTab === "resources" && (
-            <AgentResources
-              onChange={(data) =>
-                setAgentData((prev) => ({ ...prev, ...data }))
-              }
-            />
-          )}
-          {activeTab === "limits" && (
-            <AgentLimits
-              onChange={(data) =>
-                setAgentData((prev) => ({ ...prev, ...data }))
-              }
-            />
-          )}
-        </div>
-
-        <div className="mt-8 flex justify-between">
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={getTabIndex(activeTab) === 0}
-          >
-            Previous
-          </Button>
-
-          {!isLastTab ? (
-            <Button onClick={handleNext}>Next</Button>
-          ) : (
+          <div className="mt-8 flex justify-between">
             <Button
-              onClick={handleSave}
-              className="bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={getTabIndex(activeTab) === 0}
             >
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Saving..." : "Save & Finish"}
+              Previous
             </Button>
-          )}
+
+            {!isLastTab ? (
+              <Button onClick={handleNext}>Next</Button>
+            ) : (
+              <Button
+                onClick={handleSave}
+                className="bg-primary hover:bg-primary/90"
+                disabled={isSubmitting}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? "Saving..." : "Save & Finish"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

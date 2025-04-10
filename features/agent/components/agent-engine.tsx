@@ -14,11 +14,11 @@ import { getModelProviders, ModelProvider } from "@/api/agent-providers";
 
 interface AgentEngineProps {
   onChange: (agentData: AgentForm) => void
+  value: AgentForm
 }
 
-export default function AgentEngine({ onChange }: AgentEngineProps) {
-  const [temperature, setTemperature] = useState(0.4);
-  const [selectedModel, setSelectedModel] = useState("0");
+export default function AgentEngine({ onChange, value }: AgentEngineProps) {
+  const [selectedModel, setSelectedModel] = useState(value.model ?? "0");
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +43,9 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
 
   useEffect(() => {
     onChange({
-      temperature,
       model: selectedModel
     })
-  }, [temperature, selectedModel])
+  }, [selectedModel])
 
   return (
     <Card>
@@ -55,31 +54,6 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
         
       </CardHeader>
       <CardContent className="space-y-8">
-        <div className="space-y-4">
-          <div className="flex items-center">
-            <label className="text-sm font-medium">Temperature</label>
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Info className="h-4 w-4 ml-2 text-muted-foreground cursor-help" />
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80">
-                <p className="text-sm">
-                  Controls randomness: Lower values are more deterministic, higher values are more creative.
-                </p>
-              </HoverCardContent>
-            </HoverCard>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Slider
-              defaultValue={[temperature]}
-              max={1}
-              step={0.1}
-              className="w-full"
-              onValueChange={(value) => setTemperature(value[0])}
-            />
-            <span className="text-sm font-medium">{temperature}</span>
-          </div>
-        </div>
 
         <div className="space-y-4">
           <div className="flex items-center">
@@ -107,13 +81,24 @@ export default function AgentEngine({ onChange }: AgentEngineProps) {
                   key={model.model_name}
                   className={`flex items-center space-x-2 border rounded-md p-4 ${
                     model.model_name === selectedModel ? "bg-muted/50" : ""
-                  }`}
+                  } ${!model.is_enabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  <RadioGroupItem value={model.id.toString()} id={model.provider} className="mt-1" />
+                  <RadioGroupItem 
+                    value={model.id.toString()} 
+                    id={model.provider} 
+                    className="mt-1"
+                    disabled={!model.is_enabled}
+                  />
                   <div className="flex-1">
-                    <Label htmlFor={model.provider} className="font-normal">
+                    <Label 
+                      htmlFor={model.provider} 
+                      className={`font-normal ${!model.is_enabled ? "cursor-not-allowed" : ""}`}
+                    >
                       {model.model_name}
-                      <p className="text-sm text-muted-foreground mt-1">{model.description ?? model.provider}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {model.description ?? model.provider}
+                        {!model.is_enabled && " (Currently unavailable)"}
+                      </p>
                     </Label>
                   </div>
                 </div>

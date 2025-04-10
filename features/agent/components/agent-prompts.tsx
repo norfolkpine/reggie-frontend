@@ -21,51 +21,23 @@ import { getAgentTemplates } from "@/api/agent-templates";
 
 interface AgentPromptsProps {
   onChange: (agentData: AgentForm) => void;
+  value: AgentForm;
 }
 
-export default function AgentPrompts({ onChange }: AgentPromptsProps) {
-  const [initialMessage, setInitialMessage] = useState(
-    "Hi. How can I help you?"
-  );
-  const [systemMessage, setSystemMessage] = useState("");
-  const [expectedOutput, setExpectedOutput] = useState("");
+export default function AgentPrompts({ onChange, value }: AgentPromptsProps) {
   const [apiOutputs, setApiOutputs] = useState<ExpectedOutput[]>([]);
   const [selectedBasicTemplate, setSelectedBasicTemplate] =
-    useState<string>("");
-  const [selectedBasicOutput, setSelectedBasicOutput] = useState<string>("");
+    useState<string>(value.systemTemplateId ?? "");
+  const [selectedBasicOutput, setSelectedBasicOutput] = useState<string>(value.expectedTemplateId ?? "");
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [customSystemMessage, setCustomSystemMessage] = useState("");
+  const [customSystemMessage, setCustomSystemMessage] = useState(value.systemMessage);
 
-  const [customOutputFormat, setCustomOutputFormat] = useState("");
-  const [agentTemplates, setAgentTemplates] =
-    useState<AgentTemplateResponse | null>(null);
+  const [customOutputFormat, setCustomOutputFormat] = useState(value.expectedOutput);
 
-  // Update system message when basic template is selected
-  useEffect(() => {
-    if (selectedBasicTemplate) {
-      const template = instructions.find(
-        (t) => t.id.toString() === selectedBasicTemplate
-      );
-      if (template) {
-        setSystemMessage(template.instruction);
-      }
-    }
-  }, [selectedBasicTemplate, instructions]);
 
-  // Update expected output when basic output is selected
-  useEffect(() => {
-    if (selectedBasicOutput) {
-      const output = apiOutputs.find(
-        (o) => o.id.toString() === selectedBasicOutput
-      );
-      if (output) {
-        setExpectedOutput(output.expected_output);
-      }
-    }
-  }, [selectedBasicOutput, apiOutputs]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,7 +45,6 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
       setError(null);
       try {
         const templatesResponse = await getAgentTemplates();
-        setAgentTemplates(templatesResponse);
         setApiOutputs([
           ...templatesResponse.expected_outputs,
           {
@@ -117,11 +88,12 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
 
   useEffect(() => {
     onChange({
-      initialMessage,
-      systemMessage,
-      expectedOutput,
+      systemMessage: customSystemMessage,
+      expectedOutput: customOutputFormat,
+      systemTemplateId: selectedBasicTemplate,
+      expectedTemplateId: selectedBasicOutput,
     });
-  }, [initialMessage, systemMessage, expectedOutput]);
+  }, [customSystemMessage, customOutputFormat, selectedBasicTemplate, selectedBasicOutput]);
 
   return (
     <Card>
@@ -129,31 +101,6 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
         <CardTitle>Agent prompts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Initial Message - Basic Mode */}
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <label htmlFor="initial-message" className="text-sm font-medium">
-              Initial user message
-            </label>
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Info className="h-4 w-4 ml-2 text-muted-foreground cursor-help" />
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80">
-                <p className="text-sm">
-                  This message will be sent to the agent when a user starts a
-                  new conversation.
-                </p>
-              </HoverCardContent>
-            </HoverCard>
-          </div>
-          <Textarea
-            id="initial-message"
-            className="bg-muted min-h-[80px]"
-            value={initialMessage}
-            onChange={(e) => setInitialMessage(e.target.value)}
-          />
-        </div>
 
         {/* System Message Section - Basic Mode */}
         <div className="space-y-2">
@@ -188,7 +135,13 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
                   )}
                   onClick={() => {
                     setSelectedBasicTemplate(template.id.toString());
-                    setSystemMessage(template.instruction);
+                    
+                    if(template.id.toString() === "0") {
+                      setCustomSystemMessage("");
+                    }else{
+                      setCustomSystemMessage(template.instruction);
+                    }
+
                   }}
                 >
                   <CardHeader className="p-4 pb-2">
@@ -231,7 +184,6 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
                 value={customSystemMessage}
                 onChange={(e) => {
                   setCustomSystemMessage(e.target.value);
-                  setSystemMessage(e.target.value);
                 }}
               />
             </div>
@@ -247,13 +199,13 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
               {selectedBasicTemplate === "0" ? (
                 <Textarea
                   className="bg-muted min-h-[80px]"
-                  value={systemMessage}
-                  onChange={(e) => setSystemMessage(e.target.value)}
+                  value={customSystemMessage}
+                  onChange={(e) => setCustomSystemMessage(e.target.value)}
                   placeholder="Enter your custom instruction..."
                 />
               ) : (
                 <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                  {systemMessage}
+                  {customSystemMessage}
                 </div>
               )}
             </div>
@@ -292,7 +244,12 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
                   )}
                   onClick={() => {
                     setSelectedBasicOutput(output.id.toString());
-                    setExpectedOutput(output.expected_output);
+                   
+                    if(output.id.toString() === "0") {
+                      setCustomOutputFormat("");
+                    }else{
+                      setCustomOutputFormat(output.expected_output);
+                    }
                   }}
                 >
                   <CardHeader className="p-4 pb-2">
@@ -335,7 +292,6 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
                 value={customOutputFormat}
                 onChange={(e) => {
                   setCustomOutputFormat(e.target.value);
-                  setExpectedOutput(e.target.value);
                 }}
               />
             </div>
@@ -349,13 +305,13 @@ export default function AgentPrompts({ onChange }: AgentPromptsProps) {
               {selectedBasicOutput === "0" ? (
                 <Textarea
                   className="bg-muted min-h-[80px]"
-                  value={expectedOutput}
-                  onChange={(e) => setExpectedOutput(e.target.value)}
+                  value={customOutputFormat}
+                  onChange={(e) => setCustomOutputFormat(e.target.value)}
                   placeholder="Enter your custom response format..."
                 />
               ) : (
                 <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                  {expectedOutput}
+                  {customOutputFormat}
                 </div>
               )}
             </div>

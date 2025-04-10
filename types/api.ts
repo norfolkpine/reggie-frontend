@@ -220,6 +220,7 @@ export interface AgentCreate {
   instructions_id: number;
   custom_instruction: string;
   expected_output_id: number;
+  custom_excpected_output: string;
   expected_output_data: {
     title: string;
     expected_output: string;
