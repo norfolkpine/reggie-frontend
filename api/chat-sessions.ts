@@ -9,12 +9,27 @@ export interface ChatSession {
   updated_at: string;
 }
 
+export interface ChatMessage {
+  role: string;
+  content: string;
+  id: string | null;
+  timestamp: string | null;
+}
+
 interface PaginatedChatSessionList {
   count: number;
   next: string | null;
   previous: string | null;
   results: ChatSession[];
 }
+
+interface PaginatedChatMessageList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ChatMessage[];
+}
+
 
 export const getChatSessions = async (page: number = 1) => {
   const response = await api.get('/reggie/api/v1/chat-sessions/', {
@@ -45,4 +60,9 @@ export const patchChatSession = async (sessionId: string, session: Partial<Omit<
 
 export const deleteChatSession = async (sessionId: string) => {
   await api.delete(`/reggie/api/v1/chat-sessions/${sessionId}/`);
+};
+
+export const getChatSessionMessage = async (sessionId: string) => {
+  const response = await api.get(`/reggie/api/v1/chat-sessions/${sessionId}/messages/`);
+  return response as PaginatedChatMessageList;
 };

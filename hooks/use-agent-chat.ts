@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getAgentStreamChat, parseStreamData, createStreamChatMessage } from '@/api/agents';
-import { createChatSession } from '@/api/chat-sessions';
+import { createChatSession, getChatSessionMessage, ChatMessage } from '@/api/chat-sessions';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 
@@ -30,6 +30,29 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   const [sessionCreated, setSessionCreated] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(ssid);
   const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
+
+  useEffect(() => {
+    const loadExistingMessages = async () => {
+      if (!sessionId) return;
+      try {
+        setIsLoading(true);
+        const response = await getChatSessionMessage(sessionId);
+        const formattedMessages = response.results.map(msg => ({
+          id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
+          content: msg.content,
+          role: msg.role as 'user' | 'assistant'
+        }));
+        setMessages(formattedMessages);
+        setSessionCreated(true);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadExistingMessages();
+  }, [sessionId]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);

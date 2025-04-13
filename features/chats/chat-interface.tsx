@@ -21,7 +21,7 @@ import CryptoChart from "./components/crypto-chart";
 import { EditorPanel } from "./components/editor-panel";
 import { useAuth } from "@/contexts/auth-context";
 import { ChatRequestOptions } from "ai";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 // Add these imports at the top
 import { useSearchParams } from 'next/navigation';
@@ -59,6 +59,8 @@ export default function ChatInterface() {
   const [sessionCreated, setSessionCreated] = useState(false);
   const searchParams = useSearchParams();
   const agentId = searchParams.get('agentId') ?? '';
+  const params = useParams();
+  const sessionId = params.sessionId as string | null;
   
   // Replace useChat with useAgentChat
   const {
@@ -69,7 +71,7 @@ export default function ChatInterface() {
     isLoading,
   } = useAgentChat({ 
     agentId,
-    sessionId: null
+    sessionId: sessionId
   });
 
   const handleSubmit = async (
