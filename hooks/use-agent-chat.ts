@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getAgentStreamChat, parseStreamData, createStreamChatMessage } from '@/api/agents';
-import { createChatSession, getChatSessionMessage, ChatMessage } from '@/api/chat-sessions';
+import { createChatSession, getChatSessionMessage } from '@/api/chat-sessions';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 
@@ -33,10 +32,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
   useEffect(() => {
     const loadExistingMessages = async () => {
-      if (!sessionId) return;
+      if (!ssid) return;
       try {
         setIsLoading(true);
-        const response = await getChatSessionMessage(sessionId);
+        const response = await getChatSessionMessage(ssid);
         const formattedMessages = response.results.map(msg => ({
           id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
           content: msg.content,
@@ -52,7 +51,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     };
 
     loadExistingMessages();
-  }, [sessionId]);
+  }, [ssid]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -108,6 +107,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         },
         body: JSON.stringify(payload),
       });
+
+      console.log("Response:", response);
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");

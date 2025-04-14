@@ -74,6 +74,10 @@ export default function ChatInterface() {
     sessionId: sessionId
   });
 
+  useEffect(() => {
+    console.log(messages.length);
+  }, [messages.length]);
+
   const handleSubmit = async (
     event?: React.FormEvent<HTMLFormElement>,
     chatRequestOptions?: ChatRequestOptions

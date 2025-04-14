@@ -30,6 +30,8 @@ export default function Apps() {
   const [appType, setAppType] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
 
+  
+
   const filteredApps = apps
     .sort((a, b) =>
       sort === 'ascending'
