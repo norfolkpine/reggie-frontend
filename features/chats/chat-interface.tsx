@@ -52,17 +52,16 @@ function isCryptoData(content: string): boolean {
   }
 }
 
-// Replace useChat import with useAgentChat
 import { useAgentChat } from "@/hooks/use-agent-chat";
+import { createGoogleDoc } from "@/api/integration-google-drive";
+import { truncateText } from "@/lib/utils";
 
 export default function ChatInterface() {
-  const [sessionCreated, setSessionCreated] = useState(false);
   const searchParams = useSearchParams();
   const agentId = searchParams.get('agentId') ?? '';
   const params = useParams();
   const sessionId = params.sessionId as string | null;
   
-  // Replace useChat with useAgentChat
   const {
     messages,
     input,
@@ -80,7 +79,6 @@ export default function ChatInterface() {
 
   const handleSubmit = async (
     event?: React.FormEvent<HTMLFormElement>,
-    chatRequestOptions?: ChatRequestOptions
   ) => {
     if (!isAuthenticated) {
       router.push("/sign-in");
@@ -201,6 +199,26 @@ export default function ChatInterface() {
   const editingMessage = messages.find(
     (message) => message.id === editingMessageId
   );
+
+  async function handleOnSend(id: "google-drive" | "journal", text: string, messageId: string): Promise<void> {
+    if(id === 'journal'){
+      sendToJournal(text, messageId)
+    }else if(id === "google-drive"){
+      try {
+        await createGoogleDoc({
+          title: truncateText(text ?? ""),
+          markdown: text ?? ""
+        })
+        toast({
+          title: "Success created Google Doc"
+        })
+      }catch(e){
+        toast({
+          title: "Failed creating Google Doc"
+        })
+      }
+    }
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -326,7 +344,7 @@ export default function ChatInterface() {
                               content={message.content as string}
                               onCopy={copyToClipboard}
                               copiedMessageId={copiedMessageId}
-                              onSendToJournal={sendToJournal}
+                              onSend={handleOnSend}
                               onOpenCanvas={setEditingMessageId}
                             />
                           </>

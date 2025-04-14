@@ -2,7 +2,10 @@ import { api } from '@/lib/api-client';
 
 export interface Integration {
   key: string;
-  label: string;
+  title: string;
+  description: string;
+  icon_url: string;
+  is_connected: boolean | false;
 }
 
 interface PaginatedIntegrationList {
@@ -13,7 +16,7 @@ interface PaginatedIntegrationList {
 }
 
 export const getIntegrations = async (page: number = 1) => {
-  const response = await api.get('/reggie/api/v1/integrations/apps/', {
+  const response = await api.get('/integrations/apps/', {
     params: { page: page.toString() }
   });
   return response as PaginatedIntegrationList;

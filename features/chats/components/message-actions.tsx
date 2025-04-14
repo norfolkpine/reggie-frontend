@@ -1,12 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Check, Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, BookOpen, Pencil, MoreHorizontal } from "lucide-react";
+import { Check, Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, BookOpen, Pencil, MoreHorizontal, Send } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { IconBrandGoogleDrive } from "@tabler/icons-react";
 
 export interface MessageActionsProps {
     messageId: string;
     content: string;
     onCopy: (text: string, messageId: string) => Promise<void>;
     copiedMessageId: string | null;
-    onSendToJournal: (text: string, messageId: string) => void;
+    onSend: (id: 'google-drive' | 'journal' ,text: string, messageId: string) => void;
     onOpenCanvas: (messageId: string) => void;
   }
   
@@ -15,7 +17,7 @@ export interface MessageActionsProps {
     content,
     onCopy,
     copiedMessageId,
-    onSendToJournal,
+    onSend,
     onOpenCanvas,
   }: MessageActionsProps) {
     return (
@@ -65,15 +67,38 @@ export interface MessageActionsProps {
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-          onClick={() => onSendToJournal(content, messageId)}
-          title="Send to journal"
-        >
-          <BookOpen className="h-4 w-4" />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              title="Send to..."
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2">
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={() => onSend('journal', content, messageId)}
+              >
+                <BookOpen className="h-4 w-4" />
+                Send to Journal
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={() => onSend('google-drive', content, messageId)}
+              >
+                <IconBrandGoogleDrive className="h-4 w-4" />
+                Send to Drive
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button
           variant="ghost"
           size="icon"

@@ -23,10 +23,12 @@ import Collaboration from '@tiptap/extension-collaboration'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BookOpen, Check, Copy, RefreshCw, Volume2, Undo, Redo, Square } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, Copy, RefreshCw, Volume2, Undo, Redo, Square, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, truncateText } from '@/lib/utils'
 import '@/styles/editor.css'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { IconBrandGoogleDrive } from '@tabler/icons-react'
 import { Message } from '@/types/message'
 import { useToast } from '@/components/ui/use-toast'
 import { useSpeechSynthesis } from '@/hooks/use-speech-synthesis'
@@ -39,6 +41,7 @@ import { BlockquoteFigure } from './BlockquoteFigure'
 import { HorizontalRule } from './HorizontalRule'
 import { Markdown } from 'tiptap-markdown';
 import MarkdownIt from 'markdown-it'
+import { createGoogleDoc } from '@/api/integration-google-drive'
 
 
 interface EditorPanelProps {
@@ -111,6 +114,7 @@ export function EditorPanel({
   })
 
   const { isPlaying, play, stop } = useSpeechSynthesis({})
+  const {toast} = useToast()
 
   const md = new MarkdownIt({
     html: true,
@@ -138,6 +142,22 @@ export function EditorPanel({
 
   const handleSendToJournal = async () => {
     
+  }
+
+  const handleSendToGoogleDrive = async () => {
+    try {
+      await createGoogleDoc({
+        title: truncateText(content?.content ?? ""),
+        markdown: content?.content ?? ""
+      })
+      toast({
+        title: "Success created Google Doc"
+      })
+    }catch(e){
+      toast({
+        title: "Failed creating Google Doc"
+      })
+    }
   }
 
   if(!show){
@@ -215,13 +235,34 @@ export function EditorPanel({
           }}
           title="Reset"
         />
-        <ActionButton
-          icon={BookOpen}
-          activeIcon={Check}
-          isActive={isJournalSaved}
-          onClick={handleSendToJournal}
-          title="Send to journal"
-        />
+        <Popover>
+          <PopoverTrigger >
+            <ActionButton
+              icon={Send}
+              title="Send to..."
+            />
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2">
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={handleSendToJournal}
+              >
+                <BookOpen className="h-4 w-4" />
+                Send to Journal
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={handleSendToGoogleDrive}
+              >
+                <IconBrandGoogleDrive className="h-4 w-4" />
+                Send to Drive
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
         {/* <ActionButton
           icon={Undo}
           onClick={() => editor?.chain().focus().undo().run()}
