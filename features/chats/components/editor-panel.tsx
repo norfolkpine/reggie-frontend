@@ -189,14 +189,8 @@ export function EditorPanel({
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-lg font-medium">{title}</h2>
-      </div>
-      <div className="flex-1 px-4 pt-4 overflow-y-auto">
-      <EditorContent
-              editor={editor}
-              className='p-8 w-full flex-1'
-            />
-      </div>
-      <div className="flex items-center gap-2 py-2 px-8 2xl:py-4">
+
+        <div className="flex items-center gap-2 py-2 px-2 2xl:py-4 ml-auto">
         <ActionButton
           icon={Copy}
           activeIcon={Check}
@@ -263,19 +257,15 @@ export function EditorPanel({
             </div>
           </PopoverContent>
         </Popover>
-        {/* <ActionButton
-          icon={Undo}
-          onClick={() => editor?.chain().focus().undo().run()}
-          disabled={!editor?.can().undo()}
-          title="Undo"
-        />
-        <ActionButton
-          icon={Redo}
-          onClick={() => editor?.chain().focus().redo().run()}
-          disabled={!editor?.can().redo()}
-          title="Redo"
-        /> */}
       </div>
+      </div>
+      <div className="flex-1 px-4 pt-4 overflow-y-auto">
+      <EditorContent
+              editor={editor}
+              className='p-8 w-full flex-1'
+            />
+      </div>
+     
     </div>
   )
 }
