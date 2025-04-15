@@ -6,12 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import {
-  Mic,
-  Plus,
-  Search,
-  Send,
-} from "lucide-react";
+import { Mic, Plus, Search, Send } from "lucide-react";
 import { useChat } from "ai/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,12 +19,11 @@ import { ChatRequestOptions } from "ai";
 import { useParams, useRouter } from "next/navigation";
 
 // Add these imports at the top
-import { useSearchParams } from 'next/navigation';
-import { createChatSession } from '@/api/chat-sessions';
+import { useSearchParams } from "next/navigation";
+import { createChatSession } from "@/api/chat-sessions";
 import MessageActions from "./components/message-actions";
 import { MarkdownComponents } from "./components/markdown-component";
-import TypingIndicator from './components/typing-indicator';
-
+import TypingIndicator from "./components/typing-indicator";
 
 // Function to check if a string is valid JSON with crypto data structure
 function isCryptoData(content: string): boolean {
@@ -55,37 +49,31 @@ function isCryptoData(content: string): boolean {
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { InputMessage } from "./components/input-message";
 
 export default function ChatInterface() {
   const searchParams = useSearchParams();
-  const agentId = searchParams.get('agentId') ?? '';
+  const agentId = searchParams.get("agentId") ?? "";
   const params = useParams();
   const sessionId = params.sessionId as string | null;
-  
+
   const {
     messages,
-    input,
-    handleInputChange,
     handleSubmit: chatSubmit,
     isLoading,
-  } = useAgentChat({ 
+  } = useAgentChat({
     agentId,
-    sessionId: sessionId
+    sessionId: sessionId,
   });
 
-  useEffect(() => {
-    console.log(messages.length);
-  }, [messages.length]);
-
-  const handleSubmit = async (
-    event?: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleSubmit = async (value?: string) => {
     if (!isAuthenticated) {
       router.push("/sign-in");
       return;
     }
 
-    chatSubmit(event);
+    chatSubmit(value);
   };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -200,22 +188,26 @@ export default function ChatInterface() {
     (message) => message.id === editingMessageId
   );
 
-  async function handleOnSend(id: "google-drive" | "journal", text: string, messageId: string): Promise<void> {
-    if(id === 'journal'){
-      sendToJournal(text, messageId)
-    }else if(id === "google-drive"){
+  async function handleOnSend(
+    id: "google-drive" | "journal",
+    text: string,
+    messageId: string
+  ): Promise<void> {
+    if (id === "journal") {
+      sendToJournal(text, messageId);
+    } else if (id === "google-drive") {
       try {
         await createGoogleDoc({
           title: truncateText(text ?? ""),
-          markdown: text ?? ""
-        })
+          markdown: text ?? "",
+        });
         toast({
-          title: "Success created Google Doc"
-        })
-      }catch(e){
+          title: "Success created Google Doc",
+        });
+      } catch (e) {
         toast({
-          title: "Failed creating Google Doc"
-        })
+          title: "Failed creating Google Doc",
+        });
       }
     }
   }
@@ -242,46 +234,8 @@ export default function ChatInterface() {
                 What can I help with?
               </h2>
               <div className="w-full max-w-2xl">
-                <Card className="p-2 shadow-lg border-gray-200 rounded-2xl">
-                  <form onSubmit={handleSubmit} className="flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </Button>
+              <InputMessage loading={isLoading} onSubmit={handleSubmit} />
 
-                    <Input
-                      className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                      placeholder="Ask anything"
-                      value={input}
-                      onChange={handleInputChange}
-                      disabled={isLoading}
-                    />
-
-                    <div className="flex items-center gap-2 px-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                      >
-                        <Search className="h-5 w-5" />
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                      >
-                        <Mic className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
 
                 <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
                   <span>ChatGPT can make mistakes. Check important info.</span>
@@ -305,13 +259,23 @@ export default function ChatInterface() {
                         willChange: "transform",
                         contain: "content",
                       }}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                      className={`flex ${
+                        message.role === "user"
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        }`}
                       >
                         {message.role === "user" ? (
-                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <p className="whitespace-pre-wrap">
+                            {message.content}
+                          </p>
                         ) : (
                           <>
                             {isCryptoData(message.content as string) ? (
@@ -322,7 +286,9 @@ export default function ChatInterface() {
                                   description="Price, Market Cap, and Volume"
                                 />
                               </div>
-                            ) : isLoading && index === messages.length - 1 && message.role === "assistant" ? (
+                            ) : isLoading &&
+                              index === messages.length - 1 &&
+                              message.role === "assistant" ? (
                               <div className="flex justify-start">
                                 <div className="max-w-[80%]">
                                   <TypingIndicator />
@@ -352,7 +318,7 @@ export default function ChatInterface() {
                       </div>
                     </div>
                   ))}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
               </div>
@@ -360,57 +326,7 @@ export default function ChatInterface() {
               {/* Fixed input at bottom when chatting */}
               <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
                 <div className="max-w-3xl mx-auto">
-                  <Card className="p-2 shadow-lg border-gray-200 rounded-2xl">
-                    <form onSubmit={handleSubmit} className="flex items-center">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </Button>
-
-                      <Input
-                        className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                        placeholder="Ask anything"
-                        value={input}
-                        onChange={handleInputChange}
-                        disabled={isLoading}
-                      />
-
-                      <div className="flex items-center gap-2 px-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full"
-                        >
-                          <Search className="h-5 w-5" />
-                        </Button>
-                        <span className="text-xs text-muted-foreground px-2 border-x border-gray-200">
-                          Deep research
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full"
-                        >
-                          <Mic className="h-5 w-5" />
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full"
-                          disabled={isLoading || !input.trim()}
-                        >
-                          <Send className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </form>
-                  </Card>
+                  <InputMessage loading={isLoading} onSubmit={handleSubmit} />
 
                   <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
                     <span>

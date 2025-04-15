@@ -16,15 +16,12 @@ interface UseAgentChatProps {
 
 interface UseAgentChatReturn {
   messages: Message[];
-  input: string;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e?: React.FormEvent) => void;
+  handleSubmit: (value?: string) => void;
   isLoading: boolean;
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionCreated, setSessionCreated] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(ssid);
@@ -53,13 +50,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     loadExistingMessages();
   }, [ssid]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-  }, []);
-
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSubmit = useCallback(async (value?: string) => {
+    if (!value?.trim() || isLoading) return;
 
     let tempSessionId = sessionId;
 
@@ -81,19 +73,18 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: input,
+      content: value ?? "",
       role: 'user'
     };
     setMessages(prev => [...prev, userMessage]);
 
-    setInput('');
     setIsLoading(true);
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       const payload = {
         agent_id: agentId,
-        message: input,
+        message: value ?? "",
         session_id: tempSessionId,
       };
 
@@ -169,7 +160,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         readerRef.current = null;
       }
     }
-  }, [input, isLoading, agentId, sessionCreated, sessionId]);
+  }, [isLoading, agentId, sessionCreated, sessionId]);
 
   // Cleanup reader on unmount
   useEffect(() => {
@@ -182,8 +173,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
   return {
     messages,
-    input,
-    handleInputChange,
     handleSubmit,
     isLoading
   };
