@@ -246,7 +246,7 @@ importers:
         specifier: latest
         version: 10.1.0(@types/react@19.0.12)(react@19.0.0)
       react-resizable-panels:
-        specifier: latest
+        specifier: ^2.1.7
         version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       recharts:
         specifier: latest

@@ -88,7 +88,7 @@
     "react-dom": "^19",
     "react-hook-form": "latest",
     "react-markdown": "latest",
-    "react-resizable-panels": "latest",
+    "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
     "rehype-highlight": "latest",
     "remark-gfm": "latest",

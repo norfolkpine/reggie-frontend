@@ -51,6 +51,11 @@ import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { InputMessage } from "./components/input-message";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 
 export default function ChatInterface() {
   const searchParams = useSearchParams();
@@ -80,39 +85,12 @@ export default function ChatInterface() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [splitPosition, setSplitPosition] = useState(50); // percentage
   const [isNearBottom, setIsNearBottom] = useState(true);
-  const isDragging = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Remove isDragging and containerRef as they're no longer needed with ResizablePanelGroup
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDragging.current = true;
-    document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging.current || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const percentage =
-      ((e.clientX - containerRect.left) / containerRect.width) * 100;
-
-    // Limit the split position between 30% and 70%
-    const limitedPercentage = Math.min(Math.max(percentage, 30), 70);
-    setSplitPosition(limitedPercentage);
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-    document.body.style.userSelect = "";
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener("mouseup", handleMouseUp);
-  }, [handleMouseMove]);
+  // Remove manual resize handlers as they're no longer needed with ResizablePanelGroup
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -216,12 +194,9 @@ export default function ChatInterface() {
     <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
 
-      <div className="flex flex-1 overflow-hidden" ref={containerRef}>
+      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* Chat area */}
-        <div
-          className="flex flex-col h-full transition-all duration-300 ease-in-out"
-          style={{ width: editingMessageId ? `${splitPosition}%` : "100%" }}
-        >
+        <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full">
           {/* Header */}
           <div className="p-4 border-b flex items-center justify-between">
             <h1 className="text-xl font-medium">ChatGPT 4o</h1>
@@ -338,40 +313,27 @@ export default function ChatInterface() {
               </div>
             </>
           )}
-        </div>
+        </ResizablePanel>
 
-        {/* Resizable divider */}
+        {/* Editor panel */}
         {editingMessageId && (
-          <div
-            className="w-1 hover:w-2 bg-gradient-to-r from-transparent via-gray-300 to-transparent cursor-col-resize relative group transition-all"
-            onMouseDown={handleMouseDown}
-          >
-            <div className="absolute inset-0 shadow-[0_0_15px_rgba(0,0,0,0.1)] pointer-events-none" />
-            <div className="absolute inset-y-0 left-1/2 w-4 -translate-x-1/2 group-hover:bg-gray-300/10" />
-          </div>
-        )}
-
-        {/* Canvas editor area */}
-        {editingMessageId && (
-          <div
-            className="flex flex-col h-full transition-all duration-300 ease-in-out"
-            style={{ width: `${100 - splitPosition}%` }}
-          >
-            {editingMessage && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={40} minSize={30} className="h-full">
               <EditorPanel
                 content={{
-                  content: editingMessage.content,
-                  role: editingMessage.role as "user" | "assistant",
-                  id: editingMessage.id,
+                  content: editingMessage?.content || "",
+                  role: editingMessage?.role as "user" | "assistant",
+                  id: editingMessage?.id || "",
                 }}
                 show
                 onSave={handleSaveEdit}
-                onClose={() => {}}
+                onClose={() => setEditingMessageId(null)}
               />
-            )}
-          </div>
+            </ResizablePanel>
+          </>
         )}
-      </div>
+      </ResizablePanelGroup>
     </div>
   );
 }

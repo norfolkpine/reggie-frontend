@@ -165,32 +165,27 @@ export function EditorPanel({
   }
 
   return (
-    <div className={cn(
-      'w-[50vw] border-l border-border',
-      'transform transition-transform duration-300 ease-in-out',
-      'flex flex-col h-full bg-black',
-      show ? 'translate-x-0' : 'translate-x-full'
-    )}>
+    <div className="flex flex-col h-full bg-background">
       <div className="px-4 py-2 border-b flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => {
+            if (onSave) {
+              onSave(editor?.storage.markdown.getMarkdown() ?? '')
+            }
             if (onClose) {
               onClose()
-              
-            }
-            if(onSave){
-              onSave(editor?.storage.markdown.getMarkdown() ?? '')
             }
           }}
           className="h-9 w-9"
+          title="Save and close"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-lg font-medium">{title}</h2>
 
-        <div className="flex items-center gap-2 py-2 px-2 2xl:py-4 ml-auto">
+        <div className="flex items-center gap-2 py-2 px-2 ml-auto">
         <ActionButton
           icon={Copy}
           activeIcon={Check}
