@@ -20,6 +20,19 @@ import { Button } from "@/components/custom/button";
 import { getIntegrations, Integration } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
+import { revokeGoogleDriveAccess } from "@/api/integration-google-drive";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const appText = new Map<string, string>([
   ["all", "All Apps"],
@@ -31,6 +44,9 @@ export default function Apps() {
   const [sort, setSort] = useState("ascending");
   const [appType, setAppType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Integration | null>(null);
+  const { toast } = useToast();
 
   // Ensure apps is initialized as an empty array
   const [apps, setApps] = useState<Integration[]>([]);
@@ -38,7 +54,7 @@ export default function Apps() {
   const fetchApps = async () => {
     try {
       const data = await getIntegrations();
-      setApps( data.results ?? []);
+      setApps(data.results ?? []);
     } catch (error) {
       console.log(error);
     }
@@ -47,11 +63,50 @@ export default function Apps() {
   useEffect(() => {
     fetchApps();
   }, []);
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchApps();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const handleConnectionApp = (integration: Integration) => {
-    if(integration.key === 'google_drive' && !integration.is_connected){
-      window.open(BASE_URL + "/integrations/gdrive/oauth/start/", '_blank')
-    } 
+    if (integration.key === 'google_drive' && !integration.is_connected) {
+      window.open(BASE_URL + "/integrations/gdrive/oauth/start/", '_blank');
+    }
+  }
+  
+  const handleRevokeAccess = async () => {
+    if (!selectedApp) return;
+    
+    try {
+      setIsRevoking(true);
+      await revokeGoogleDriveAccess();
+      toast({
+        title: "Connection revoked",
+        description: `${selectedApp.title} has been disconnected successfully.`,
+      });
+      // Refresh the app list to show updated connection status
+      await fetchApps();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke access. Please try again.",
+        variant: "destructive",
+      });
+      console.error(error);
+    } finally {
+      setIsRevoking(false);
+      setSelectedApp(null);
+    }
   }
 
   const filteredApps = apps
@@ -140,18 +195,46 @@ export default function Apps() {
                 >
                   { app.icon_url && <img src={app.icon_url} />}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleConnectionApp(app)}
-                  className={`${
-                    app.is_connected
-                      ? "border border-blue-300 bg-blue-50 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:hover:bg-blue-900"
-                      : ""
-                  }`}
-                >
-                  {app.is_connected ? "Connected" : "Connect"}
-                </Button>
+                {app.is_connected ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedApp(app)}
+                        className="border border-blue-300 bg-blue-50 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:hover:bg-blue-900"
+                      >
+                        Connected
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Revoke Access</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to revoke access to {app.title}? This will disconnect the integration and you'll need to reconnect to use it again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setSelectedApp(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleRevokeAccess}
+                          disabled={isRevoking}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {isRevoking ? "Revoking..." : "Revoke Access"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleConnectionApp(app)}
+                  >
+                    Connect
+                  </Button>
+                )}
               </div>
               <div>
                 <h2 className="mb-1 font-semibold">{app.title}</h2>
