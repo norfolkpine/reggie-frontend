@@ -251,10 +251,10 @@ export default function ChatInterface() {
                       }`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                        className={`rounded-lg px-4 py-2 ${
                           message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                            ? "max-w-[80%] bg-primary text-primary-foreground"
+                            : ""
                         }`}
                       >
                         {message.role === "user" ? (
@@ -275,7 +275,7 @@ export default function ChatInterface() {
                               index === messages.length - 1 &&
                               message.role === "assistant" ? (
                               <div className="flex justify-start">
-                                <div className="max-w-[80%]">
+                                <div>
                                   <TypingIndicator />
                                 </div>
                               </div>
