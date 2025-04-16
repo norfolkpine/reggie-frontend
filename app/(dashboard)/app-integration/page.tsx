@@ -49,7 +49,7 @@ export default function Apps() {
   }, []);
 
   const handleConnectionApp = (integration: Integration) => {
-    if(integration.key == 'google_drive'){
+    if(integration.key === 'google_drive' && !integration.is_connected){
       window.open(BASE_URL + "/integrations/gdrive/oauth/start/", '_blank')
     } 
   }
