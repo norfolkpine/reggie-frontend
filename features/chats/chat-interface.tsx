@@ -175,16 +175,26 @@ export default function ChatInterface() {
       sendToJournal(text, messageId);
     } else if (id === "google-drive") {
       try {
-        await createGoogleDoc({
+        const data = await createGoogleDoc({
           title: truncateText(text ?? ""),
           markdown: text ?? "",
         });
         toast({
           title: "Success created Google Doc",
+          description: "Click to open document",
+          action: (<Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(data.doc_url, '_blank')}
+          >
+            Open
+          </Button>
+          )
         });
       } catch (e) {
         toast({
           title: "Failed creating Google Doc",
+          description: "We were unable to create your document in Google Drive. Please try again."
         });
       }
     }

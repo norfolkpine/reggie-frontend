@@ -61,6 +61,7 @@ export function EditorPanel({
 }: EditorPanelProps) {
   const [isCopied, setIsCopied] = useState(false)
   const [isJournalSaved, setIsJournalSaved] = useState(false)
+  const [isGoogleDriveLoading, setIsGoogleDriveLoading] = useState(false)
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -146,17 +147,31 @@ export function EditorPanel({
 
   const handleSendToGoogleDrive = async () => {
     try {
-      await createGoogleDoc({
+      setIsGoogleDriveLoading(true)
+      const data = await createGoogleDoc({
         title: truncateText(content?.content ?? ""),
         markdown: content?.content ?? ""
       })
       toast({
-        title: "Success created Google Doc"
+        title: "Success created Google Doc",
+        description: "Click to open document",
+        action: (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(data.doc_url, '_blank')}
+          >
+            Open
+          </Button>
+        )
       })
-    }catch(e){
+    } catch(e) {
       toast({
-        title: "Failed creating Google Doc"
+        title: "Failed creating Google Doc",
+        description: "We were unable to create your document in Google Drive. Please try again."
       })
+    } finally {
+      setIsGoogleDriveLoading(false)
     }
   }
 
@@ -225,7 +240,7 @@ export function EditorPanel({
           title="Reset"
         />
         <Popover>
-          <PopoverTrigger >
+          <PopoverTrigger asChild>
             <ActionButton
               icon={Send}
               title="Send to..."
@@ -245,8 +260,13 @@ export function EditorPanel({
                 variant="ghost"
                 className="w-full justify-start gap-2"
                 onClick={handleSendToGoogleDrive}
+                disabled={isGoogleDriveLoading}
               >
-                <IconBrandGoogleDrive className="h-4 w-4" />
+                {isGoogleDriveLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <IconBrandGoogleDrive className="h-4 w-4" />
+                )}
                 Send to Drive
               </Button>
             </div>

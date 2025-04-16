@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button"
 import { LucideProps } from "lucide-react"
 import { cn } from "@/lib/utils"
+import React from "react"
 
-interface ActionButtonProps {
+interface ActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>
   activeIcon?: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>
   isActive?: boolean
@@ -12,19 +13,22 @@ interface ActionButtonProps {
   disabled?: boolean
 }
 
-export function ActionButton({
-  icon: Icon,
-  activeIcon: ActiveIcon,
-  isActive,
-  onClick,
-  title,
-  className,
-  disabled
-}: ActionButtonProps) {
+export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>((
+  {
+    icon: Icon,
+    activeIcon: ActiveIcon,
+    isActive,
+    onClick,
+    title,
+    className,
+    disabled,
+    ...props
+  }, ref) => {
   const ButtonIcon = isActive && ActiveIcon ? ActiveIcon : Icon
 
   return (
     <Button
+      ref={ref}
       variant="ghost"
       size="icon"
       onClick={onClick}
@@ -35,8 +39,11 @@ export function ActionButton({
       )}
       title={title}
       disabled={disabled}
+      {...props}
     >
       <ButtonIcon className="h-4 w-4" />
     </Button>
   )
-}
+})
+
+ActionButton.displayName = "ActionButton"
