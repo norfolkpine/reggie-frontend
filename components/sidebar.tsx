@@ -1,7 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import {
+  ForwardRefExoticComponent,
+  JSX,
+  RefAttributes,
+  useEffect,
+  useState,
+} from "react";
+import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,103 +20,158 @@ import {
   Share2,
   Edit,
   MessageSquare,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+  LucideProps,
+  LayoutGrid
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 // Import the TeamSwitcher component at the top of the file
-import { TeamSwitcher } from "@/components/team-switcher"
-import { CreateProjectDialog } from "@/components/create-project-dialog"
+import { TeamSwitcher } from "@/components/team/team-switcher";
+import { CreateProjectDialog } from "@/features/project/components/create-project-dialog";
+import { usePathname, useRouter } from "next/navigation";
+import { createProject } from "@/api/projects";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "./ui/use-toast";
+import { ChatSession, getChatSessions } from "@/api/chat-sessions";
+import { IconBubble, IconMenu } from "@tabler/icons-react";
 
 interface ChatItem {
-  name: string
-  icon?: string
-  color?: string
-  view?: string
+  name: string;
+  icon?:
+    | string
+    | ForwardRefExoticComponent<
+        Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+      >;
+  url: string;
 }
 
 interface HistorySection {
-  title: string
-  items: string[]
+  title: string;
+  items: string[];
 }
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "ChatGPT", icon: "🤖", view: "chat" },
-  { name: "Explore Agents", icon: "🔍", view: "explore-agents" },
-]
+  { name: "ChatGPT", icon: "🤖", url: "/chat" },
+  { name: "Explore Agents", icon: "🔍", url: "/agent" },
+];
 
-const projects = ["Databricks"]
-
-const historySections: HistorySection[] = [
+const navigationItems: ChatItem[] = [
+  { name: "Library", icon: BookOpen, url: "/library" },
   {
-    title: "Today",
-    items: ["Machine Learning Basics", "Website Design Tips"],
+    name: "Projects",
+    icon: FolderGit2,
+    url: "/project",
   },
   {
-    title: "Yesterday",
-    items: ["JavaScript Frameworks", "Data Visualization Guide"],
+    name: "Apps",
+    icon: LayoutGrid,
+    url: "/app-integration",
   },
-  {
-    title: "Previous 7 Days",
-    items: ["Python vs JavaScript", "Cloud Computing Overview", "UI/UX Design Principles"],
-  },
-]
+];
 
 // Update the sidebar component to handle chat item clicks
-export default function Sidebar({ onViewChange, activeView }) {
-  const [isExpanded, setIsExpanded] = useState(true)
-  const [activeHistoryItem, setActiveHistoryItem] = useState<string | null>(null)
-  const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(null)
-  const [createProjectOpen, setCreateProjectOpen] = useState(false)
+export default function Sidebar() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
+    null
+  );
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   // Define navigationItems inside the component so it has access to setCreateProjectOpen
   // Update the navigationItems definition inside the component
   // Change the Projects item to navigate to the projects view instead of opening the dialog
 
-  const navigationItems = [
-    { name: "Library", icon: BookOpen, view: "library" },
-    {
-      name: "Projects",
-      icon: FolderGit2,
-      view: "projects",
-      // Remove the onClick handler here so clicking the item navigates to the view
-    },
-  ]
-
   const toggleSidebar = () => {
-    setIsExpanded(!isExpanded)
-  }
+    setIsExpanded(!isExpanded);
+  };
 
-  const handleNavItemClick = (view) => {
-    onViewChange(view)
-  }
+  const handleNavItemClick = (url: string) => {
+    router.push(url);
+  };
 
-  const handleChatItemClick = (view) => {
-    onViewChange(view)
-  }
+  const handleChatItemClick = (url: string) => {
+    router.push(url);
+  };
 
-  const handleHistoryItemClick = (item: string) => {
-    setActiveHistoryItem(item)
-    onViewChange("chat") // Switch to chat view when clicking a history item
-  }
+  const handleHistoryItemClick = (sessionId: string) => {
+    router.push(`/chat/${sessionId}`);
+  };
 
-  const handleCreateProject = (name: string) => {
-    // In a real app, this would make an API call
-    console.log("Creating project:", name)
-  }
+  const renderIcon = (icon: ChatItem["icon"]) => {
+    if (typeof icon === "string") {
+      return icon;
+    }
+    const IconComponent = icon;
+    return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
+  };
+
+  const handleCreateProject = async (name: string, description: string) => {
+    try {
+      await createProject({
+        name,
+        description: description,
+        owner: user?.id,
+      });
+      if (pathname === "/project") {
+        router.refresh();
+      } else {
+        router.push("/project");
+      }
+      toast({
+        title: "Success",
+        description: "Project created successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create project. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [errorSessions, setErrorSessions] = useState<string | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const { isAuthenticated } = useAuth();
+
+  const fetchChatSessions = async () => {
+    if (!isAuthenticated) return;
+    setIsLoadingSessions(true);
+    setErrorSessions(null);
+    try {
+      const response = await getChatSessions();
+      setChatSessions(response.results);
+    } catch (err) {
+      console.error("Failed to fetch chat sessions:", err);
+      setErrorSessions("Failed to load chat sessions");
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChatSessions();
+  }, []);
 
   return (
     <div
       className={cn(
         "h-full border-r border-border flex flex-col bg-gray-50 transition-all duration-300",
-        isExpanded ? "w-64" : "w-16",
+        isExpanded ? "w-64" : "w-16"
       )}
     >
       {isExpanded ? (
@@ -135,7 +196,7 @@ export default function Sidebar({ onViewChange, activeView }) {
             <Button
               variant="outline"
               className="w-full justify-center font-medium"
-              onClick={() => onViewChange("chat")}
+              onClick={() => router.push("/chat")}
             >
               New Chat
             </Button>
@@ -146,14 +207,13 @@ export default function Sidebar({ onViewChange, activeView }) {
               // Change the onClick handler to properly handle navigation vs. dialog opening */}
 
               {navigationItems.map((item, index) => (
-                <Button
+                <div
                   key={index}
-                  variant="ghost"
-                  className={`w-full justify-between gap-2 font-normal ${activeView === item.view ? "bg-gray-200" : ""}`}
-                  onClick={() => handleNavItemClick(item.view)}
+                  className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname === item.url ? "bg-gray-200" : ""}`}
+                  onClick={() => handleNavItemClick(item.url)}
                 >
                   <div className="flex items-center gap-2">
-                    <item.icon className="h-4 w-4" />
+                    {renderIcon(item.icon)}
                     <span>{item.name}</span>
                   </div>
                   {item.name === "Projects" && (
@@ -162,14 +222,14 @@ export default function Sidebar({ onViewChange, activeView }) {
                       size="icon"
                       className="h-6 w-6 rounded-full hover:bg-gray-300"
                       onClick={(e) => {
-                        e.stopPropagation()
-                        setCreateProjectOpen(true)
+                        e.stopPropagation();
+                        setCreateProjectOpen(true);
                       }}
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                </Button>
+                </div>
               ))}
             </div>
           </div>
@@ -180,70 +240,72 @@ export default function Sidebar({ onViewChange, activeView }) {
               {chats.map((chat, index) => (
                 <div
                   key={index}
-                  className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${activeView === chat.view ? "bg-gray-200" : ""}`}
-                  onClick={() => handleChatItemClick(chat.view)}
+                  className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${pathname === chat.url ? "bg-gray-200" : ""}`}
+                  onClick={() => handleChatItemClick(chat.url)}
                 >
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-300 text-xs">
-                    {chat.icon}
+                    {renderIcon(chat.icon)}
                   </div>
                   <span className="text-sm">{chat.name}</span>
                 </div>
               ))}
             </div>
 
-            {historySections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="px-3 py-2">
-                <h3 className="text-xs font-medium mb-2">{section.title}</h3>
-                {section.items.map((item, itemIndex) => (
-                  <div
-                    key={itemIndex}
-                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${
-                      activeHistoryItem === item ? "bg-gray-200" : ""
-                    }`}
-                    onClick={() => handleHistoryItemClick(item)}
-                    onMouseEnter={() => setHoveredHistoryItem(item)}
-                    onMouseLeave={() => setHoveredHistoryItem(null)}
-                  >
-                    <span className="text-sm truncate flex-1">{item}</span>
+            {/* {historySections.map((section, sectionIndex) => ( */}
+            <div className="px-3 py-2">
+              {chatSessions.length > 0 && (
+                <h3 className="text-xs font-medium mb-2">History</h3>
+              )}
+              {chatSessions.map((item, itemIndex) => (
+                <div
+                  key={itemIndex}
+                  className={`flex items-center justify-between p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${pathname === `/chat/${item.session_id}` ? "bg-gray-200" : ""}`}
+                  onClick={() => handleHistoryItemClick(item.session_id)}
+                  onMouseEnter={() => setHoveredHistoryItem(item.session_id)}
+                  onMouseLeave={() => setHoveredHistoryItem(null)}
+                >
+                  <span className="text-sm truncate flex-1">{item.title}</span>
 
-                    {/* Three dots menu for Machine Learning Basics */}
-                    {item === "Machine Learning Basics" &&
-                      (hoveredHistoryItem === item || activeHistoryItem === item) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem className="cursor-pointer">
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              <span>Continue Chat</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <Star className="h-4 w-4 mr-2" />
-                              <span>Add to Favorites</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <Edit className="h-4 w-4 mr-2" />
-                              <span>Rename</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <Share2 className="h-4 w-4 mr-2" />
-                              <span>Share</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="cursor-pointer text-red-600">
-                              <Trash className="h-4 w-4 mr-2" />
-                              <span>Delete from History</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                  </div>
-                ))}
-              </div>
-            ))}
+                  {hoveredHistoryItem === item.session_id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-full"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem className="cursor-pointer">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          <span>Continue Chat</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
+                          <Star className="h-4 w-4 mr-2" />
+                          <span>Add to Favorites</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
+                          <Edit className="h-4 w-4 mr-2" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
+                          <Share2 className="h-4 w-4 mr-2" />
+                          <span>Share</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer text-red-600">
+                          <Trash className="h-4 w-4 mr-2" />
+                          <span>Delete from History</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* ))} */}
           </div>
 
           <div className="p-3 border-t border-border">
@@ -268,13 +330,13 @@ export default function Sidebar({ onViewChange, activeView }) {
               </Button>
             </div>
 
-            {/* Plus button (New Chat) */}
+            {/* Plus button (New Chat) in collapsed view */}
             <Button
               variant="outline"
               size="icon"
               className="rounded-full w-10 h-10"
               title="New Chat"
-              onClick={() => onViewChange("chat")}
+              onClick={() => router.push("/chat")}
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -291,11 +353,13 @@ export default function Sidebar({ onViewChange, activeView }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`rounded-full w-10 h-10 ${activeView === item.view ? "bg-gray-200" : ""}`}
+                    className={`rounded-full w-10 h-10 ${
+                      pathname.includes(item.url) ? "bg-gray-200" : ""
+                    }`}
                     title={item.name}
-                    onClick={() => handleNavItemClick(item.view)}
+                    onClick={() => handleNavItemClick(item.url)}
                   >
-                    <item.icon className="h-5 w-5" />
+                    {renderIcon(item.icon)}
                   </Button>
                   {item.name === "Projects" && (
                     <Button
@@ -303,8 +367,8 @@ export default function Sidebar({ onViewChange, activeView }) {
                       size="icon"
                       className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
                       onClick={(e) => {
-                        e.stopPropagation()
-                        setCreateProjectOpen(true)
+                        e.stopPropagation();
+                        setCreateProjectOpen(true);
                       }}
                       title="Create new project"
                     >
@@ -317,14 +381,15 @@ export default function Sidebar({ onViewChange, activeView }) {
               <div className="w-8 border-t border-gray-300 my-2"></div>
 
               {/* Chat items */}
-              {chats.map((chat, index) => (
+              {chatSessions.map((chat, index) => (
                 <div
                   key={index}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-lg cursor-pointer hover:bg-gray-400 ${activeView === chat.view ? "ring-2 ring-primary" : ""}`}
-                  title={chat.name}
-                  onClick={() => handleChatItemClick(chat.view)}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-lg cursor-pointer hover:bg-gray-400 ${pathname === chat.session_id ? "ring-2 ring-primary" : ""}`}
+                  title={chat.title}
+                  onClick={() => handleChatItemClick(chat.session_id ?? "")}
                 >
-                  {chat.icon}
+                  {/* {renderIcon(chat.icon)} */}
+                  <IconBubble size={16} />
                 </div>
               ))}
             </div>
@@ -342,6 +407,5 @@ export default function Sidebar({ onViewChange, activeView }) {
         onCreateProject={handleCreateProject}
       />
     </div>
-  )
+  );
 }
-

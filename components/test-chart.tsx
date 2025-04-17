@@ -1,6 +1,6 @@
 "use client"
 
-import CryptoChart from "./crypto-chart"
+import CryptoChart from "../features/chats/components/crypto-chart"
 
 // Sample data
 const sampleData = [

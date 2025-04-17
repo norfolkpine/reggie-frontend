@@ -23,7 +23,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { toast } from "@/components/ui/use-toast"
-import CryptoChart from "./crypto-chart"
+import CryptoChart from "@/features/chats/components/crypto-chart"
 
 // Define markdown components for better styling
 const MarkdownComponents = {

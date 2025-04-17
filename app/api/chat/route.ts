@@ -1,36 +1,26 @@
-import { NextResponse } from "next/server"
+import { openai } from "@ai-sdk/openai"
+import { streamText } from "ai"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
   const { messages } = await req.json()
 
-  // Get the authorization header from the request cookies
-  const { cookies } = req
-  const token = cookies.get("accessToken")?.value
+  // Add system message to encourage markdown formatting
+  const enhancedMessages = [
+    {
+      role: "system",
+      content:
+        "You are a helpful assistant. Format your responses using markdown for better readability. Use headings, lists, code blocks with syntax highlighting, tables, and other markdown features when appropriate.",
+    },
+    ...messages,
+  ]
 
-  try {
-    // Forward the request to Django
-    const response = await fetch(`${API_URL}/api/chat/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ messages }),
-    })
+  const result = streamText({
+    model: openai("gpt-4o"),
+    messages: enhancedMessages,
+  })
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Stream the response back to the client
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Chat API error:", error)
-    return NextResponse.json({ error: "Failed to process chat request" }, { status: 500 })
-  }
+  return result.toDataStreamResponse()
 }
 
