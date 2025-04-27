@@ -34,7 +34,6 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<"all" | "starred">("all")

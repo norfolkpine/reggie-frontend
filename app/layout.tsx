@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "../styles/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
+import { ModalProvider } from "@/contexts/modal-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,10 +31,12 @@ export default function RootLayout({
         <AuthProvider>
           <AuthGuard allowedRoutes={allowedRoutes}>
             <SearchProvider>
-            {children}
+              <ModalProvider>
+                {children}
+              </ModalProvider>
             </SearchProvider>
           </AuthGuard>
-          </AuthProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>
