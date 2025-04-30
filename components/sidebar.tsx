@@ -21,7 +21,8 @@ import {
   Edit,
   MessageSquare,
   LucideProps,
-  LayoutGrid
+  LayoutGrid,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -65,6 +66,7 @@ const chats: ChatItem[] = [
 
 const navigationItems: ChatItem[] = [
   { name: "Library", icon: BookOpen, url: "/library" },
+  { name: "Documents", icon: FileText, url: "/documents" },
   {
     name: "Projects",
     icon: FolderGit2,

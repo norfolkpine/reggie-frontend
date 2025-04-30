@@ -27,3 +27,6 @@ dist-ssr
 
 # windsurf rules
 .windsurfrules
+
+# Cursor rules
+.cursor/*
