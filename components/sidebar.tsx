@@ -22,7 +22,9 @@ import {
   MessageSquare,
   LucideProps,
   LayoutGrid,
-  FileText
+  FileText,
+  File,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -60,13 +62,14 @@ interface HistorySection {
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "ChatGPT", icon: "🤖", url: "/chat" },
+  { name: "Reggie", icon: "🤖", url: "/chat" },
   { name: "Explore Agents", icon: "🔍", url: "/agent" },
 ];
 
 const navigationItems: ChatItem[] = [
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
+  { name: "Knowledge", icon: Database, url: "/knowledge" },
   {
     name: "Projects",
     icon: FolderGit2,

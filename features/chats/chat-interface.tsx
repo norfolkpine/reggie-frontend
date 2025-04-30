@@ -223,7 +223,7 @@ export default function ChatInterface() {
 
 
                 <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
-                  <span>ChatGPT can make mistakes. Check important info.</span>
+                  <span>Reggie can make mistakes. Check important info.</span>
                   <span>?</span>
                 </div>
               </div>
@@ -315,7 +315,7 @@ export default function ChatInterface() {
 
                   <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
                     <span>
-                      ChatGPT can make mistakes. Check important info.
+                      Reggie can make mistakes. Check important info.
                     </span>
                     <span>?</span>
                   </div>
