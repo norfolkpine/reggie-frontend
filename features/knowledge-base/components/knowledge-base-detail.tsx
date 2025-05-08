@@ -44,11 +44,16 @@ import {
   Edit,
   Loader,
   AlertCircle,
+  Folder as FolderIcon,
+  MoreVertical,
+  Upload,
 } from "lucide-react";
 import type {
   KnowledgeBase,
   File as FileType,
   FileKnowledgeBaseLink,
+  Folder,
+  FileWithUI,
 } from "@/types/knowledge-base";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getKnowledgeBase } from "@/api/knowledge-bases";
@@ -62,6 +67,9 @@ import { getKnowledgeBaseFiles } from "@/api/knowledge-bases";
 import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base";
 import { unlinkFilesFromKb, patchFile, reingestFile } from "@/api/files";
 import { useDebounce } from "@/hooks/use-debounce";
+import { FileUpload } from "@/features/knowledge-base/components/file-upload"
+import { uploadFiles } from "@/api/files"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 interface KnowledgeBaseDetailProps {
   knowledgeBaseId: string;
@@ -115,6 +123,8 @@ export function KnowledgeBaseDetail({
   const [reingestingFiles, setReingestingFiles] = useState<
     Record<string, boolean>
   >({});
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [folders, setFolders] = useState<Folder[]>([])
 
   // Fetch knowledge base details if not provided
   useEffect(() => {
@@ -298,6 +308,28 @@ export function KnowledgeBaseDetail({
     }
   };
 
+  const handleFilesSelected = async (files: FileWithUI[]) => {
+    try {
+      toast({
+        title: "Success",
+        description: "Files uploaded successfully",
+      });
+      
+      // Refresh the list after a short delay to allow the backend to process
+      setIsUploadModalOpen(false);
+      setTimeout(() => {
+        handleRefresh();
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload files",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter files based on search query - no need for local filtering since we're using API search
   const filteredFiles = linkedFiles;
   const totalPages = Math.ceil(totalFiles / itemsPerPage);
@@ -317,91 +349,6 @@ export function KnowledgeBaseDetail({
     if (bytes < 1024) return bytes + " B";
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(1) + " MB";
-  };
-
-  const getStatusBadge = (status: FileKnowledgeBaseLink["status"]) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Completed
-          </Badge>
-        );
-      case "processing":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200 animate-pulse">
-            Processing
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            Pending
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge className="bg-red-100 text-red-800 border-red-200">
-            Failed
-          </Badge>
-        );
-      case "disabled":
-        return (
-          <Badge variant="outline" className="text-muted-foreground">
-            Disabled
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
-  };
-
-  const getFileIcon = (fileType: string) => {
-    return <FileText className="h-5 w-5" />;
-  };
-
-  // Get embedding model and chunk method display names
-  const getEmbeddingModelName = (modelId: string) => {
-    if (modelProviders.length > 0) {
-      const provider = modelProviders.find((p) => p.id.toString() === modelId);
-      if (provider) {
-        return provider.model_name;
-      }
-    }
-
-    // Fallback mapping if API data not available
-    const modelMap = {
-      "openai-ada-002": "OpenAI Ada 002",
-      "openai-3-small": "OpenAI 3 Small",
-      "openai-3-large": "OpenAI 3 Large",
-      "cohere-embed-english": "Cohere Embed English",
-      "local-minilm": "Local MiniLM",
-    };
-    return modelMap[modelId as keyof typeof modelMap] || modelId;
-  };
-
-  const getProviderName = (modelId: string) => {
-    if (modelProviders.length > 0) {
-      const provider = modelProviders.find((p) => p.id.toString() === modelId);
-      if (provider) {
-        return provider.provider;
-      }
-    }
-
-    if (modelId.includes("openai")) return "OpenAI";
-    if (modelId.includes("cohere")) return "Cohere";
-    if (modelId.includes("local")) return "Local";
-    return "Unknown Provider";
-  };
-
-  const getChunkMethodName = (methodId: string) => {
-    const methodMap = {
-      "fixed-size": "Fixed Size",
-      paragraph: "Paragraph",
-      sentence: "Sentence",
-      semantic: "Semantic",
-    };
-    return methodMap[methodId as keyof typeof methodMap] || methodId;
   };
 
   if (isLoadingKB) {
@@ -475,12 +422,30 @@ export function KnowledgeBaseDetail({
             />
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
-          <Button>
+          <Button onClick={() => setIsUploadModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Files
           </Button>
         </div>
       </div>
+
+      {/* File Upload Modal */}
+      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Files</DialogTitle>
+            <DialogDescription>
+              Upload files to your knowledge base. Supported formats include PDF, DOCX, XLSX, TXT, CSV, MD, JPEG, and PNG.
+            </DialogDescription>
+          </DialogHeader>
+          <FileUpload
+            onUploadComplete={handleFilesSelected}
+            folders={folders}
+            currentFolderId={null}
+            knowledgeBaseId={loadedKnowledgeBase.knowledgebase_id}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Alert message */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex items-center">
