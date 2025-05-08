@@ -1,25 +1,37 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-} from "@/components/ui/pagination"
+} from "@/components/ui/pagination";
 import {
   FileText,
   MoreHorizontal,
@@ -32,23 +44,30 @@ import {
   Edit,
   Loader,
   AlertCircle,
-} from "lucide-react"
-import type { KnowledgeBase, File as FileType, FileKnowledgeBaseLink } from "@/types/knowledge-base"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getKnowledgeBase } from "@/api/knowledge-bases"
-import { KnowledgeBase as ApiKnowledgeBase, File as ApiFile } from "@/types/api"
-import { useToast } from "@/components/ui/use-toast"
-import { getModelProviders, ModelProvider } from "@/api/agent-providers"
-import { getKnowledgeBaseFiles } from "@/api/knowledge-bases"
-import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base"
-import { unlinkFilesFromKb, patchFile } from "@/api/files"
-import { useDebounce } from "@/hooks/use-debounce"
+} from "lucide-react";
+import type {
+  KnowledgeBase,
+  File as FileType,
+  FileKnowledgeBaseLink,
+} from "@/types/knowledge-base";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getKnowledgeBase } from "@/api/knowledge-bases";
+import {
+  KnowledgeBase as ApiKnowledgeBase,
+  File as ApiFile,
+} from "@/types/api";
+import { useToast } from "@/components/ui/use-toast";
+import { getModelProviders, ModelProvider } from "@/api/agent-providers";
+import { getKnowledgeBaseFiles } from "@/api/knowledge-bases";
+import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base";
+import { unlinkFilesFromKb, patchFile, reingestFile } from "@/api/files";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface KnowledgeBaseDetailProps {
-  knowledgeBaseId: string
-  knowledgeBase: KnowledgeBase | null
-  onBack: () => void
-  onEdit: () => void
+  knowledgeBaseId: string;
+  knowledgeBase: KnowledgeBase | null;
+  onBack: () => void;
+  onEdit: () => void;
 }
 
 // Helper function to convert API KnowledgeBase to local KnowledgeBase format
@@ -66,75 +85,84 @@ const apiToLocalKnowledgeBase = (apiKB: ApiKnowledgeBase): KnowledgeBase => {
     chunk_overlap: apiKB.chunk_overlap,
     created_at: apiKB.created_at,
     updated_at: apiKB.updated_at,
-    model_provider: apiKB.model_provider
-  }
-}
+    model_provider: apiKB.model_provider,
+  };
+};
 
-export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, onEdit }: KnowledgeBaseDetailProps) {
-  const { toast } = useToast()
-  const [linkedFiles, setLinkedFiles] = useState<KnowledgeBaseFile[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const debouncedSearchQuery = useDebounce(searchQuery, 300)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isLoadingKB, setIsLoadingKB] = useState(knowledgeBase === null)
-  const [loadedKnowledgeBase, setLoadedKnowledgeBase] = useState<KnowledgeBase | null>(knowledgeBase)
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [activeTab, setActiveTab] = useState("files")
-  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
-  const [isLoadingModels, setIsLoadingModels] = useState(false)
-  const [totalFiles, setTotalFiles] = useState(0)
-  const [hasNextPage, setHasNextPage] = useState(false)
+export function KnowledgeBaseDetail({
+  knowledgeBaseId,
+  knowledgeBase,
+  onBack,
+  onEdit,
+}: KnowledgeBaseDetailProps) {
+  const { toast } = useToast();
+  const [linkedFiles, setLinkedFiles] = useState<KnowledgeBaseFile[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingKB, setIsLoadingKB] = useState(knowledgeBase === null);
+  const [loadedKnowledgeBase, setLoadedKnowledgeBase] =
+    useState<KnowledgeBase | null>(knowledgeBase);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [activeTab, setActiveTab] = useState("files");
+  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [reingestingFiles, setReingestingFiles] = useState<
+    Record<string, boolean>
+  >({});
 
   // Fetch knowledge base details if not provided
   useEffect(() => {
     const fetchKnowledgeBase = async () => {
       if (knowledgeBase) {
-        setLoadedKnowledgeBase(knowledgeBase)
-        return
+        setLoadedKnowledgeBase(knowledgeBase);
+        return;
       }
 
-      setIsLoadingKB(true)
+      setIsLoadingKB(true);
       try {
-        const numericId = parseInt(knowledgeBaseId, 10)
-        const response = await getKnowledgeBase(numericId)
-        const localKB = apiToLocalKnowledgeBase(response)
-        setLoadedKnowledgeBase(localKB)
+        const numericId = parseInt(knowledgeBaseId, 10);
+        const response = await getKnowledgeBase(numericId);
+        const localKB = apiToLocalKnowledgeBase(response);
+        setLoadedKnowledgeBase(localKB);
       } catch (error) {
-        console.error("Failed to fetch knowledge base details:", error)
+        console.error("Failed to fetch knowledge base details:", error);
         toast({
           title: "Error",
           description: "Failed to load knowledge base details",
           variant: "destructive",
-        })
+        });
       } finally {
-        setIsLoadingKB(false)
+        setIsLoadingKB(false);
       }
-    }
+    };
 
-    fetchKnowledgeBase()
-  }, [knowledgeBaseId, knowledgeBase, toast])
+    fetchKnowledgeBase();
+  }, [knowledgeBaseId, knowledgeBase, toast]);
 
   // Fetch model providers for displaying model names
   useEffect(() => {
     const fetchModelProviders = async () => {
-      setIsLoadingModels(true)
+      setIsLoadingModels(true);
       try {
-        const response = await getModelProviders()
-        setModelProviders(response.results)
+        const response = await getModelProviders();
+        setModelProviders(response.results);
       } catch (error) {
-        console.error("Failed to fetch model providers:", error)
+        console.error("Failed to fetch model providers:", error);
       } finally {
-        setIsLoadingModels(false)
+        setIsLoadingModels(false);
       }
-    }
+    };
 
     if (activeTab === "configuration") {
-      fetchModelProviders()
+      fetchModelProviders();
     }
-  }, [activeTab])
+  }, [activeTab]);
 
   // Fetch files when page changes or search query updates
   useEffect(() => {
@@ -169,33 +197,33 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
   }, [knowledgeBaseId, currentPage, itemsPerPage, debouncedSearchQuery, toast]);
 
   const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true)
-    setCurrentPage(1)
+    setIsRefreshing(true);
+    setCurrentPage(1);
     try {
-      const numericId = parseInt(knowledgeBaseId, 10)
+      const numericId = parseInt(knowledgeBaseId, 10);
       const response = await getKnowledgeBaseFiles(numericId, {
         page: "1",
         page_size: itemsPerPage.toString(),
         search: debouncedSearchQuery,
-      })
-      setLinkedFiles(response.results)
-      setTotalFiles(response.count)
-      setHasNextPage(!!response.next)
+      });
+      setLinkedFiles(response.results);
+      setTotalFiles(response.count);
+      setHasNextPage(!!response.next);
       toast({
         title: "Success",
         description: "File list refreshed successfully",
-      })
+      });
     } catch (error) {
-      console.error("Failed to refresh files:", error)
+      console.error("Failed to refresh files:", error);
       toast({
         title: "Error",
         description: "Failed to refresh file list",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }, [knowledgeBaseId, itemsPerPage, debouncedSearchQuery, toast])
+  }, [knowledgeBaseId, itemsPerPage, debouncedSearchQuery, toast]);
 
   const handleDeleteLink = async (fileId: string) => {
     try {
@@ -213,21 +241,19 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
         variant: "destructive",
       });
     }
-  }
+  };
 
   const handleBulkDelete = async () => {
     try {
       await Promise.all(
-        selectedFiles.map(fileId => 
-          unlinkFilesFromKb({ uuid: fileId })
-        )
+        selectedFiles.map((fileId) => unlinkFilesFromKb({ uuid: fileId }))
       );
-      
+
       toast({
         title: "Success",
         description: `${selectedFiles.length} files unlinked successfully`,
       });
-      
+
       setSelectedFiles([]);
       handleRefresh();
     } catch (error) {
@@ -238,66 +264,108 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
         variant: "destructive",
       });
     }
-  }
+  };
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prevSelected) =>
-      prevSelected.includes(fileId) ? prevSelected.filter((id) => id !== fileId) : [...prevSelected, fileId]
+      prevSelected.includes(fileId)
+        ? prevSelected.filter((id) => id !== fileId)
+        : [...prevSelected, fileId]
     );
-  }
+  };
+
+  const handleReingestFile = async (fileId: string) => {
+    setReingestingFiles((prev) => ({ ...prev, [fileId]: true }));
+    try {
+      await reingestFile(fileId, {});
+      toast({
+        title: "Success",
+        description: "File reingestion started successfully",
+      });
+      // Refresh the list after a short delay to allow the backend to process
+      setTimeout(() => {
+        handleRefresh();
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to reingest file:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start file reingestion",
+        variant: "destructive",
+      });
+    } finally {
+      setReingestingFiles((prev) => ({ ...prev, [fileId]: false }));
+    }
+  };
 
   // Filter files based on search query - no need for local filtering since we're using API search
   const filteredFiles = linkedFiles;
   const totalPages = Math.ceil(totalFiles / itemsPerPage);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " B"
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
-    else return (bytes / 1048576).toFixed(1) + " MB"
-  }
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else return (bytes / 1048576).toFixed(1) + " MB";
+  };
 
   const getStatusBadge = (status: FileKnowledgeBaseLink["status"]) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Completed
+          </Badge>
+        );
       case "processing":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 animate-pulse">Processing</Badge>
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200 animate-pulse">
+            Processing
+          </Badge>
+        );
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            Pending
+          </Badge>
+        );
       case "failed":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Failed</Badge>
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200">
+            Failed
+          </Badge>
+        );
       case "disabled":
         return (
           <Badge variant="outline" className="text-muted-foreground">
             Disabled
           </Badge>
-        )
+        );
       default:
-        return <Badge variant="outline">Unknown</Badge>
+        return <Badge variant="outline">Unknown</Badge>;
     }
-  }
+  };
 
   const getFileIcon = (fileType: string) => {
-    return <FileText className="h-5 w-5" />
-  }
+    return <FileText className="h-5 w-5" />;
+  };
 
   // Get embedding model and chunk method display names
   const getEmbeddingModelName = (modelId: string) => {
     if (modelProviders.length > 0) {
-      const provider = modelProviders.find(p => p.id.toString() === modelId)
+      const provider = modelProviders.find((p) => p.id.toString() === modelId);
       if (provider) {
-        return provider.model_name
+        return provider.model_name;
       }
     }
 
@@ -308,23 +376,23 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
       "openai-3-large": "OpenAI 3 Large",
       "cohere-embed-english": "Cohere Embed English",
       "local-minilm": "Local MiniLM",
-    }
-    return modelMap[modelId as keyof typeof modelMap] || modelId
-  }
+    };
+    return modelMap[modelId as keyof typeof modelMap] || modelId;
+  };
 
   const getProviderName = (modelId: string) => {
     if (modelProviders.length > 0) {
-      const provider = modelProviders.find(p => p.id.toString() === modelId)
+      const provider = modelProviders.find((p) => p.id.toString() === modelId);
       if (provider) {
-        return provider.provider
+        return provider.provider;
       }
     }
 
-    if (modelId.includes("openai")) return "OpenAI"
-    if (modelId.includes("cohere")) return "Cohere" 
-    if (modelId.includes("local")) return "Local"
-    return "Unknown Provider"
-  }
+    if (modelId.includes("openai")) return "OpenAI";
+    if (modelId.includes("cohere")) return "Cohere";
+    if (modelId.includes("local")) return "Local";
+    return "Unknown Provider";
+  };
 
   const getChunkMethodName = (methodId: string) => {
     const methodMap = {
@@ -332,31 +400,35 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
       paragraph: "Paragraph",
       sentence: "Sentence",
       semantic: "Semantic",
-    }
-    return methodMap[methodId as keyof typeof methodMap] || methodId
-  }
+    };
+    return methodMap[methodId as keyof typeof methodMap] || methodId;
+  };
 
   if (isLoadingKB) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-2">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">Loading knowledge base details...</p>
+          <p className="text-sm text-muted-foreground">
+            Loading knowledge base details...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!loadedKnowledgeBase) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-lg text-muted-foreground">Knowledge base not found</p>
+        <p className="text-lg text-muted-foreground">
+          Knowledge base not found
+        </p>
         <Button variant="outline" className="mt-4" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Knowledge Bases
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -379,20 +451,29 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
           </Breadcrumb>
           <div className="flex items-center gap-4 mt-2">
             <h2 className="text-2xl font-bold">{loadedKnowledgeBase.name}</h2>
-            <Button variant="outline" size="icon" onClick={onEdit} className="h-8 w-8">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onEdit}
+              className="h-8 w-8"
+            >
               <Edit className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-muted-foreground">{loadedKnowledgeBase.description}</p>
+          <p className="text-muted-foreground">
+            {loadedKnowledgeBase.description}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
           <Button>
             <Plus className="h-4 w-4 mr-2" />
@@ -404,7 +485,8 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
       {/* Alert message */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex items-center">
         <span className="text-yellow-800">
-          😊 Please wait for your files to finish parsing before starting an AI-powered chat.
+          😊 Please wait for your files to finish parsing before starting an
+          AI-powered chat.
         </span>
       </div>
 
@@ -430,12 +512,22 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
           {/* Selected files actions */}
           {selectedFiles.length > 0 && (
             <div className="flex items-center justify-between bg-muted p-2 rounded-md">
-              <span className="text-sm">{selectedFiles.length} files selected</span>
+              <span className="text-sm">
+                {selectedFiles.length} files selected
+              </span>
               <div className="space-x-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedFiles([])}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedFiles([])}
+                >
                   Cancel
                 </Button>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                >
                   Remove Selected
                 </Button>
               </div>
@@ -449,12 +541,17 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedFiles.length === filteredFiles.length && filteredFiles.length > 0}
+                      checked={
+                        selectedFiles.length === filteredFiles.length &&
+                        filteredFiles.length > 0
+                      }
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setSelectedFiles(filteredFiles.map((file) => file.file_id))
+                          setSelectedFiles(
+                            filteredFiles.map((file) => file.file_id)
+                          );
                         } else {
-                          setSelectedFiles([])
+                          setSelectedFiles([]);
                         }
                       }}
                     />
@@ -479,8 +576,13 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                   </TableRow>
                 ) : filteredFiles.length === 0 ? (
                   <TableRow key="empty">
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchQuery ? "No files match your search" : "No files in this knowledge base"}
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      {searchQuery
+                        ? "No files match your search"
+                        : "No files in this knowledge base"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -489,7 +591,9 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                       <TableCell>
                         <Checkbox
                           checked={selectedFiles.includes(file.file_id)}
-                          onCheckedChange={() => toggleFileSelection(file.file_id)}
+                          onCheckedChange={() =>
+                            toggleFileSelection(file.file_id)
+                          }
                         />
                       </TableCell>
                       <TableCell>
@@ -502,51 +606,82 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                       <TableCell>{file.chunk_size} tokens</TableCell>
                       <TableCell>{formatDate(file.created_at)}</TableCell>
                       <TableCell>
-                        <Badge variant={
-                          file.status === "completed" ? "success" :
-                          file.status === "processing" ? "default" :
-                          file.status === "failed" ? "destructive" :
-                          "secondary"
-                        }>
-                          {file.status.charAt(0).toUpperCase() + file.status.slice(1)}
+                        <Badge
+                          variant={
+                            file.status === "completed"
+                              ? "success"
+                              : file.status === "processing"
+                              ? "default"
+                              : file.status === "failed"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {file.status.charAt(0).toUpperCase() +
+                            file.status.slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {file.status === "failed" ? (
-                          <div className="flex items-center text-destructive">
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Error</span>
-                          </div>
-                        ) : (
-                          <div className="w-full bg-secondary h-2 rounded-full">
-                            <div 
-                              className="bg-primary h-2 rounded-full transition-all" 
-                              style={{ width: `${file.progress * 100}%` }}
+                        <div className="flex items-center gap-2">
+                          {file.status === "failed" ? (
+                            <div className="flex items-center text-destructive">
+                              <AlertCircle className="h-4 w-4 mr-1" />
+                              <span className="text-sm">Error</span>
+                            </div>
+                          ) : (
+                            <div className="w-full bg-secondary h-2 rounded-full">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${file.progress * 100}%` }}
+                              />
+                            </div>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleReingestFile(file.file_id)}
+                            disabled={reingestingFiles[file.file_id]}
+                          >
+                            <RefreshCw
+                              className={`h-4 w-4 ${
+                                reingestingFiles[file.file_id]
+                                  ? "animate-spin"
+                                  : ""
+                              }`}
                             />
-                          </div>
-                        )}
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {file.error && (
-                              <DropdownMenuItem onClick={() => {
-                                toast({
-                                  title: "Processing Error",
-                                  description: file.error,
-                                  variant: "destructive",
-                                })
-                              }}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  toast({
+                                    title: "Processing Error",
+                                    description: file.error,
+                                    variant: "destructive",
+                                  });
+                                }}
+                              >
                                 <AlertCircle className="h-4 w-4 mr-2" />
                                 View Error
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => handleDeleteLink(file.file_id)}>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteLink(file.file_id)}
+                            >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Remove from KB
                             </DropdownMenuItem>
@@ -572,42 +707,48 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
                     >
                       Previous
                     </Button>
                   </PaginationItem>
 
-                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
-                    let pageNum = i + 1;
+                  {Array.from({ length: Math.min(totalPages, 5) }).map(
+                    (_, i) => {
+                      let pageNum = i + 1;
 
-                    // If we have more than 5 pages and we're not at the beginning
-                    if (totalPages > 5 && currentPage > 3) {
-                      pageNum = currentPage - 3 + i;
+                      // If we have more than 5 pages and we're not at the beginning
+                      if (totalPages > 5 && currentPage > 3) {
+                        pageNum = currentPage - 3 + i;
 
-                      // Don't go beyond the total pages
-                      if (pageNum > totalPages) {
-                        pageNum = totalPages - (4 - i);
+                        // Don't go beyond the total pages
+                        if (pageNum > totalPages) {
+                          pageNum = totalPages - (4 - i);
+                        }
                       }
-                    }
 
-                    // Don't show page numbers beyond the total
-                    if (pageNum <= totalPages) {
-                      return (
-                        <PaginationItem key={pageNum}>
-                          <Button
-                            variant={currentPage === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(pageNum)}
-                          >
-                            {pageNum}
-                          </Button>
-                        </PaginationItem>
-                      );
+                      // Don't show page numbers beyond the total
+                      if (pageNum <= totalPages) {
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <Button
+                              variant={
+                                currentPage === pageNum ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          </PaginationItem>
+                        );
+                      }
+                      return null;
                     }
-                    return null;
-                  })}
+                  )}
 
                   {totalPages > 5 && currentPage < totalPages - 2 && (
                     <PaginationItem>
@@ -619,7 +760,9 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       disabled={!hasNextPage}
                     >
                       Next
@@ -629,7 +772,9 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
               </Pagination>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Items per page:</span>
+                <span className="text-sm text-muted-foreground">
+                  Items per page:
+                </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -670,19 +815,26 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                   <>
                     <div>
                       <div className="font-medium">
-                        {loadedKnowledgeBase.model_provider ? 
-                          modelProviders.find(p => p.id === loadedKnowledgeBase.model_provider)?.model_name || "Unknown Model" 
+                        {loadedKnowledgeBase.model_provider
+                          ? modelProviders.find(
+                              (p) => p.id === loadedKnowledgeBase.model_provider
+                            )?.model_name || "Unknown Model"
                           : "No model selected"}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {loadedKnowledgeBase.model_provider ? 
-                          modelProviders.find(p => p.id === loadedKnowledgeBase.model_provider)?.provider || "Unknown Provider" 
-                          : "No provider selected"} embedding model
+                        {loadedKnowledgeBase.model_provider
+                          ? modelProviders.find(
+                              (p) => p.id === loadedKnowledgeBase.model_provider
+                            )?.provider || "Unknown Provider"
+                          : "No provider selected"}{" "}
+                        embedding model
                       </div>
                     </div>
                     <Badge variant="outline">
-                      {modelProviders.find(p => p.id === loadedKnowledgeBase.model_provider)?.is_enabled 
-                        ? "Active" 
+                      {modelProviders.find(
+                        (p) => p.id === loadedKnowledgeBase.model_provider
+                      )?.is_enabled
+                        ? "Active"
                         : "Inactive"}
                     </Badge>
                   </>
@@ -696,9 +848,13 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
                 <div>
                   <div className="font-medium">Chunk Settings</div>
                   <div className="text-sm text-muted-foreground">
-                    {loadedKnowledgeBase.chunk_size && `Chunk size: ${loadedKnowledgeBase.chunk_size} tokens`}
-                    {loadedKnowledgeBase.chunk_size && loadedKnowledgeBase.chunk_overlap && ", "}
-                    {loadedKnowledgeBase.chunk_overlap && `Overlap: ${loadedKnowledgeBase.chunk_overlap} tokens`}
+                    {loadedKnowledgeBase.chunk_size &&
+                      `Chunk size: ${loadedKnowledgeBase.chunk_size} tokens`}
+                    {loadedKnowledgeBase.chunk_size &&
+                      loadedKnowledgeBase.chunk_overlap &&
+                      ", "}
+                    {loadedKnowledgeBase.chunk_overlap &&
+                      `Overlap: ${loadedKnowledgeBase.chunk_overlap} tokens`}
                   </div>
                 </div>
               </div>
@@ -708,16 +864,28 @@ export function KnowledgeBaseDetail({ knowledgeBaseId, knowledgeBase, onBack, on
               <h3 className="text-lg font-medium">API Details</h3>
               <div className="border rounded-md p-4 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Knowledge Base ID:</span>
-                  <span className="text-sm font-mono">{loadedKnowledgeBase.id}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Knowledge Base ID:
+                  </span>
+                  <span className="text-sm font-mono">
+                    {loadedKnowledgeBase.id}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Created At:</span>
-                  <span className="text-sm">{formatDate(loadedKnowledgeBase.created_at)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Created At:
+                  </span>
+                  <span className="text-sm">
+                    {formatDate(loadedKnowledgeBase.created_at)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Last Updated:</span>
-                  <span className="text-sm">{formatDate(loadedKnowledgeBase.updated_at)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Last Updated:
+                  </span>
+                  <span className="text-sm">
+                    {formatDate(loadedKnowledgeBase.updated_at)}
+                  </span>
                 </div>
               </div>
             </div>
