@@ -22,7 +22,7 @@ import {
   ModalSelectVersion,
 } from '@/features/docs/doc-versioning';
 import { useResponsiveStore } from '@/stores';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface DocToolBoxProps {
   doc: Doc;
@@ -188,25 +188,37 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
       </div>
 
       <Dialog open={isShareOpen} onOpenChange={setIsShareOpen}>
-        <DialogContent>
+        <DialogContent className="p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t('Share Document')}</DialogTitle>
+          </DialogHeader>
           <DocShareModal onClose={() => setIsShareOpen(false)} doc={doc} open={isShareOpen} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isModalExportOpen} onOpenChange={setIsModalExportOpen}>
-        <DialogContent>
+        <DialogContent className="p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t('Export Document')}</DialogTitle>
+          </DialogHeader>
           <ModalExport onClose={() => setIsModalExportOpen(false)} doc={doc} open={isModalExportOpen} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isModalRemoveOpen} onOpenChange={setIsModalRemoveOpen}>
-        <DialogContent>
+        <DialogContent className="p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t('Delete Document')}</DialogTitle>
+          </DialogHeader>
           <ModalRemoveDoc onClose={() => setIsModalRemoveOpen(false)} doc={doc} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isSelectHistoryOpen} onOpenChange={setIsSelectHistoryOpen}>
-        <DialogContent>
+        <DialogContent className="p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t('Document History')}</DialogTitle>
+          </DialogHeader>
           <ModalSelectVersion onClose={() => setIsSelectHistoryOpen(false)} doc={doc} />
         </DialogContent>
       </Dialog>

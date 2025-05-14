@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { useToast } from "@/components/ui/use-toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -90,31 +90,33 @@ const DocTitleInput = ({ doc }: DocTitleProps) => {
   }, [doc]);
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          role="textbox"
-          className="--docs--doc-title-input min-h-[40px] pr-4 text-gray-900 font-bold outline-none cursor-text
-            before:content-[attr(data-placeholder)] before:text-gray-400 before:italic before:pointer-events-none
-            empty:before:content-[attr(data-placeholder)]"
-          contentEditable
-          data-placeholder={untitledDocument}
-          onKeyDownCapture={handleKeyDown}
-          suppressContentEditableWarning={true}
-          aria-label="doc title input"
-          onBlurCapture={(event: React.FocusEvent<HTMLSpanElement>) =>
-            handleTitleSubmit(event.target.textContent || '')
-          }
-          style={{
-            fontSize: isDesktop ? 'var(--font-size-h2)' : 'var(--font-size-sm)',
-          }}
-        >
-          {titleDisplay}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{t('Rename')}</p>
-      </TooltipContent>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="textbox"
+            className="--docs--doc-title-input min-h-[40px] pr-4 text-gray-900 font-bold outline-none cursor-text
+              before:content-[attr(data-placeholder)] before:text-gray-400 before:italic before:pointer-events-none
+              empty:before:content-[attr(data-placeholder)]"
+            contentEditable
+            data-placeholder={untitledDocument}
+            onKeyDownCapture={handleKeyDown}
+            suppressContentEditableWarning={true}
+            aria-label="doc title input"
+            onBlurCapture={(event: React.FocusEvent<HTMLSpanElement>) =>
+              handleTitleSubmit(event.target.textContent || '')
+            }
+            style={{
+              fontSize: isDesktop ? 'var(--font-size-h2)' : 'var(--font-size-sm)',
+            }}
+          >
+            {titleDisplay}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{t('Rename')}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };

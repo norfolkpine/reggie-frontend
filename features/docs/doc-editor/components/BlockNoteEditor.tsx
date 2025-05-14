@@ -41,9 +41,10 @@ export const blockNoteSchema = withPageBreak(
 interface BlockNoteEditorProps {
   doc: Doc;
   provider: HocuspocusProvider;
+  isNew?: boolean;
 }
 
-export const BlockNoteEditor = ({ doc, provider }: BlockNoteEditorProps) => {
+export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEditorProps) => {
   const { user } = useAuth();
   const { setEditor } = useEditorStore();
   const { t } = useTranslation();
@@ -122,9 +123,9 @@ export const BlockNoteEditor = ({ doc, provider }: BlockNoteEditorProps) => {
   }, [setEditor, editor]);
 
   return (
-    <div className={`pt-4 bg-white ${readOnly ? 'pointer-events-none' : ''} --docs--editor-container`}>
+    <div className={`pt-4 px-6 bg-white ${readOnly ? 'pointer-events-none' : ''} --docs--editor-container`}>
       {errorAttachment && (
-        <div className="mb-8 mx-6">
+        <div className="mb-6 mx-2">
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
@@ -140,6 +141,7 @@ export const BlockNoteEditor = ({ doc, provider }: BlockNoteEditorProps) => {
         slashMenu={false}
         editable={!readOnly}
         theme="light"
+        className={`min-h-[300px] ${isNew ? 'focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-opacity-50' : ''}`}
       >
         <BlockNoteSuggestionMenu />
         <BlockNoteToolbar />

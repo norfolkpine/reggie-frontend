@@ -1,4 +1,4 @@
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import * as Y from 'yjs';
 
@@ -55,6 +55,14 @@ const useSaveDoc = (docId: string, yDoc: Y.Doc, canSave: boolean) => {
   }, [canSave, yDoc, docId, isLocalChange, updateDoc]);
 
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // This effect will run when the route changes
+  useEffect(() => {
+    // Save document when route changes
+    saveDoc();
+  }, [pathname, searchParams, saveDoc]);
 
   useEffect(() => {
     const onSave = (e?: Event) => {
@@ -81,16 +89,12 @@ const useSaveDoc = (docId: string, yDoc: Y.Doc, canSave: boolean) => {
     const timeout = setInterval(onSave, SAVE_INTERVAL);
     // Save when the user leaves the page
     addEventListener('beforeunload', onSave);
-    // Save when the user navigates to another page
-    router.events.on('routeChangeStart', onSave);
 
     return () => {
       clearInterval(timeout);
-
       removeEventListener('beforeunload', onSave);
-      router.events.off('routeChangeStart', onSave);
     };
-  }, [router.events, saveDoc]);
+  }, [saveDoc]);
 };
 
 export default useSaveDoc;

@@ -21,9 +21,10 @@ import { BlockNoteEditor, BlockNoteEditorVersion } from './BlockNoteEditor';
 interface DocEditorProps {
   doc: Doc;
   versionId?: Versions['version_id'];
+  isNew?: boolean;
 }
 
-export const DocEditor = ({ doc, versionId }: DocEditorProps) => {
+export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => {
   const { isDesktop } = useResponsiveStore();
   const isVersion = !!versionId && typeof versionId === 'string';
   const { colorsTokens } = useCunninghamTheme();
@@ -34,14 +35,15 @@ export const DocEditor = ({ doc, versionId }: DocEditorProps) => {
   }
 
   return (
-    <>
-      {isDesktop && !isVersion && (
-        <div className="absolute top-[72px] right-5">
-          <TableContent />
-        </div>
-      )}
-      <div className="max-w-[868px] w-full h-full --docs--doc-editor">
-        <div className={`px-${isDesktop ? '14' : '4'} --docs--doc-editor-header`}>
+    <div className="flex flex-col h-full w-full">
+      <div className="relative max-w-[1024px] mx-auto w-full h-full --docs--doc-editor">
+        {isDesktop && !isVersion && (
+          <div className="absolute top-[72px] right-5 z-10">
+            <TableContent />
+          </div>
+        )}
+        
+        <div className={`px-${isDesktop ? '8' : '4'} --docs--doc-editor-header mb-4`}>
           {isVersion ? (
             <DocVersionHeader title={doc.title} />
           ) : (
@@ -50,19 +52,19 @@ export const DocEditor = ({ doc, versionId }: DocEditorProps) => {
         </div>
 
         <div 
-          className="bg-white flex flex-1 overflow-x-clip relative --docs--doc-editor-content"
+          className="bg-white rounded-md shadow-sm flex flex-1 overflow-hidden relative --docs--doc-editor-content"
           style={{ backgroundColor: colorsTokens['primary-bg'] }}
         >
           <div className="flex-1 relative w-full">
             {isVersion ? (
               <DocVersionEditor docId={doc.id} versionId={versionId} />
             ) : (
-              <BlockNoteEditor doc={doc} provider={provider} />
+              <BlockNoteEditor doc={doc} provider={provider} isNew={isNew} />
             )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

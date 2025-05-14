@@ -178,18 +178,18 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className={cn(
-        "sm:max-w-[90vw] gap-0 p-0",
+        "sm:max-w-[90vw] gap-0 p-0 overflow-hidden",
         isDesktop ? "h-[min(690px,calc(100vh-2rem))]" : "h-[calc(100vh-2rem)]"
       )}>
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle>{t('Share the document')}</DialogTitle>
+        <DialogHeader className="p-6 pb-4 border-b">
+          <DialogTitle className="text-xl font-semibold">{t('Share the document')}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col h-full">
+        <div className="flex  p-4 flex-col h-full">
           <div className="flex-1 overflow-hidden">
             <div ref={selectedUsersRef}>
               {canShare && selectedUsers.length > 0 && (
-                <div className="px-6 mt-3">
+                <div className="px-6 py-4">
                   <DocShareAddMemberList
                     doc={doc}
                     selectedUsers={selectedUsers}
@@ -215,31 +215,34 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
               ) : (
                 <Command className="rounded-none border-none h-full">
                   {canShare && (
-                    <CommandInput 
-                      value={inputValue}
-                      onValueChange={(str) => {
-                        setInputValue(str);
-                        onFilter(str);
-                      }}
-                      placeholder={t('Type a name or email')}
-                      className="border-0"
-                    />
+                    <div className="border-b sticky top-0 bg-white z-10">
+                      <CommandInput 
+                        value={inputValue}
+                        onValueChange={(str) => {
+                          setInputValue(str);
+                          onFilter(str);
+                        }}
+                        placeholder={t('Type a name or email')}
+                        className="border-0 py-4"
+                      />
+                    </div>
                   )}
                   
                   <CommandList>
-                    <ScrollArea className="h-[calc(100vh-15rem)]">
+                    <ScrollArea className="h-[calc(100vh-18rem)]">
                       {!showMemberSection && inputValue !== '' && (
-                        <CommandGroup heading={searchUserData.groupName}>
+                        <CommandGroup heading={searchUserData.groupName} className="p-2">
                           {searchUserData.elements.map((user) => (
                             <CommandItem 
                               key={user.id} 
                               onSelect={() => onSelect(user)}
+                              className="rounded-md hover:bg-muted"
                             >
                               <DocShareModalInviteUserRow user={user} />
                             </CommandItem>
                           ))}
                           {searchUserData.endActions?.map((action, index) => (
-                            <CommandItem key={index} onSelect={action.onSelect}>
+                            <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
                               {action.content}
                             </CommandItem>
                           ))}
@@ -249,9 +252,9 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                       {showMemberSection && (
                         <>
                           {invitationsData.elements.length > 0 && (
-                            <CommandGroup heading={invitationsData.groupName}>
+                            <CommandGroup heading={invitationsData.groupName} className="p-2">
                               {invitationsData.elements.map((invitation) => (
-                                <CommandItem key={invitation.id}>
+                                <CommandItem key={invitation.id} className="rounded-md hover:bg-muted">
                                   <DocShareInvitationItem
                                     doc={doc}
                                     invitation={invitation}
@@ -259,21 +262,21 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                                 </CommandItem>
                               ))}
                               {invitationsData.endActions?.map((action, index) => (
-                                <CommandItem key={index} onSelect={action.onSelect}>
+                                <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
                                   {action.content}
                                 </CommandItem>
                               ))}
                             </CommandGroup>
                           )}
 
-                          <CommandGroup heading={membersData.groupName}>
+                          <CommandGroup heading={membersData.groupName} className="p-2">
                             {membersData.elements.map((access) => (
-                              <CommandItem key={access.id}>
+                              <CommandItem key={access.id} className="rounded-md hover:bg-muted">
                                 <DocShareMemberItem doc={doc} access={access} />
                               </CommandItem>
                             ))}
                             {membersData.endActions?.map((action, index) => (
-                              <CommandItem key={index} onSelect={action.onSelect}>
+                              <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
                                 {action.content}
                               </CommandItem>
                             ))}
@@ -282,12 +285,14 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                       )}
 
                       {searchUsersQuery.isLoading && (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-6 w-6 animate-spin" />
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                       )}
 
-                      <CommandEmpty>No results found.</CommandEmpty>
+                      <CommandEmpty className="py-6 text-muted-foreground">
+                        {t('No results found.')}
+                      </CommandEmpty>
                     </ScrollArea>
                   </CommandList>
                 </Command>
@@ -296,7 +301,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
           </div>
 
           {showFooter && (
-            <div className="mt-auto">
+            <div className="mt-auto border-t">
               <DocShareModalFooter doc={doc} onClose={onClose} />
             </div>
           )}
