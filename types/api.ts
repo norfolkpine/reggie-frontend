@@ -333,6 +333,7 @@ export interface User {
   get_display_name: string;
   created_at: string;
   updated_at: string;
+  language?: string | 'en-US';
 }
 
 export interface PatchedUser extends Partial<User> {}

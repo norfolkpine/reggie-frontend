@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { useRouter } from 'next/router'
+import { useRouter } from 'next/navigation'
 import { PinInput, PinInputField } from '@/components/pin-input'
 import { toast } from '@/components/ui/use-toast'
 

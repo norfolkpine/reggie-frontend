@@ -12,6 +12,19 @@ body {
   }
 }
 
+/* Crisp Chat Styles
+@layer components {
+  #crisp-chatbox a {
+    @apply scale-80 transform;
+  }
+  
+  @media screen and (max-width: 1024px) {
+    .c__modals--opened #crisp-chatbox {
+      @apply hidden !important;
+    }
+  }
+} */
+
 @layer base {
   :root {
     --background: 0 0% 100%;
