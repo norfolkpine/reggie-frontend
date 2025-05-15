@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { APIError, errorCauses, fetchAPI } from '@/api';
+import { APIError, errorCauses } from '@/api';
 import { Theme } from '@/cunningham/';
-import { PostHogConf } from '@/services';
+import { api } from '@/lib/api-client';
 
 interface ConfigResponse {
   AI_FEATURE_ENABLED?: boolean;
@@ -15,7 +15,6 @@ interface ConfigResponse {
   LANGUAGES: [string, string][];
   LANGUAGE_CODE: string;
   MEDIA_BASE_URL?: string;
-  POSTHOG_KEY?: PostHogConf;
   SENTRY_DSN?: string;
 }
 
@@ -35,8 +34,7 @@ function setCachedTranslation(translations: ConfigResponse) {
 }
 
 export const getConfig = async (): Promise<ConfigResponse> => {
-  const response = await fetchAPI(`config/`);
-
+  const response = await api.get('/api/v1.0/config/');
   if (!response.ok) {
     throw new APIError('Failed to get the doc', await errorCauses(response));
   }

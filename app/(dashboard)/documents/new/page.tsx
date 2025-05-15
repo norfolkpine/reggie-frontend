@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SaveIcon } from 'lucide-react';
+import * as Y from 'yjs';
 
 import {
   Doc,
@@ -12,10 +14,14 @@ import {
   LinkRole,
   useCollaboration,
   useDocStore,
+  useProviderStore,
 } from '@/features/docs';
 import { useBroadcastStore } from '@/stores';
 import { NextPageWithLayout } from '@/types/next';
 import { DocEditor } from '@/features/docs';
+import { Button } from '@/components/ui/button';
+import { createDocument } from '@/api/documents';
+import { toBase64 } from '@/features/docs/doc-editor/utils';
 
 export function NewDocLayout() {
   return (
@@ -27,6 +33,7 @@ export function NewDocLayout() {
 
 const NewDocPage = () => {
   const [doc, setDoc] = useState<Doc>();
+  const [isSaving, setIsSaving] = useState(false);
   const { setCurrentDoc } = useDocStore();
   const { addTask } = useBroadcastStore();
   const queryClient = useQueryClient();
@@ -86,6 +93,7 @@ const NewDocPage = () => {
 
   // Set up collaboration for the new document
   useCollaboration(doc?.id, doc?.content);
+  const { provider } = useProviderStore();
 
   /**
    * We add a broadcast task to reset the query cache
@@ -103,6 +111,34 @@ const NewDocPage = () => {
     });
   }, [addTask, doc?.id, queryClient]);
 
+  const saveDocument = async () => {
+    if (!doc || !provider) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Get the document content from the provider
+      const yDoc = provider.document;
+      // Convert the document to Uint8Array using Y.encodeStateAsUpdate
+      const content = Y.encodeStateAsUpdate(yDoc);
+      // Use the toBase64 utility function to convert the Uint8Array to base64
+      const base64Content = toBase64(content);
+      
+      // Use the createDocument API function to create the document
+      const savedDoc = await createDocument({
+        title: doc.title || t('New Document'),
+        content: base64Content
+      });
+      
+      // Navigate to the saved document
+      push(`/documents/${savedDoc.id}`);
+    } catch (error) {
+      console.error('Error saving document:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!doc) {
     return (
       <div className='flex h-full items-center justify-center'>
@@ -114,7 +150,22 @@ const NewDocPage = () => {
     );
   }
 
-  return <DocEditor doc={doc} isNew={true} />;
+  return (
+    <div className="flex flex-col h-full w-full relative">
+      <div className="absolute top-2 right-4 z-10">
+        <Button 
+          onClick={saveDocument} 
+          disabled={isSaving}
+          className="flex items-center gap-2"
+          size="sm"
+        >
+          <SaveIcon className="h-4 w-4" />
+          {isSaving ? t('Saving...') : t('Save')}
+        </Button>
+      </div>
+      <DocEditor doc={doc} isNew={true} />
+    </div>
+  );
 };
 
 const Page: NextPageWithLayout = () => {

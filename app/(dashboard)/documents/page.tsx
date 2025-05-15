@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation"
 
 interface DocumentRow {
   title: string;
@@ -148,11 +149,13 @@ export default function DocumentsPage() {
     d.title.toLowerCase().includes(search.toLowerCase())
   );
 
+  const router = useRouter();
+
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="p-4 border-b flex items-center justify-between">
         <h1 className="text-xl font-medium">Documents</h1>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => router.push('/documents/new')}>
           <Plus className="h-5 w-5" />
           Create
         </Button>
