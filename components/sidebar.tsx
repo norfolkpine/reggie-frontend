@@ -13,6 +13,7 @@ import {
   ChevronRight,
   BookOpen,
   FolderGit2,
+  Folder,
   Plus,
   MoreHorizontal,
   Star,
@@ -23,7 +24,8 @@ import {
   LucideProps,
   LayoutGrid,
   FileText,
-  Database
+  Database,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -43,6 +45,14 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
+
+
+const FolderShieldIcon = () => (
+  <div className="relative w-6 h-6">
+    <Folder className="text-muted-foreground w-6 h-6" />
+    <Shield className="absolute bottom-0 right-0 w-3 h-3 text-green-600 bg-white rounded-full" />
+  </div>
+);
 
 interface ChatItem {
   name: string;
@@ -68,10 +78,9 @@ const chats: ChatItem[] = [
 const navigationItems: ChatItem[] = [
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-  { name: "Knowledge Base", icon: Database, url: "/knowledge-base" },
   {
-    name: "Projects",
-    icon: FolderGit2,
+    name: "Vault",
+    icon: FolderShieldIcon,
     url: "/project",
   },
   {
@@ -79,6 +88,7 @@ const navigationItems: ChatItem[] = [
     icon: LayoutGrid,
     url: "/app-integration",
   },
+  { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
 ];
 
 // Update the sidebar component to handle chat item clicks
