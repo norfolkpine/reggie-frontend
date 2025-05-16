@@ -25,7 +25,9 @@ import {
   LayoutGrid,
   FileText,
   Database,
-  Shield
+  Shield,
+  Workflow,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -48,9 +50,10 @@ import { IconBubble, IconMenu } from "@tabler/icons-react";
 
 
 const FolderShieldIcon = () => (
-  <div className="relative w-6 h-6">
-    <Folder className="text-muted-foreground w-6 h-6" />
-    <Shield className="absolute bottom-0 right-0 w-3 h-3 text-green-600 bg-white rounded-full" />
+  // If larger, all icons should be made larger (larger looks better)
+  <div className="relative w-4 h-4">
+    <Folder className="text-muted-foreground w-4 h-4" />
+    <Shield className="absolute bottom-0 right-0 w-2 h-2 text-green-600 bg-white rounded-full" />
   </div>
 );
 
@@ -71,18 +74,22 @@ interface HistorySection {
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "ChatGPT", icon: "🤖", url: "/chat" },
-  { name: "Explore Agents", icon: "🔍", url: "/agent" },
+  { name: "Remove chat history from here", icon: "🤖", url: "/chat" },
 ];
 
-const navigationItems: ChatItem[] = [
-  { name: "Library", icon: BookOpen, url: "/library" },
-  { name: "Documents", icon: FileText, url: "/documents" },
+const navigationItems: (ChatItem | { type: "divider" })[] = [
+  { name: "Assistant", icon: Bot, url: "/chat" },
   {
     name: "Vault",
     icon: FolderShieldIcon,
     url: "/project",
   },
+  { name: "Workflows", icon: Workflow, url: "/agent" },
+  { type: "divider" }, 
+  { name: "Library", icon: BookOpen, url: "/library" },
+  { name: "Documents", icon: FileText, url: "/documents" },
+
+  { type: "divider" }, 
   {
     name: "Apps",
     icon: LayoutGrid,
@@ -90,6 +97,7 @@ const navigationItems: ChatItem[] = [
   },
   { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
 ];
+
 
 // Update the sidebar component to handle chat item clicks
 export default function Sidebar() {
