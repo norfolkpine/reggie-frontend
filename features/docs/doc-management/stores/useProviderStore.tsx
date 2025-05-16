@@ -8,7 +8,7 @@ export interface UseCollaborationStore {
   createProvider: (
     providerUrl: string,
     storeId: string,
-    initialDoc?: Base64,
+    initialDoc?: Base64
   ) => HocuspocusProvider;
   destroyProvider: () => void;
   provider: HocuspocusProvider | undefined;
