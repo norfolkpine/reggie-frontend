@@ -14,8 +14,8 @@ import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 
 import { Doc } from '@/features/docs/doc-management';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 import { useUploadFile } from '../hook';
 import { useHeadings } from '../hook/useHeadings';
@@ -35,7 +35,7 @@ export const blockNoteSchema = withPageBreak(
       divider: DividerBlock,
       quote: QuoteBlock,
     },
-  }),
+  })
 );
 
 interface BlockNoteEditorProps {
@@ -44,7 +44,11 @@ interface BlockNoteEditorProps {
   isNew?: boolean;
 }
 
-export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEditorProps) => {
+export const BlockNoteEditor = ({
+  doc,
+  provider,
+  isNew = false,
+}: BlockNoteEditorProps) => {
   const { user } = useAuth();
   const { setEditor } = useEditorStore();
   const { t } = useTranslation();
@@ -93,7 +97,7 @@ export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEdito
           labelElement.setAttribute('spellcheck', `false`);
           labelElement.setAttribute(
             'style',
-            `background-color: ${user.color};border: 1px solid ${user.color};`,
+            `background-color: ${user.color};border: 1px solid ${user.color};`
           );
           labelElement.insertBefore(document.createTextNode(user.name), null);
 
@@ -110,7 +114,7 @@ export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEdito
       uploadFile,
       schema: blockNoteSchema,
     },
-    [collabName, lang, provider, uploadFile],
+    [collabName, lang, provider, uploadFile]
   );
   useHeadings(editor);
 
@@ -123,14 +127,16 @@ export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEdito
   }, [setEditor, editor]);
 
   return (
-    <div className={`pt-4 px-6 bg-white ${readOnly ? 'pointer-events-none' : ''} --docs--editor-container`}>
+    <div
+      className={`pt-4 px-6 bg-white ${
+        readOnly ? 'pointer-events-none' : ''
+      } --docs--editor-container`}
+    >
       {errorAttachment && (
         <div className="mb-6 mx-2">
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {errorAttachment.cause}
-            </AlertDescription>
+            <AlertDescription>{errorAttachment.cause}</AlertDescription>
           </Alert>
         </div>
       )}
@@ -141,7 +147,11 @@ export const BlockNoteEditor = ({ doc, provider, isNew = false }: BlockNoteEdito
         slashMenu={false}
         editable={!readOnly}
         theme="light"
-        className={`min-h-[300px] ${isNew ? 'focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-opacity-50' : ''}`}
+        className={`min-h-[300px] ${
+          isNew
+            ? 'focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-opacity-50'
+            : ''
+        }`}
       >
         <BlockNoteSuggestionMenu />
         <BlockNoteToolbar />
@@ -171,7 +181,7 @@ export const BlockNoteEditorVersion = ({
       },
       schema: blockNoteSchema,
     },
-    [initialContent],
+    [initialContent]
   );
   useHeadings(editor);
 

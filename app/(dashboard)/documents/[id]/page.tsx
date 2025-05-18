@@ -5,14 +5,16 @@ import Head from 'next/head';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import * as Y from 'yjs';
 
-  import {
-    Doc,
-    KEY_DOC,
-    useCollaboration,
-    useDoc,
-    useDocStore,
-  } from '@/features/docs';
+import {
+  Doc,
+  KEY_DOC,
+  useCollaboration,
+  useDoc,
+  useDocStore,
+  useProviderStore,
+} from '@/features/docs';
 import { useBroadcastStore } from '@/stores';
 import { NextPageWithLayout } from '@/types/next';
 import { Loader, WifiOff } from 'lucide-react';
@@ -28,7 +30,7 @@ export function DocLayout() {
 
   return (
     <>
-        <DocPage id={id} />
+      <DocPage id={id} />
     </>
   );
 }
@@ -48,7 +50,7 @@ const DocPage = ({ id }: DocProps) => {
     {
       staleTime: 0,
       queryKey: [KEY_DOC, { id }],
-    },
+    }
   );
 
   const [doc, setDoc] = useState<Doc>();
@@ -58,6 +60,7 @@ const DocPage = ({ id }: DocProps) => {
   const { replace } = useRouter();
   useCollaboration(doc?.id, doc?.content);
   const { t } = useTranslation();
+  const { provider } = useProviderStore();
 
   useEffect(() => {
     if (doc?.title) {
@@ -113,14 +116,10 @@ const DocPage = ({ id }: DocProps) => {
     }
 
     return (
-      <div className='m-8'>
+      <div className="m-8">
         <TextErrors
           causes={error.cause}
-          icon={
-            error.status === 502 ? (
-              <WifiOff />
-            ) : undefined
-          }
+          icon={error.status === 502 ? <WifiOff /> : undefined}
         />
       </div>
     );
@@ -128,7 +127,7 @@ const DocPage = ({ id }: DocProps) => {
 
   if (!doc) {
     return (
-      <div className='flex h-full items-center justify-center'>
+      <div className="flex h-full items-center justify-center">
         <Loader />
       </div>
     );

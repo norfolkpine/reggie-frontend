@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError, errorCauses, fetchAPI } from '@/api';
 import { Doc } from '@/features/docs';
+import { patchDocument } from '@/api/documents';
 
 export type UpdateDocParams = Pick<Doc, 'id'> &
   Partial<Pick<Doc, 'content' | 'title'>>;
@@ -10,18 +11,15 @@ export const updateDoc = async ({
   id,
   ...params
 }: UpdateDocParams): Promise<Doc> => {
-  const response = await fetchAPI(`documents/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      ...params,
-    }),
+  const response = await patchDocument(id, {
+    ...params,
   });
 
-  if (!response.ok) {
+  if (!response) {
     throw new APIError('Failed to update the doc', await errorCauses(response));
   }
 
-  return response.json() as Promise<Doc>;
+  return Promise.resolve(response as Doc);
 };
 
 interface UpdateDocProps {

@@ -5,9 +5,10 @@ export const BASE_URL =
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
+  // method is already inherited from RequestInit
 }
 
-async function handleResponse(response: Response) {
+async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -40,7 +41,7 @@ async function handleResponse(response: Response) {
             },
           });
 
-          return handleResponse(retryResponse);
+          return handleResponse(retryResponse, httpMethod);
         } catch (error) {
           localStorage.clear();
           window.location.href = "/sign-in";
@@ -49,6 +50,10 @@ async function handleResponse(response: Response) {
       }
     }
     throw await response.json();
+  }
+  // If 204 No Content and DELETE, return nothing
+  if (response.status === 204 && (httpMethod?.toUpperCase() === 'DELETE')) {
+    return;
   }
   return response.json();
 }
@@ -75,7 +80,8 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     headers,
   });
 
-  return handleResponse(response);
+  // Pass HTTP method to handleResponse if available
+  return handleResponse(response, requestConfig.method);
 }
 
 export const api = {

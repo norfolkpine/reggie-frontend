@@ -24,7 +24,6 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
     const doc = new Y.Doc({
       guid: storeId,
     });
-
     if (initialDoc) {
       Y.applyUpdate(doc, Buffer.from(initialDoc, 'base64'));
     }
