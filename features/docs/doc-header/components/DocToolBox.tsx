@@ -187,23 +187,10 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
         </DropdownMenu>
       </div>
 
-      <Dialog open={isShareOpen} onOpenChange={setIsShareOpen}>
-        <DialogContent className="p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{t('Share Document')}</DialogTitle>
-          </DialogHeader>
-          <DocShareModal onClose={() => setIsShareOpen(false)} doc={doc} open={isShareOpen} />
-        </DialogContent>
-      </Dialog>
+      <DocShareModal onClose={() => setIsShareOpen(false)} doc={doc} open={isShareOpen} />
 
-      <Dialog open={isModalExportOpen} onOpenChange={setIsModalExportOpen}>
-        <DialogContent className="p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{t('Export Document')}</DialogTitle>
-          </DialogHeader>
-          <ModalExport onClose={() => setIsModalExportOpen(false)} doc={doc} open={isModalExportOpen} />
-        </DialogContent>
-      </Dialog>
+
+      <ModalExport onClose={() => setIsModalExportOpen(false)} doc={doc} open={isModalExportOpen} />
 
       <Dialog open={isModalRemoveOpen} onOpenChange={setIsModalRemoveOpen}>
         <DialogContent className="p-0">

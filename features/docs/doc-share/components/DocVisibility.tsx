@@ -94,13 +94,13 @@ export const DocVisibility = ({ doc, className }: DocVisibilityProps) => {
       : linkReachChoices[linkReach]?.descriptionEdit;
 
   return (
-    <div className={cn("px-6 space-y-4", className)} aria-label={t('Doc visibility card')}>
-      <h3 className="font-bold text-sm text-foreground/90">
-        {t('Link parameters')}
-      </h3>
-      
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+    <div className={cn("space-y-4", className)} aria-label={t('Doc visibility card')}>
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-white">
+            <span className="material-icons">public</span>
+          </div>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild disabled={!canManage}>
               <Button 
@@ -110,16 +110,11 @@ export const DocVisibility = ({ doc, className }: DocVisibilityProps) => {
                   !canManage && "opacity-70 cursor-not-allowed"
                 )}
               >
-                {linkReachChoices[linkReach]?.icon && (
-                  <span className="material-icons text-primary">
-                    {linkReachChoices[linkReach].icon}
-                  </span>
-                )}
                 <span className={cn(
                   "font-medium",
                   canManage ? "text-primary" : "text-muted-foreground"
                 )}>
-                  {linkReachChoices[linkReach]?.label}
+                  Public
                 </span>
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
@@ -131,23 +126,12 @@ export const DocVisibility = ({ doc, className }: DocVisibilityProps) => {
                   onClick={() => updateReach(key)}
                   className="flex items-center gap-2"
                 >
-                  {linkReachChoices[key]?.icon && (
-                    <span className="material-icons text-primary">
-                      {linkReachChoices[key].icon}
-                    </span>
-                  )}
                   <span>{linkReachTranslations[key]}</span>
                   {linkReach === key && <Check className="h-4 w-4 ml-auto" />}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {isDesktop && (
-            <p className="text-xs text-muted-foreground">
-              {description}
-            </p>
-          )}
         </div>
 
         {showLinkRoleOptions && (
@@ -159,7 +143,7 @@ export const DocVisibility = ({ doc, className }: DocVisibilityProps) => {
                   !canManage && "opacity-70 cursor-not-allowed"
                 )}
               >
-                {linkModeTranslations[docLinkRole]}
+                Edit
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
             </DropdownMenuTrigger>
@@ -178,11 +162,9 @@ export const DocVisibility = ({ doc, className }: DocVisibilityProps) => {
         )}
       </div>
 
-      {!isDesktop && (
-        <p className="text-xs text-muted-foreground">
-          {description}
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        Everyone can edit this doc
+      </p>
     </div>
   );
 };

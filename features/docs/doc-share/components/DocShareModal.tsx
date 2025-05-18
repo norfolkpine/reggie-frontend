@@ -1,16 +1,18 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebouncedCallback } from 'use-debounce';
-import { Loader2 } from "lucide-react";
+import { Loader2, MoreHorizontal, ChevronDown, Link2, Globe, X, Users } from "lucide-react";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 import { User } from '@/types/api';
-import { Access, Doc } from '@/features/docs';
+import { Access, Doc, Role, useCopyDocLink } from '@/features/docs';
 import { useResponsiveStore } from '@/stores';
 import { isValidEmail } from '@/lib/utils/string';
 
@@ -22,11 +24,7 @@ import {
 } from '../api';
 import { Invitation } from '../types';
 
-import { DocShareAddMemberList } from './DocShareAddMemberList';
-import { DocShareInvitationItem } from './DocShareInvitationItem';
-import { DocShareMemberItem } from './DocShareMemberItem';
-import { DocShareModalFooter } from './DocShareModalFooter';
-import { DocShareModalInviteUserRow } from './DocShareModalInviteUserByEmail';
+import { DocVisibility } from './DocVisibility';
 
 type Props = {
   doc: Doc;
@@ -45,25 +43,15 @@ interface QuickSearchData<T> {
 
 export const DocShareModal = ({ doc, onClose, open }: Props) => {
   const { t } = useTranslation();
-  const selectedUsersRef = useRef<HTMLDivElement>(null);
   const { isDesktop } = useResponsiveStore();
-
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [userQuery, setUserQuery] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const [userQuery, setUserQuery] = useState('');
 
   const canShare = doc.abilities.accesses_manage;
   const canViewAccesses = doc.abilities.accesses_view;
-  const showMemberSection = inputValue === '' && selectedUsers.length === 0;
-  const showFooter = selectedUsers.length === 0 && !inputValue;
   const MIN_CHARACTERS_FOR_SEARCH = 4;
 
-  const onSelect = (user: User) => {
-    setSelectedUsers((prev) => [...prev, user]);
-    setUserQuery('');
-    setInputValue('');
-  };
-
+  // Fetch document members and invitations
   const membersQuery = useDocAccessesInfinite({
     docId: doc.id,
   });
@@ -80,232 +68,202 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
     },
   );
 
-  const membersData: QuickSearchData<Access> = useMemo(() => {
-    const members = membersQuery.data?.pages.flatMap((page) => page.results) || [];
-    const count = membersQuery.data?.pages[0]?.count ?? 1;
-
-    return {
-      groupName:
-        count === 1
-          ? t('Document owner')
-          : t('Share with {{count}} users', { count }),
-      elements: members,
-      endActions: membersQuery.hasNextPage
-        ? [
-            {
-              content: (
-                <button 
-                  onClick={() => void membersQuery.fetchNextPage()}
-                  className="text-sm text-muted-foreground hover:text-primary"
-                  data-testid="load-more-members"
-                >
-                  {t('Load more')}
-                </button>
-              ),
-              onSelect: () => void membersQuery.fetchNextPage(),
-            },
-          ]
-        : undefined,
-    };
-  }, [membersQuery, t]);
-
-  const invitationsData: QuickSearchData<Invitation> = useMemo(() => {
-    const invitations = invitationQuery.data?.pages.flatMap((page) => page.results) || [];
-
-    return {
-      groupName: t('Pending invitations'),
-      elements: invitations,
-      endActions: invitationQuery.hasNextPage
-        ? [
-            {
-              content: (
-                <button 
-                  onClick={() => void invitationQuery.fetchNextPage()}
-                  className="text-sm text-muted-foreground hover:text-primary"
-                  data-testid="load-more-invitations"
-                >
-                  {t('Load more')}
-                </button>
-              ),
-              onSelect: () => void invitationQuery.fetchNextPage(),
-            },
-          ]
-        : undefined,
-    };
-  }, [invitationQuery, t]);
-
-  const searchUserData: QuickSearchData<User> = useMemo(() => {
-    const users = searchUsersQuery.data || [];
-    const isEmail = isValidEmail(userQuery);
-    const newUser: User = {
-      id: userQuery as unknown as number, // Type casting as your User interface expects a number
-      first_name: '',
-      last_name: '',
-      email: userQuery,
-      get_display_name: '',
-      language: '',
-      is_active: false,
-      avatar_url: '',
-      created_at: '',
-      updated_at: ''
-    };
-
-    const hasEmailInUsers = users.some((user) => user.email === userQuery);
-
-    return {
-      groupName: t('Search user result'),
-      elements: users,
-      endActions:
-        isEmail && !hasEmailInUsers
-          ? [
-              {
-                content: <DocShareModalInviteUserRow user={newUser} />,
-                onSelect: () => void onSelect(newUser),
-              },
-            ]
-          : undefined,
-    };
-  }, [searchUsersQuery.data, t, userQuery]);
-
   const onFilter = useDebouncedCallback((str: string) => {
     setUserQuery(str);
   }, 300);
 
-  const onRemoveUser = (row: User) => {
-    setSelectedUsers((prevState) => prevState.filter((value) => value.id !== row.id));
+  const onSelect = (user: User) => {
+    // In a real implementation, we would add the user to the document here
+    // For now, just clear the input
+    setUserQuery('');
+    setInputValue('');
+  };
+
+  // Create derived data for the UI
+  const members = membersQuery.data?.pages.flatMap((page) => page.results) || [];
+  const invitations = invitationQuery.data?.pages.flatMap((page) => page.results) || [];
+  const searchUsers = searchUsersQuery.data || [];
+  const sharedTitle = t('Shared with {{count}} users', { count: members.length });
+  const copyDocLink = useCopyDocLink(doc.id);
+  
+  // State for link visibility and permissions
+  const [linkVisibility, setLinkVisibility] = useState('Public');
+  const [linkPermission, setLinkPermission] = useState('Edit');
+  
+  // Generate description text based on selected permissions
+  const getLinkDescription = () => {
+    if (linkVisibility === 'Private') {
+      return t('Only specific people can access');
+    } else if (linkVisibility === 'Restricted') {
+      return linkPermission === 'Edit' 
+        ? t('People with the link can edit') 
+        : t('People with the link can view');
+    } else { // Public
+      return linkPermission === 'Edit' 
+        ? t('Everyone can edit this doc') 
+        : t('Everyone can view this doc');
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className={cn(
-        "sm:max-w-[90vw] gap-0 p-0 overflow-hidden",
-        isDesktop ? "h-[min(690px,calc(100vh-2rem))]" : "h-[calc(100vh-2rem)]"
-      )}>
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle className="text-xl font-semibold">{t('Share the document')}</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex  p-4 flex-col h-full">
-          <div className="flex-1 overflow-hidden">
-            <div ref={selectedUsersRef}>
-              {canShare && selectedUsers.length > 0 && (
-                <div className="px-6 py-4">
-                  <DocShareAddMemberList
-                    doc={doc}
-                    selectedUsers={selectedUsers}
-                    onRemoveUser={onRemoveUser}
-                    afterInvite={() => {
-                      setUserQuery('');
-                      setInputValue('');
-                      setSelectedUsers([]);
-                    }}
-                  />
-                </div>
-              )}
-              {!canViewAccesses && <Separator />}
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+        <DialogTitle className="sr-only">{t('Share Document')}</DialogTitle>
+        
+        {/* Header - Fixed */}
+        <div className="p-6 pb-4 border-b">
+          <div className="relative">
+            
+          </div>
+          
+          <h2 className="text-xl font-semibold pr-6">{sharedTitle}</h2>
+        </div>
+        
+        {/* Body - Scrollable */}
+        <ScrollArea className="flex-1  pt-4">
+          {/* Members list */}
+          <div className="space-y-4 px-6 mb-8">
+          {members.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <div className="bg-muted rounded-full p-3 mb-3">
+                <Users className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">{t('No one has access yet')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('Add people to collaborate on this document')}</p>
             </div>
-
-            <div data-testid="doc-share-quick-search" className="flex-1">
-              {!canViewAccesses ? (
-                <div className="h-full flex items-center justify-center">
-                  <p className="max-w-[320px] text-center text-sm text-muted-foreground">
-                    {t('You do not have permission to view users sharing this document or modify link settings.')}
-                  </p>
-                </div>
-              ) : (
-                <Command className="rounded-none border-none h-full">
-                  {canShare && (
-                    <div className="border-b sticky top-0 bg-white z-10">
-                      <CommandInput 
-                        value={inputValue}
-                        onValueChange={(str) => {
-                          setInputValue(str);
-                          onFilter(str);
-                        }}
-                        placeholder={t('Type a name or email')}
-                        className="border-0 py-4"
-                      />
+          ) : (
+            members.map((access) => (
+            <div 
+              key={access.id} 
+              className="flex items-center justify-between"
+              data-testid={`doc-share-member-row-${access.user.email}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-muted">
+                  {access.user.avatar_url ? (
+                    <img 
+                      src={access.user.avatar_url} 
+                      alt={access.user.get_display_name || access.user.email}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
+                      {(access.user.get_display_name || access.user.email).charAt(0).toUpperCase()}
                     </div>
                   )}
-                  
-                  <CommandList>
-                    <ScrollArea className="h-[calc(100vh-18rem)]">
-                      {!showMemberSection && inputValue !== '' && (
-                        <CommandGroup heading={searchUserData.groupName} className="p-2">
-                          {searchUserData.elements.map((user) => (
-                            <CommandItem 
-                              key={user.id} 
-                              onSelect={() => onSelect(user)}
-                              className="rounded-md hover:bg-muted"
-                            >
-                              <DocShareModalInviteUserRow user={user} />
-                            </CommandItem>
-                          ))}
-                          {searchUserData.endActions?.map((action, index) => (
-                            <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
-                              {action.content}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      )}
-
-                      {showMemberSection && (
-                        <>
-                          {invitationsData.elements.length > 0 && (
-                            <CommandGroup heading={invitationsData.groupName} className="p-2">
-                              {invitationsData.elements.map((invitation) => (
-                                <CommandItem key={invitation.id} className="rounded-md hover:bg-muted">
-                                  <DocShareInvitationItem
-                                    doc={doc}
-                                    invitation={invitation}
-                                  />
-                                </CommandItem>
-                              ))}
-                              {invitationsData.endActions?.map((action, index) => (
-                                <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
-                                  {action.content}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )}
-
-                          <CommandGroup heading={membersData.groupName} className="p-2">
-                            {membersData.elements.map((access) => (
-                              <CommandItem key={access.id} className="rounded-md hover:bg-muted">
-                                <DocShareMemberItem doc={doc} access={access} />
-                              </CommandItem>
-                            ))}
-                            {membersData.endActions?.map((action, index) => (
-                              <CommandItem key={index} onSelect={action.onSelect} className="rounded-md hover:bg-muted">
-                                {action.content}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </>
-                      )}
-
-                      {searchUsersQuery.isLoading && (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
-                      )}
-
-                      <CommandEmpty className="py-6 text-muted-foreground">
-                        {t('No results found.')}
-                      </CommandEmpty>
-                    </ScrollArea>
-                  </CommandList>
-                </Command>
-              )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium">{access.user.get_display_name || access.user.email}</span>
+                  <span className="text-sm text-muted-foreground">{access.user.email}</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-8">
+                      {access.role === Role.OWNER ? 'Admin' : 
+                       access.role === Role.EDITOR ? 'Editor' : 'Reader'}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Admin</DropdownMenuItem>
+                    <DropdownMenuItem>Editor</DropdownMenuItem>
+                    <DropdownMenuItem>Reader</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Remove</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-          </div>
-
-          {showFooter && (
-            <div className="mt-auto border-t">
-              <DocShareModalFooter doc={doc} onClose={onClose} />
-            </div>
+          ))
           )}
         </div>
+
+          <Separator className="" />
+          
+         
+        </ScrollArea>
+         {/* Link parameters section */}
+         <div className="flex flex-col p-6 py-2">
+            <h3 className="font-semibold text-base mb-4">{t('Link parameters')}</h3>
+            
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-white">
+                    <Globe className="h-4 w-4" />
+                  </div>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8">
+                        {linkVisibility}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {['Public', 'Restricted', 'Private'].map((visibility) => (
+                        <DropdownMenuItem 
+                          key={visibility}
+                          onClick={() => setLinkVisibility(visibility)}
+                        >
+                          {visibility}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
+                {linkVisibility !== 'Private' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8">
+                        {linkPermission}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {['Edit', 'View'].map((permission) => (
+                        <DropdownMenuItem 
+                          key={permission}
+                          onClick={() => setLinkPermission(permission)}
+                        >
+                          {permission}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              
+              <p className="text-sm text-muted-foreground ml-11">{getLinkDescription()}</p>
+            </div>
+          </div>
+        <div className="p-6 border-t">
+
+          <div className="flex justify-start">
+            <Button 
+              variant="outline" 
+              onClick={copyDocLink}
+              className="flex items-center gap-2 px-4"
+            >
+              <Link2 className="h-4 w-4" />
+              {t('Copy link')}
+            </Button>
+          </div>
+        </div>
+        
       </DialogContent>
     </Dialog>
   );
