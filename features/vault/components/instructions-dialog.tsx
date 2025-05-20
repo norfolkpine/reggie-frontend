@@ -199,4 +199,4 @@ export const InstructionDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+}

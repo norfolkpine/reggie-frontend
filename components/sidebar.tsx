@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  FolderGit2,
+  FolderCog,
   Plus,
   MoreHorizontal,
   Star,
@@ -22,7 +22,11 @@ import {
   MessageSquare,
   LucideProps,
   LayoutGrid,
-  FileText
+  FileText,
+  Bot,
+  GitMerge,
+  MessageCircle,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,13 +39,13 @@ import {
 
 // Import the TeamSwitcher component at the top of the file
 import { TeamSwitcher } from "@/components/team/team-switcher";
-import { CreateProjectDialog } from "@/features/project/components/create-project-dialog";
+import { CreateVaultDialog } from "@/features/vault/components/create-vault-dialog";
 import { usePathname, useRouter } from "next/navigation";
 import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
-import { IconBubble, IconMenu } from "@tabler/icons-react";
+import { IconRobotFace, IconGitMerge } from "@tabler/icons-react";
 
 interface ChatItem {
   name: string;
@@ -65,17 +69,25 @@ const chats: ChatItem[] = [
 ];
 
 const navigationItems: ChatItem[] = [
+  { name: "Assistant", icon: Bot, url: "/chat" },
+  {
+    name: "Vaults",
+    icon: FolderCog,
+    url: "/vault",
+  },
+  { name: "Workflow", icon: GitMerge, url: "/workflow" },
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-  {
-    name: "Projects",
-    icon: FolderGit2,
-    url: "/project",
-  },
+ 
   {
     name: "Apps",
     icon: LayoutGrid,
     url: "/app-integration",
+  },
+  {
+    name: "Base Knowledge (Admin)",
+    icon: Database,
+    url: "/base-knowledge",
   },
 ];
 
@@ -90,9 +102,9 @@ export default function Sidebar() {
   const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
     null
   );
-  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [createVaultOpen, setCreateVaultOpen] = useState(false);
 
-  // Define navigationItems inside the component so it has access to setCreateProjectOpen
+  // Define navigationItems inside the component so it has access to setCreateVaultOpen
   // Update the navigationItems definition inside the component
   // Change the Projects item to navigate to the projects view instead of opening the dialog
 
@@ -120,26 +132,26 @@ export default function Sidebar() {
     return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
   };
 
-  const handleCreateProject = async (name: string, description: string) => {
+  const handleCreateVault = async (name: string, description: string) => {
     try {
       await createProject({
         name,
         description: description,
         owner: user?.id,
       });
-      if (pathname === "/project") {
+      if (pathname === "/vault") {
         router.refresh();
       } else {
-        router.push("/project");
+        router.push("/vault");
       }
       toast({
         title: "Success",
-        description: "Project created successfully",
+        description: "Vault created successfully",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create project. Please try again later.",
+        description: "Failed to create vault. Please try again later.",
         variant: "destructive",
       });
     }
@@ -218,14 +230,14 @@ export default function Sidebar() {
                     {renderIcon(item.icon)}
                     <span>{item.name}</span>
                   </div>
-                  {item.name === "Projects" && (
+                  {item.name === "Vaults" && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 rounded-full hover:bg-gray-300"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCreateProjectOpen(true);
+                        setCreateVaultOpen(true);
                       }}
                     >
                       <Plus className="h-3.5 w-3.5" />
@@ -363,16 +375,16 @@ export default function Sidebar() {
                   >
                     {renderIcon(item.icon)}
                   </Button>
-                  {item.name === "Projects" && (
+                  {item.name === "Vaults" && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCreateProjectOpen(true);
+                        setCreateVaultOpen(true);
                       }}
-                      title="Create new project"
+                      title="Create new vault"
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -391,7 +403,7 @@ export default function Sidebar() {
                   onClick={() => handleChatItemClick(chat.session_id ?? "")}
                 >
                   {/* {renderIcon(chat.icon)} */}
-                  <IconBubble size={16} />
+                  <MessageCircle size={16} />
                 </div>
               ))}
             </div>
@@ -403,10 +415,10 @@ export default function Sidebar() {
           </div>
         </div>
       )}
-      <CreateProjectDialog
-        open={createProjectOpen}
-        onOpenChange={setCreateProjectOpen}
-        onCreateProject={handleCreateProject}
+      <CreateVaultDialog
+        open={createVaultOpen}
+        onOpenChange={setCreateVaultOpen}
+        onCreateVault={handleCreateVault}
       />
     </div>
   );

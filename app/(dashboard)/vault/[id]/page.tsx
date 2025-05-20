@@ -1,10 +1,9 @@
 'use client'
 import ChatInterface from "@/features/chats/chat-interface"
-import ProjectView from "@/features/project/components/project-view"
+import VaultView from "@/features/vault/components/vault-view"
 import { useParams, useSearchParams } from "next/navigation"
 
-
-export default function ChatPage() {
+export default function VaultPage() {
     const {id} = useParams()
-  return <ProjectView projectId={Number(id ?? '0')} />
+  return <VaultView vaultId={Number(id ?? '0')} />
 }
