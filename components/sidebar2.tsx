@@ -40,8 +40,7 @@ import {
 
 // Import the TeamSwitcher component at the top of the file
 import { TeamSwitcher } from "@/components/team/team-switcher";
-import { CreateProjectDialog } from "@/features/vault/components/create-project-dialog";
-
+import { CreateProjectDialog } from "@/features/project/components/create-project-dialog";
 import { usePathname, useRouter } from "next/navigation";
 import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
@@ -75,17 +74,15 @@ interface HistorySection {
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "ChatGPT", icon: "🤖", url: "/chat" },
-  { name: "Explore Agents", icon: "🔍", url: "/agent" },
+  { name: "Remove chat history from here", icon: "🤖", url: "/chat" },
 ];
-
 
 const navigationItems: (ChatItem | { type: "divider" })[] = [
   { name: "Assistant", icon: Bot, url: "/chat" },
   {
     name: "Vault",
     icon: FolderShieldIcon,
-    url: "/vault",
+    url: "/project",
   },
   { name: "Workflows", icon: Workflow, url: "/agent" },
   { type: "divider" }, 
@@ -101,28 +98,6 @@ const navigationItems: (ChatItem | { type: "divider" })[] = [
   { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
 ];
 
-// const navigationItems: ChatItem[] = [
-//   { name: "Assistant", icon: Bot, url: "/chat" },
-//   {
-//     name: "Vaults",
-//     icon: FolderCog,
-//     url: "/vault",
-//   },
-//   { name: "Workflow", icon: GitMerge, url: "/workflow" },
-//   { name: "Library", icon: BookOpen, url: "/library" },
-//   { name: "Documents", icon: FileText, url: "/documents" },
- 
-//   {
-//     name: "Apps",
-//     icon: LayoutGrid,
-//     url: "/app-integration",
-//   },
-//   {
-//     name: "Base Knowledge (Admin)",
-//     icon: Database,
-//     url: "/base-knowledge",
-//   },
-// ];
 
 // Update the sidebar component to handle chat item clicks
 export default function Sidebar() {
@@ -172,10 +147,10 @@ export default function Sidebar() {
         description: description,
         owner: user?.id,
       });
-      if (pathname === "/vault") {
+      if (pathname === "/project") {
         router.refresh();
       } else {
-        router.push("/vault");
+        router.push("/project");
       }
       toast({
         title: "Success",
@@ -184,7 +159,7 @@ export default function Sidebar() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create vault. Please try again later.",
+        description: "Failed to create project. Please try again later.",
         variant: "destructive",
       });
     }
@@ -263,7 +238,7 @@ export default function Sidebar() {
                     {renderIcon(item.icon)}
                     <span>{item.name}</span>
                   </div>
-                  {item.name === "Vaults" && (
+                  {item.name === "Projects" && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -408,7 +383,7 @@ export default function Sidebar() {
                   >
                     {renderIcon(item.icon)}
                   </Button>
-                  {item.name === "Vaults" && (
+                  {item.name === "Projects" && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -417,7 +392,7 @@ export default function Sidebar() {
                         e.stopPropagation();
                         setCreateProjectOpen(true);
                       }}
-                      title="Create new vault"
+                      title="Create new project"
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -436,7 +411,7 @@ export default function Sidebar() {
                   onClick={() => handleChatItemClick(chat.session_id ?? "")}
                 >
                   {/* {renderIcon(chat.icon)} */}
-                  <MessageCircle size={16} />
+                  <IconBubble size={16} />
                 </div>
               ))}
             </div>
