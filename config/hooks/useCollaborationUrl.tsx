@@ -11,7 +11,7 @@ export const useCollaborationUrl = (room?: string) => {
   const base =
     conf?.COLLABORATION_WS_URL ||
     (typeof window !== 'undefined'
-      ? `wss://${window.location.hostname}:4444/collaboration/ws/`
+      ? `ws://${window.location.hostname}:4444/collaboration/ws/`
       : '');
 
   return `${base}?room=${room}`;
