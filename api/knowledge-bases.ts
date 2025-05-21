@@ -1,33 +1,47 @@
 import { api } from '@/lib/api-client';
 import { KnowledgeBase, PaginatedKnowledgeBaseList, PatchedKnowledgeBase } from '../types/api';
+import { PaginatedKnowledgeBaseFileList } from '../types/knowledge-base';
 
-export const getKnowledgeBases = async (page: number = 1) => {
-  const response = await api.get('/reggie/knowledge-bases/', {
-    params: { page: page.toString() }
+const knowledgeBaseApi = '/reggie/api/v1/knowledge-bases/';
+
+export const getKnowledgeBases = async (page: number = 1, file_id?: string) => {
+  const response = await api.get(knowledgeBaseApi, {
+    params: { page: page.toString(), file_id: file_id}
   });
   return response as PaginatedKnowledgeBaseList;
 };
 
 export const getKnowledgeBase = async (id: number) => {
-  const response = await api.get(`/reggie/knowledge-bases/${id}/`);
+  const response = await api.get(`${knowledgeBaseApi}${id}/`);
   return response as KnowledgeBase;
 };
 
 export const createKnowledgeBase = async (knowledgeBase: Omit<KnowledgeBase, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.post('/reggie/knowledge-bases/', knowledgeBase);
+  const response = await api.post(knowledgeBaseApi, knowledgeBase);
   return response as KnowledgeBase;
 };
 
 export const updateKnowledgeBase = async (id: number, knowledgeBase: Omit<KnowledgeBase, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.put(`/reggie/knowledge-bases/${id}/`, knowledgeBase);
+  const response = await api.put(`${knowledgeBaseApi}${id}/`, knowledgeBase);
   return response as KnowledgeBase;
 };
 
 export const patchKnowledgeBase = async (id: number, knowledgeBase: PatchedKnowledgeBase) => {
-  const response = await api.post(`/reggie/knowledge-bases/${id}/`, knowledgeBase);
+  const response = await api.patch(`${knowledgeBaseApi}${id}/`, knowledgeBase);
   return response as KnowledgeBase;
 };
 
 export const deleteKnowledgeBase = async (id: number) => {
-  await api.delete(`/reggie/knowledge-bases/${id}/`);
+  await api.delete(`${knowledgeBaseApi}${id}/`);
+};
+
+// Get files in a knowledge base
+export const getKnowledgeBaseFiles = async (id: number, params?: { 
+  page?: string; 
+  page_size?: string; 
+  search?: string; 
+  status?: string; 
+}) => {
+  const response = await api.get(`${knowledgeBaseApi}${id}/files/`, { params });
+  return response as PaginatedKnowledgeBaseFileList;
 };

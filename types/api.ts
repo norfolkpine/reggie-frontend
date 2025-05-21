@@ -70,8 +70,17 @@ export interface KnowledgeBase {
   id: number;
   name: string;
   description: string;
+  knowledge_type: string;
+  path: string;
+  unique_code: string;
+  knowledgebase_id: string;
+  vector_table_name: string;
+  chunk_size?: number;
+  chunk_overlap?: number;
   created_at: string;
   updated_at: string;
+  model_provider: number;
+  is_file_linked?: boolean;
 }
 
 export interface PaginatedKnowledgeBaseList {
@@ -82,6 +91,23 @@ export interface PaginatedKnowledgeBaseList {
 }
 
 export interface PatchedKnowledgeBase extends Partial<KnowledgeBase> {}
+
+export interface KnowledgeBasePdfURL {
+  id: number;
+  kb: number;
+  url: string;
+  is_enabled: boolean;
+  added_at: string;
+}
+
+export interface PaginatedKnowledgeBasePdfURLList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: KnowledgeBasePdfURL[];
+}
+
+export interface PatchedKnowledgeBasePdfURL extends Partial<KnowledgeBasePdfURL> {}
 
 export interface StorageBucket {
   id: number;
@@ -285,6 +311,49 @@ export interface PaginatedTagList {
 }
 
 export interface PatchedTag extends Partial<Tag> {}
+
+export interface FileTag {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedFileTagList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: FileTag[];
+}
+
+export interface PatchedFileTag extends Partial<FileTag> {}
+
+export interface File {
+  uuid: string;
+  title: string;
+  description: string | null;
+  file: string;
+  file_type: string;
+  storage_bucket: number | null;
+  storage_path: string;
+  original_path: string | null;
+  uploaded_by: number | null;
+  team: number | null;
+  source: string | null;
+  visibility: "public" | "private";
+  is_global: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedFileList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: File[];
+}
+
+export interface PatchedFile extends Partial<File> {}
 
 export interface Login {
   email: string;

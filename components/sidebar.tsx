@@ -23,11 +23,8 @@ import {
   MessageSquare,
   LucideProps,
   LayoutGrid,
-  FileText,
   Database,
-  Shield,
-  Workflow,
-  Bot
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -91,8 +88,11 @@ const navigationItems: (ChatItem | { type: "divider" })[] = [
   { type: "divider" }, 
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-
-  { type: "divider" }, 
+  {
+    name: "Projects",
+    icon: FolderGit2,
+    url: "/project",
+  },
   {
     name: "Apps",
     icon: LayoutGrid,
