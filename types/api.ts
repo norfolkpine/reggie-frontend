@@ -450,3 +450,17 @@ export interface ExpectedOutput {
   user: number;
   agent: number | null;
 }
+
+export interface VaultFile {
+  id: number;
+  file: string;
+  project: number;
+  uploaded_by: number;
+  team: number;
+  shared_with_users: number[];
+  shared_with_teams: number[];
+  inherited_users: string;
+  inherited_teams: string;
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+}

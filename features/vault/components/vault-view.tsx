@@ -14,17 +14,21 @@ import {
   MessageSquare,
   ArrowLeft,
   Star,
+  Loader,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { InstructionDialog } from "./instructions-dialog"
 import { useRouter } from "next/navigation"
 import { Project } from "@/types/api"
 import { getProject } from "@/api/projects"
+import { uploadFiles, getVaultFilesByProject } from "@/api/vault"
+import { VaultFile } from "@/types/api"
 import { handleApiError } from "@/lib/utils/handle-api-error"
 import { useToast } from "@/components/ui/use-toast"
 import { UploadFileModal } from "./upload-file-modal"
 import SearchInput from "@/components/ui/search-input"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function ProjectView({ projectId }: { projectId: number }) {
   const [project, setProject] = useState<Project | null>(null)
@@ -32,9 +36,56 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   const [instructionDialogOpen, setInstructionDialogOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [pickedFiles, setPickedFiles] = useState<File[]>([])
+  const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
   const [search, setSearch] = useState("")
   const [tab, setTab] = useState("all")
   const { toast } = useToast()
+  const [uploading, setUploading] = useState(false);
+   const { user } = useAuth();
+
+  // Upload picked files when they change
+  // Fetch vault files on mount and after upload
+  useEffect(() => {
+    async function fetchFiles() {
+      try {
+        const files = await getVaultFilesByProject(vaultId);
+        setVaultFiles(files);
+      } catch (error) {
+        console.error(error);
+        // Optionally handle error
+      }
+    }
+    fetchFiles();
+  }, [vaultId, pickedFiles]);
+
+  useEffect(() => {
+    async function doUpload() {
+      if (pickedFiles.length > 0) {
+        setUploading(true);
+        const uploaded_by = user?.id || 0;
+        try {
+          for (const file of pickedFiles) {
+            await uploadFiles({
+              file,
+              project: vaultId,
+              uploaded_by,
+            });
+          }
+          toast({ title: "Upload successful" });
+          fetchVault();
+        } catch (error) {
+          const { message } = handleApiError(error);
+          toast({
+            title: message || "Upload failed",
+            variant: "destructive",
+          });
+        }
+        setPickedFiles([]);
+        setUploading(false);
+      }
+    }
+    doUpload();
+  }, [pickedFiles]);
 
   function onBack() {
     router.back()
@@ -125,20 +176,27 @@ export default function ProjectView({ projectId }: { projectId: number }) {
         </div>
       </div>
 
-      {/* Picked Files List */}
-      {pickedFiles.length > 0 && (
+      
         <Card className="p-3 mb-2">
-          <div className="text-xs font-medium mb-2">Files to upload:</div>
+          <div className="text-xs font-medium mb-2">Files in this vault:</div>
           <ul className="space-y-1">
-            {pickedFiles.map((file, idx) => (
-              <li key={file.name + idx} className="flex items-center text-xs">
+            { vaultFiles.length > 0 && vaultFiles.map((file) => (
+              <li key={file.id} className="flex items-center text-xs">
                 <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="truncate max-w-[180px]" title={file.name}>{file.name}</span>
+                <span className="truncate max-w-[180px]" title={file.file}>{file.file}</span>
+              </li>
+            ))}
+            {/* Show uploading files at the bottom */}
+            {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
+              <li key={file.name + idx} className="flex items-center text-xs opacity-60 italic">
+                <FileText className="w-4 h-4 mr-2 text-muted-foreground animate-pulse" />
+                <span className="truncate max-w-[140px]" title={file.name}>{file.name} (Uploading...)</span>
+                <Loader className="animate-spin h-4 w-4 ml-2 text-primary" />
               </li>
             ))}
           </ul>
         </Card>
-      )}
+      
 
       {/* Chats Section as Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
