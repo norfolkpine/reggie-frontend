@@ -51,7 +51,7 @@ export default function Projects() {
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-medium">Projects</h1>
+        <h1 className="text-xl font-medium">Vault</h1>
         <Button onClick={() => setCreateProjectOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Project

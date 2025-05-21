@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import SearchInput from '@/components/ui/search-input';
-import { DataTable } from '@/components/ui/data-table';
+import { DataTable } from '@/components/ui/data-table-nosearch';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   DropdownMenu,
@@ -34,6 +34,8 @@ import {
 } from '@/api/documents';
 import DeleteDocumentDialog from '@/components/doc/DeleteDocumentDialog';
 import { useTranslation } from 'react-i18next';
+
+import Link from 'next/link';
 
 interface DocumentRow {
   id: string;
@@ -68,14 +70,17 @@ export default function DocumentsPage() {
     {
       accessorKey: 'title',
       header: 'Title',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-blue-500" />
-          <span className="font-medium truncate max-w-[180px] sm:max-w-[240px] md:max-w-[300px] lg:max-w-[360px]">
-            {row.original.title}
-          </span>
-        </div>
-      ),
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-blue-500" />
+            <Link
+              href={`/documents/${row.original.id}`}
+              className="font-medium truncate max-w-[180px] sm:max-w-[240px] md:max-w-[300px] lg:max-w-[360px] hover:underline"
+            >
+              {row.original.title}
+            </Link>
+          </div>
+        ),
     },
     {
       accessorKey: 'updated',

@@ -12,34 +12,34 @@ async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshTokenLocal) {
-        throw new Error("No refresh token available");
-      }
+      if (refreshTokenLocal) {
+        try {
+          const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refresh: refreshTokenLocal }),
+          });
 
-      try {
-        const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh: refreshTokenLocal }),
-        });
+          if (!refreshResponse.ok) {
+            localStorage.clear();
+            window.location.href = "/sign-in";
+            throw new Error("Refresh token failed");
+          }
 
-        if (!refreshResponse.ok) {
-          localStorage.clear();
-          window.location.href = "/sign-in";
-          throw new Error("Refresh token failed");
-        }
+          const { access, refresh } = await refreshResponse.json();
+          localStorage.setItem(TOKEN_KEY, access);
+          localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
 
-        const { access, refresh } = await refreshResponse.json();
-        localStorage.setItem(TOKEN_KEY, access);
-        localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-
-        const retryResponse = await fetch(response.url, {
-          ...response,
-          headers: {
-            ...response.headers,
-            Authorization: `Bearer ${access}`,
-          },
-        });
+          // Retry the original request with new token
+          const retryResponse = await fetch(response.url, {
+            ...response,
+            headers: {
+              ...response.headers,
+              Authorization: `Bearer ${access}`,
+            },
+          });
 
           return handleResponse(retryResponse, httpMethod);
         } catch (error) {
@@ -65,9 +65,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
   const url = new URL(`${BASE_URL}${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.append(key, value.toString());
-      }
+      url.searchParams.append(key, value);
     });
   }
 
@@ -77,13 +75,13 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     ...config.headers,
   };
 
-  const response: Response = await fetch(url.toString(), {
+  const response = await fetch(url.toString(), {
     ...requestConfig,
     headers,
   });
 
-  return handleResponse(response);
-
+  // Pass HTTP method to handleResponse if available
+  return handleResponse(response, requestConfig.method);
 }
 
 export const api = {
