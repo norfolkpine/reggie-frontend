@@ -2,11 +2,11 @@ import { createContext, useContext, useState, ReactNode } from 'react'
 import { Project } from '@/types/api'
 
 // Sample data until the actual data file is used
-const sampleVaults: Project[] = [
+const sampleProjects: Project[] = [
   {
     id: 1,
     name: "Databricks",
-    description: "Machine learning and data analytics vault",
+    description: "Machine learning and data analytics project",
     lastUpdated: "Updated 2 days ago",
     chatCount: 12,
     tags: ["Data Science", "ML"],
@@ -17,7 +17,7 @@ const sampleVaults: Project[] = [
   {
     id: 2,
     name: "Website Redesign",
-    description: "Company website redesign vault",
+    description: "Company website redesign project",
     lastUpdated: "Updated yesterday",
     chatCount: 8,
     tags: ["Design"],
@@ -27,31 +27,31 @@ const sampleVaults: Project[] = [
   }
 ]
 
-// Extract unique tags from vaults
-const allTags = Array.from(new Set(sampleVaults.flatMap((vault) => vault.tags ?? [])));
+// Extract unique tags from projects
+const allTags = Array.from(new Set(sampleProjects.flatMap((project) => project.tags ?? [])));
 
 type ViewMode = 'all' | 'starred'
 
-interface VaultContextType {
+interface ProjectContextType {
   searchQuery: string
   setSearchQuery: (value: string) => void
   selectedTags: string[]
   toggleTag: (tag: string) => void
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
-  createVaultOpen: boolean
-  setCreateVaultOpen: (open: boolean) => void
-  handleCreateVault: (name: string) => void
-  filteredVaults: Project[]
+  createProjectOpen: boolean
+  setCreateProjectOpen: (open: boolean) => void
+  handleCreateProject: (name: string) => void
+  filteredProjects: Project[]
 }
 
-const VaultContext = createContext<VaultContextType>({} as VaultContextType)
+const ProjectContext = createContext<ProjectContextType>({} as ProjectContextType)
 
-export function VaultProvider({ children }: { children: ReactNode }) {
+export function ProjectProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('all')
-  const [createVaultOpen, setCreateVaultOpen] = useState(false)
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 
@@ -59,26 +59,26 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const handleCreateVault = (name: string) => {
-    console.log('Creating vault:', name)
-    setCreateVaultOpen(false)
+  const handleCreateProject = (name: string) => {
+    console.log('Creating project:', name)
+    setCreateProjectOpen(false)
   }
 
-  const filteredVaults = sampleVaults.filter((vault: Project) => {
-    const matchesSearch = vault.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vault.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = sampleProjects.filter((project: Project) => {
+    const matchesSearch = project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesTags = selectedTags.length === 0 || 
-      selectedTags.every(tag => vault.tags?.includes(tag))
+      selectedTags.every(tag => project.tags?.includes(tag))
 
     const matchesViewMode = viewMode === 'all' || 
-      (viewMode === 'starred' && vault.starred)
+      (viewMode === 'starred' && project.starred)
 
     return matchesSearch && matchesTags && matchesViewMode
   })
 
   return (
-    <VaultContext.Provider
+    <ProjectContext.Provider
       value={{
         searchQuery,
         setSearchQuery,
@@ -86,15 +86,15 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         toggleTag,
         viewMode,
         setViewMode,
-        createVaultOpen,
-        setCreateVaultOpen,
-        handleCreateVault,
-        filteredVaults
+        createProjectOpen,
+        setCreateProjectOpen,
+        handleCreateProject,
+        filteredProjects
       }}
     >
       {children}
-    </VaultContext.Provider>
+    </ProjectContext.Provider>
   )
 }
 
-export const useVaultContext = () => useContext(VaultContext)
+export const useProjectContext = () => useContext(ProjectContext)

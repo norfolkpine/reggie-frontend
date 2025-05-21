@@ -417,7 +417,7 @@ export default function Sidebar() {
                         e.stopPropagation();
                         setCreateProjectOpen(true);
                       }}
-                      title="Create new vault"
+                      title="Create new project"
                     >
                       <Plus className="h-3 w-3" />
                     </Button>

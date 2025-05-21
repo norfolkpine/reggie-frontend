@@ -6,36 +6,36 @@ import { Badge } from "@/components/ui/badge"
 import { Star, ArrowRight, LucideIcon } from "lucide-react"
 import { Project } from "@/types/api"
 
-interface VaultCardProps {
-  vault: Project
-  onSelect?: (vaultName: string) => void
+interface ProjectCardProps {
+  project: Project
+  onSelect?: (projectName: string) => void
 }
 
-export function VaultCard({ vault, onSelect }: VaultCardProps) {
+export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   return (
     <Card 
-      className={`overflow-hidden flex flex-col  ${vault.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
-      onClick={() => onSelect?.(vault.name ?? '')}
+      className={`overflow-hidden flex flex-col  ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
+      onClick={() => onSelect?.(project.name ?? '')}
     >
-      <CardHeader className={`p-4 pb-2 flex-1 ${vault.color || 'bg-muted'}`}>
+      <CardHeader className={`p-4 pb-2 flex-1 ${project.color || 'bg-muted'}`}>
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-white">
-              {vault.icon && <vault.icon className="h-5 w-5" />}
+              {project.icon && <project.icon className="h-5 w-5" />}
             </div>
-            <CardTitle className="text-lg line-clamp-2">{vault.name}</CardTitle>
+            <CardTitle className="text-lg line-clamp-2">{project.name}</CardTitle>
           </div>
-          {vault.starred && (
+          {project.starred && (
             <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 shrink-0">
               <Star className="h-3 w-3 mr-1 fill-primary" /> Popular
             </Badge>
           )}
         </div>
-        <CardDescription className="mt-2 line-clamp-3 h-12">{vault.description}</CardDescription>
+        <CardDescription className="mt-2 line-clamp-3 h-12">{project.description}</CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="flex flex-wrap gap-2 mt-2">
-          {vault.tags?.map((tag, index) => (
+          {project.tags?.map((tag, index) => (
             <Badge key={index} variant="outline" className="bg-white">
               {tag}
             </Badge>
@@ -44,13 +44,13 @@ export function VaultCard({ vault, onSelect }: VaultCardProps) {
       </CardContent>
       <CardFooter className="p-2 bg-muted/50 flex justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{vault.lastUpdated}</span>
-          {vault.teamSize && (
-            <span className="text-sm text-muted-foreground">{vault.teamSize} members</span>
+          <span className="text-sm text-muted-foreground">{project.lastUpdated}</span>
+          {project.teamSize && (
+            <span className="text-sm text-muted-foreground">{project.teamSize} members</span>
           )}
-          {vault.chatCount !== undefined && (
+          {project.chatCount !== undefined && (
             <span className="text-sm text-muted-foreground">
-              {vault.chatCount} chats
+              {project.chatCount} chats
             </span>
           )}
         </div>

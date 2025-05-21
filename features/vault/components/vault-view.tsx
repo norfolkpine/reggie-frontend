@@ -26,8 +26,8 @@ import { UploadFileModal } from "./upload-file-modal"
 import SearchInput from "@/components/ui/search-input"
 import { Badge } from "@/components/ui/badge"
 
-export default function VaultView({ vaultId }: { vaultId: number }) {
-  const [vault, setVault] = useState<Project | null>(null)
+export default function ProjectView({ projectId }: { projectId: number }) {
+  const [project, setProject] = useState<Project | null>(null)
   const router = useRouter()
   const [instructionDialogOpen, setInstructionDialogOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
@@ -40,16 +40,16 @@ export default function VaultView({ vaultId }: { vaultId: number }) {
     router.back()
   }
 
-  async function fetchVault() {
+  async function fetchProject() {
     try {
-      const response = await getProject(vaultId)
-      setVault(response)
+      const response = await getProject(projectId)
+      setProject(response)
     } catch (error) {
       const { message } = handleApiError(error)
       if (message) {
         toast({
           title: message,
-          description: "Failed to fetch vault",
+          description: "Failed to fetch project",
           variant: "destructive",
         })
       }
@@ -57,7 +57,7 @@ export default function VaultView({ vaultId }: { vaultId: number }) {
   }
 
   useEffect(() => {
-    fetchVault()
+    fetchProject()
   }, [])
 
   // Mock chats for demo
@@ -96,14 +96,14 @@ export default function VaultView({ vaultId }: { vaultId: number }) {
           size="icon"
           className="rounded-full"
           onClick={onBack}
-          title="Back to vaults"
+          title="Back to projects"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center">
           <FolderIcon className="h-6 w-6 text-red-500" />
         </div>
-        <h1 className="text-2xl font-semibold truncate flex-1">{vault?.name}</h1>
+        <h1 className="text-2xl font-semibold truncate flex-1">{project?.name}</h1>
         <Button variant="outline" className="gap-2" onClick={() => setUploadModalOpen(true)}>
           <FileText className="h-5 w-5" /> Upload File
         </Button>

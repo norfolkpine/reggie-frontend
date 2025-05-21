@@ -9,8 +9,8 @@ import { ModalProvider } from "@/contexts/modal-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ChatGPT Clone",
-  description: "A ChatGPT clone built with Next.js and shadcn/ui",
+  title: "Reggie",
+  description: "Compliance and work automation engine",
     generator: 'v0.dev'
 }
 

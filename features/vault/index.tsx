@@ -19,9 +19,9 @@ import {
   Zap,
   Loader2,
 } from "lucide-react"
-import { CreateVaultDialog } from "./components/create-vault-dialog"
+import { CreateProjectDialog } from "./components/create-project-dialog"
 import { getProjects, createProject } from "@/api/projects"
-import { VaultCard } from "./components/vault-card"
+import { ProjectCard } from "./components/project-card"
 import { Project } from "@/types/api"
 import { formatDateVariants } from "@/lib/utils/date-formatter"
 import { useAuth } from "@/contexts/auth-context"
@@ -29,31 +29,31 @@ import Link from "next/link"
 import SearchInput from "@/components/ui/search-input"
 import { useToast } from "@/components/ui/use-toast"
 
-export default function Vaults() {
+export default function Projects() {
   const { toast } = useToast()
-  const [vaults, setVaults] = useState<Project[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
-  const [createVaultOpen, setCreateVaultOpen] = useState(false)
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<"all" | "starred">("all")
   const auth = useAuth()
 
   useEffect(() => {
-    fetchVaults()
+    fetchProjects()
   }, [])
 
-  const fetchVaults = async () => {
+  const fetchProjects = async () => {
     try {
       setLoading(true)
       const response = await getProjects()
-      setVaults(response.results.map(vault => ({
-        ...vault,
-        icon: getVaultIcon(vault.name ?? ''),
-        color: getVaultColor(vault.name ?? ''),
+      setProjects(response.results.map(project => ({
+        ...project,
+        icon: getProjectIcon(project.name ?? ''),
+        color: getProjectColor(project.name ?? ''),
         starred: false,
         tags: [],
-        lastUpdated: `Updated ${ vault.updated_at && formatDateVariants.dateAgo(vault.updated_at)}`,
+        lastUpdated: `Updated ${ project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`,
         teamSize: 1,
         chatCount: 0,
         chatIcon: MessageSquare
@@ -61,7 +61,7 @@ export default function Vaults() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch vaults. Please try again later.",
+        description: "Failed to fetch projects. Please try again later.",
         variant: "destructive"
       })
     } finally {
@@ -69,21 +69,21 @@ export default function Vaults() {
     }
   }
 
-  const handleCreateVault = async (name: string, description: string) => {
+  const handleCreateProject = async (name: string, description: string) => {
     try {
-      const newVault = await createProject({
+      const newProject = await createProject({
         name,
         description: description,
         owner: auth.user?.id
       })
       
-      setVaults([...vaults, {
-        ...newVault,
-        icon: getVaultIcon(newVault.name ?? ''),
-        color: getVaultColor(newVault.name ?? ''),
+      setProjects([...projects, {
+        ...newProject,
+        icon: getProjectIcon(newProject.name ?? ''),
+        color: getProjectColor(newProject.name ?? ''),
         starred: false,
         tags: [],
-        lastUpdated: `Updated ${newVault.updated_at && formatDateVariants.dateAgo(newVault.updated_at)}`,
+        lastUpdated: `Updated ${newProject.updated_at && formatDateVariants.dateAgo(newProject.updated_at)}`,
         teamSize: 1,
         chatCount: 0,
         chatIcon: MessageSquare
@@ -91,30 +91,30 @@ export default function Vaults() {
 
       toast({
         title: "Success",
-        description: "Vault created successfully"
+        description: "Project created successfully"
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create vault. Please try again later.",
+        description: "Failed to create project. Please try again later.",
         variant: "destructive"
       })
     }
   }
 
-  const getVaultIcon = (name: string) => {
+  const getProjectIcon = (name: string) => {
     const icons = [Database, Globe, BarChart, Code, Zap, FileText]
     return icons[Math.floor(Math.random() * icons.length)]
   }
 
-  const getVaultColor = (name: string) => {
+  const getProjectColor = (name: string) => {
     const colors = ["bg-blue-50", "bg-purple-50", "bg-green-50", "bg-yellow-50", "bg-red-50", "bg-indigo-50"]
     return colors[Math.floor(Math.random() * colors.length)]
   }
 
 
-  // Extract unique tags from vaults
-  const allTags = Array.from(new Set(vaults.flatMap((vault) => vault.tags || [])))
+  // Extract unique tags from projects
+  const allTags = Array.from(new Set(projects.flatMap((project) => project.tags || [])))
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -124,31 +124,31 @@ export default function Vaults() {
     }
   }
 
-  // Filter vaults based on search query and selected tags
-  const filteredVaults = vaults.filter((vault) => {
+  // Filter projects based on search query and selected tags
+  const filteredProjects = projects.filter((project) => {
     // Filter by search query
     const matchesSearch =
-      vault.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vault.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (vault.tags && vault.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+      project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (project.tags && project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
 
     // Filter by selected tags
-    const matchesTags = selectedTags.length === 0 || (vault.tags && selectedTags.every((tag) => vault.tags?.includes(tag)))
+    const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
 
     // Filter by view mode
-    const matchesViewMode = viewMode === "all" || (viewMode === "starred" && vault.starred)
+    const matchesViewMode = viewMode === "all" || (viewMode === "starred" && project.starred)
 
     return matchesSearch && matchesTags && matchesViewMode
   })
 
 
 
-  // Otherwise, show the vaults list
+  // Otherwise, show the projects list
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-medium">Vaults</h1>
+        <h1 className="text-xl font-medium">Projects</h1>
         {loading && <Loader2 className="h-5 w-5 animate-spin" />}
       </div>
 
@@ -156,13 +156,13 @@ export default function Vaults() {
       <div className="p-4 border-b">
         <div className="flex gap-2 mb-4">
           <SearchInput 
-          placeholder="Search vaults..."
+          placeholder="Search projects..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-          <Button onClick={() => setCreateVaultOpen(true)}>
+          <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Vault
+            New Project
           </Button>
         </div>
 
@@ -194,7 +194,7 @@ export default function Vaults() {
             onClick={() => setViewMode("all")}
             className="rounded-none"
           >
-            All Vaults
+            All Projects
           </Button>
           <Button
             variant={viewMode === "starred" ? "default" : "ghost"}
@@ -209,31 +209,31 @@ export default function Vaults() {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto p-4">
-        {filteredVaults.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <EmptyState
             icon={<FileText className="h-8 w-8 text-muted-foreground" />}
-            title="No vaults found"
+            title="No projects found"
             description={searchQuery || selectedTags.length > 0
               ? "Try adjusting your search or filters"
-              : "Create your first vault to get started"}
+              : "Create your first project to get started"}
             action={
-              <Button onClick={() => setCreateVaultOpen(true)}>
+              <Button onClick={() => setCreateProjectOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                New Vault
+                New Project
               </Button>
             }
-            onRefresh={fetchVaults}
+            onRefresh={fetchProjects}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredVaults.map((vault) => (
+            {filteredProjects.map((project) => (
               <Link
-                key={vault.id}
-                href={`/vault/${vault.id?.toString()}`}
+                key={project.id}
+                href={`/project/${project.id?.toString()}`}
               >
-                <VaultCard
-                  key={vault.id}
-                  vault={vault}
+                <ProjectCard
+                  key={project.id}
+                  project={project}
                   onSelect={() => {}}
                 />
               </Link>
@@ -242,10 +242,10 @@ export default function Vaults() {
         )}
       </div>
 
-      <CreateVaultDialog
-        open={createVaultOpen}
-        onOpenChange={setCreateVaultOpen}
-        onCreateVault={handleCreateVault}
+      <CreateProjectDialog
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        onCreateProject={handleCreateProject}
       />
     </div>
   )
