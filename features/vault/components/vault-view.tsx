@@ -45,18 +45,20 @@ export default function ProjectView({ projectId }: { projectId: number }) {
 
   // Upload picked files when they change
   // Fetch vault files on mount and after upload
-  useEffect(() => {
-    async function fetchFiles() {
-      try {
-        const files = await getVaultFilesByProject(vaultId);
-        setVaultFiles(files);
-      } catch (error) {
-        console.error(error);
-        // Optionally handle error
-      }
+
+  async function fetchFiles() {
+    try {
+      const files = await getVaultFilesByProject(projectId);
+      setVaultFiles(files);
+    } catch (error) {
+      console.error(error);
+      // Optionally handle error
     }
+  }
+  useEffect(() => {
+   
     fetchFiles();
-  }, [vaultId, pickedFiles]);
+  }, [projectId, pickedFiles]);
 
   useEffect(() => {
     async function doUpload() {
@@ -67,12 +69,12 @@ export default function ProjectView({ projectId }: { projectId: number }) {
           for (const file of pickedFiles) {
             await uploadFiles({
               file,
-              project: vaultId,
+              project: projectId,
               uploaded_by,
             });
           }
           toast({ title: "Upload successful" });
-          fetchVault();
+          fetchFiles();
         } catch (error) {
           const { message } = handleApiError(error);
           toast({
