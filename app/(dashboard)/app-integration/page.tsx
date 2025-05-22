@@ -54,7 +54,7 @@ export default function Apps() {
   const fetchApps = async () => {
     try {
       const data = await getIntegrations();
-      setApps(data.results ?? []);
+      setApps(data ?? []);
     } catch (error) {
       console.log(error);
     }
