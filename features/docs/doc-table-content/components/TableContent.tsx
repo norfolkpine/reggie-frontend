@@ -94,11 +94,13 @@ export const TableContent = () => {
     return null;
   }
 
+  // Removed transition animation by commenting out 'transition-all duration-300' below:
   return (
     <div
       id="summaryContainer"
       className={cn(
-        'fixed right-4 top-20 z-[1000] border rounded-md bg-background transition-all duration-300',
+        // 'transition-all duration-300', // <-- Animation removed
+        'fixed right-4 top-20 z-[1000] border rounded-md bg-background',
         isHover ? 'w-[200px] h-auto max-h-[calc(50vh-60px)]' : 'w-10 h-10',
         'flex items-center justify-center p-2 overflow-hidden'
       )}
