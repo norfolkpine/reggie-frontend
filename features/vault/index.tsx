@@ -229,7 +229,7 @@ export default function Projects() {
             {filteredProjects.map((project) => (
               <Link
                 key={project.id}
-                href={`/project/${project.id?.toString()}`}
+                href={`/vault/${project.id?.toString()}`}
               >
                 <ProjectCard
                   key={project.id}

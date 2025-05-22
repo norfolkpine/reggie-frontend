@@ -5,5 +5,5 @@ import { useParams, useSearchParams } from "next/navigation"
 
 export default function VaultPage() {
     const {id} = useParams()
-  return <VaultView vaultId={Number(id ?? '0')} />
+  return <VaultView projectId={Number(id ?? '0')} />
 }
