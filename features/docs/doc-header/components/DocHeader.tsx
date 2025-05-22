@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation';
 
 import { Doc, LinkReach, currentDocRole, useTrans } from '@/features/docs/doc-management';
 import { useResponsiveStore } from '@/stores';
@@ -17,13 +18,14 @@ interface DocHeaderProps {
 export const DocHeader = ({ doc }: DocHeaderProps) => {
   const { isDesktop } = useResponsiveStore();
   const { t } = useTranslation();
+  const router = useRouter();
   const docIsPublic = doc.link_reach === LinkReach.PUBLIC;
   const docIsAuth = doc.link_reach === LinkReach.AUTHENTICATED;
   const { transRole } = useTrans();
 
   return (
     <div 
-      className={`w-full flex flex-col gap-4 pt-${isDesktop ? '16' : '4'}`}
+      className="w-full flex flex-col gap-4 pt-2"
       aria-label={t('It is the card information about the document.')}
     >
       {(docIsPublic || docIsAuth) && (
@@ -43,8 +45,19 @@ export const DocHeader = ({ doc }: DocHeaderProps) => {
       
       <div className="flex flex-col w-full pb-2">
         <div className="flex justify-between items-center gap-2 max-w-full">
+        <button
+                type="button"
+                aria-label={t('Back')}
+                onClick={() => router.push('/documents') }
+                className="text-sm flex items-center px-2 py-1 rounded hover:bg-gray-100 focus:outline-none focus:ring"
+              >
+                <span aria-hidden="true">←</span> {t('Back')}
+              </button>
           <div className="flex flex-col gap-1 overflow-auto">
-            <DocTitle doc={doc} />
+            <div className="flex items-center gap-2">
+
+              <DocTitle doc={doc} />
+            </div>
 
             <div className="flex">
               {isDesktop ? (

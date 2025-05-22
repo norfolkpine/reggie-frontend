@@ -28,6 +28,10 @@ import { BlockNoteToolbar } from './BlockNoteToolBar/BlockNoteToolbar';
 import { DividerBlock, QuoteBlock } from './custom-blocks';
 import { useAuth } from '@/contexts/auth-context';
 
+import React from 'react';
+import { PageBreakIndicators } from './PageBreakIndicators';
+import styles from './BlockNoteEditor.module.css';
+
 export const blockNoteSchema = withPageBreak(
   BlockNoteSchema.create({
     blockSpecs: {
@@ -126,36 +130,38 @@ export const BlockNoteEditor = ({
     };
   }, [setEditor, editor]);
 
-  return (
-    <div
-      className={`pt-4 px-6 bg-white ${
-        readOnly ? 'pointer-events-none' : ''
-      } --docs--editor-container`}
-    >
-      {errorAttachment && (
-        <div className="mb-6 mx-2">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{errorAttachment.cause}</AlertDescription>
-          </Alert>
-        </div>
-      )}
+  // Add a ref to the editor container for PageBreakIndicators
+  const editorContainerRef = React.useRef<HTMLDivElement>(null);
 
-      <BlockNoteView
-        editor={editor}
-        formattingToolbar={false}
-        slashMenu={false}
-        editable={!readOnly}
-        theme="light"
-        className={`min-h-[300px] ${
-          isNew
-            ? 'focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-opacity-50'
-            : ''
-        }`}
-      >
-        <BlockNoteSuggestionMenu />
-        <BlockNoteToolbar />
-      </BlockNoteView>
+  return (
+    <div className={styles.container} style={{ marginTop: '2rem' }}>
+      <div className={styles.editorPanel}>
+        {errorAttachment && (
+          <div className="mb-6 mx-2">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{errorAttachment.cause}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+        <div style={{ position: 'relative' }}>
+          <div ref={editorContainerRef} style={{ position: 'relative' }}>
+            <BlockNoteView
+              editor={editor}
+              formattingToolbar={false}
+              slashMenu={false}
+              editable={!readOnly}
+              theme="light"
+              className={styles.editorContainer}
+            >
+              <BlockNoteSuggestionMenu />
+              <BlockNoteToolbar />
+            </BlockNoteView>
+            {/* Overlay page break indicators */}
+            <PageBreakIndicators containerRef={editorContainerRef} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

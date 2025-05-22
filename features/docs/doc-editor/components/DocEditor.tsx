@@ -36,32 +36,29 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
   return (
     <div className="flex flex-col h-full w-full">
+      <div className={`px-${isDesktop ? '8' : '4'} pt-4 --docs--doc-editor-header mb-4`}>
+            {isVersion ? (
+              <DocVersionHeader title={doc.title} />
+            ) : (
+              <DocHeader doc={doc} />
+            )}
+          </div>
       <div className="relative max-w-[1024px] mx-auto w-full h-full --docs--doc-editor">
         {isDesktop && !isVersion && (
           <div className="absolute top-[72px] right-5 z-10">
             <TableContent />
           </div>
         )}
-        
-        <div className={`px-${isDesktop ? '8' : '4'} --docs--doc-editor-header mb-4`}>
-          {isVersion ? (
-            <DocVersionHeader title={doc.title} />
-          ) : (
-            <DocHeader doc={doc} />
-          )}
-        </div>
-
-        <div 
-          className="bg-white rounded-md shadow-sm flex flex-1 overflow-hidden relative --docs--doc-editor-content"
+        <div
+          className="--docs--doc-editor-content"
           style={{ backgroundColor: colorsTokens['primary-bg'] }}
         >
-          <div className="flex-1 relative w-full">
-            {isVersion ? (
-              <DocVersionEditor docId={doc.id} versionId={versionId} />
-            ) : (
-              <BlockNoteEditor doc={doc} provider={provider} isNew={isNew} />
-            )}
-          </div>
+          {/* Always show a header */}
+          {isVersion ? (
+            <DocVersionEditor docId={doc.id} versionId={versionId} />
+          ) : (
+            <BlockNoteEditor doc={doc} provider={provider} isNew={isNew} />
+          )}
         </div>
       </div>
     </div>
