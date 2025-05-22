@@ -134,7 +134,7 @@ export const BlockNoteEditor = ({
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ marginTop: '2rem' }}>
       <div className={styles.editorPanel}>
         {errorAttachment && (
           <div className="mb-6 mx-2">
@@ -144,8 +144,8 @@ export const BlockNoteEditor = ({
             </Alert>
           </div>
         )}
-        <div style={{ position: 'relative', width: '100%' }}>
-          <div ref={editorContainerRef} style={{ position: 'relative', width: '100%' }}>
+        <div style={{ position: 'relative' }}>
+          <div ref={editorContainerRef} style={{ position: 'relative' }}>
             <BlockNoteView
               editor={editor}
               formattingToolbar={false}

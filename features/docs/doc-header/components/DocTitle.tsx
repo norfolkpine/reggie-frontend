@@ -35,7 +35,7 @@ export const DocTitleText = ({ title }: DocTitleTextProps) => {
   const { untitledDocument } = useTrans();
 
   return (
-    <h2 className={`font-bold ${isMobile ? 'text-xl' : 'text-2xl'} text-gray-900`}>
+    <h2 className={`font-bold ${isMobile ? 'text-2xl' : 'text-4xl'} text-gray-900`}>
       {title || untitledDocument}
     </h2>
   );
@@ -107,7 +107,9 @@ const DocTitleInput = ({ doc }: DocTitleProps) => {
               handleTitleSubmit(event.target.textContent || '')
             }
             style={{
-              fontSize: isDesktop ? 'var(--font-size-h2)' : 'var(--font-size-sm)',
+              fontSize: isDesktop ? '2.25rem' : '1.5rem', // 4xl for desktop, 2xl for mobile
+              fontWeight: 700,
+              color: '#111827',
             }}
           >
             {titleDisplay}

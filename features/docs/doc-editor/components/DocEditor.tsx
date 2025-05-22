@@ -1,5 +1,4 @@
 import { Loader } from '@openfun/cunningham-react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
 
@@ -10,13 +9,15 @@ import {
   base64ToBlocknoteXmlFragment,
   useProviderStore,
 } from '@/features/docs/doc-management';
-import { TableContent } from '@/features/docs/doc-table-content/';
 import { Versions, useDocVersion } from '@/features/docs/doc-versioning/';
 import { useResponsiveStore } from '@/stores';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-
 import { BlockNoteEditor, BlockNoteEditorVersion } from './BlockNoteEditor';
+
+import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation';
+import { useModal } from '@/contexts/modal-context';
 
 interface DocEditorProps {
   doc: Doc;
@@ -25,42 +26,71 @@ interface DocEditorProps {
 }
 
 export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => {
+  let isModalOpen = false;
+  try {
+    const { showModal, hideModal } = useModal();
+    if (typeof window !== 'undefined') {
+      isModalOpen = !!document.querySelector('.modal-open, [data-state="open"]');
+    }
+  } catch {
+    isModalOpen = false;
+  }
+
   const { isDesktop } = useResponsiveStore();
   const isVersion = !!versionId && typeof versionId === 'string';
   const { colorsTokens } = useCunninghamTheme();
   const { provider } = useProviderStore();
+  const { t } = useTranslation();
+  const router = useRouter();
 
-  if (!provider) {
-    return null;
-  }
+  if (!provider) return null;
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className={`px-${isDesktop ? '8' : '4'} pt-4 --docs--doc-editor-header mb-4`}>
+    <div className="pl-64 max-md:pl-0 flex flex-col min-h-screen">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-50 bg-white border-b h-16 flex items-center px-4">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            aria-label="Back"
+            className="rounded-full hover:bg-gray-100 p-2 transition-colors"
+            onClick={() => router.back()}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-medium">Document Editor</h1>
+        </div>
+      </header>
+
+      {/* Scrollable content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="w-full flex justify-center">
+          <div className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header`} style={{width: 1040}}>
             {isVersion ? (
               <DocVersionHeader title={doc.title} />
             ) : (
               <DocHeader doc={doc} />
             )}
           </div>
-      <div className="relative max-w-[1024px] mx-auto w-full h-full --docs--doc-editor">
-        {isDesktop && !isVersion && (
-          <div className="absolute top-[72px] right-5 z-10">
-            <TableContent />
-          </div>
-        )}
-        <div
-          className="--docs--doc-editor-content"
-          style={{ backgroundColor: colorsTokens['primary-bg'] }}
-        >
-          {/* Always show a header */}
-          {isVersion ? (
-            <DocVersionEditor docId={doc.id} versionId={versionId} />
-          ) : (
-            <BlockNoteEditor doc={doc} provider={provider} isNew={isNew} />
-          )}
         </div>
-      </div>
+
+        <div className="w-full flex justify-center">
+          <div
+            className="--docs--doc-editor-content flex justify-center"
+            style={{ backgroundColor: colorsTokens['primary-bg'] }}
+          >
+            <div style={{ width: 1040 }}>
+              {isVersion ? (
+                <DocVersionEditor docId={doc.id} versionId={versionId} />
+              ) : (
+                <BlockNoteEditor doc={doc} provider={provider} isNew={isNew} />
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
@@ -79,20 +109,15 @@ export const DocVersionEditor = ({
     isLoading,
     isError,
     error,
-  } = useDocVersion({
-    docId,
-    versionId,
-  });
+  } = useDocVersion({ docId, versionId });
 
   const { replace } = useRouter();
   const [initialContent, setInitialContent] = useState<Y.XmlFragment>();
 
   useEffect(() => {
-    if (!version?.content) {
-      return;
+    if (version?.content) {
+      setInitialContent(base64ToBlocknoteXmlFragment(version.content));
     }
-
-    setInitialContent(base64ToBlocknoteXmlFragment(version.content));
   }, [version?.content]);
 
   if (isError && error) {
@@ -104,12 +129,8 @@ export const DocVersionEditor = ({
     return (
       <div className="m-8 --docs--doc-version-editor-error">
         <Alert variant="destructive">
-          {error.status === 502 && (
-            <AlertTriangle className="h-4 w-4" />
-          )}
-          <AlertDescription>
-            {error.cause}
-          </AlertDescription>
+          {error.status === 502 && <AlertTriangle className="h-4 w-4" />}
+          <AlertDescription>{error.cause}</AlertDescription>
         </Alert>
       </div>
     );

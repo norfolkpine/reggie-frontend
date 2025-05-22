@@ -111,6 +111,20 @@ body {
   }
 }
 
+/* Add global styles here */
+
+/* Ensure BlockNote drag handle and overlays are always below the fixed page header */
+.bn-drag-handle, .mantine-drag-handle, [class*="drag-handle"], .bn-menu, .mantine-Menu-dropdown, [class*="bn-menu"] {
+  z-index: 20 !important;
+}
+
+/* Force the page header to always be above any BlockNote overlay or drag handle */
+.fixed.top-0.z-50,
+.fixed.top-0.z-30,
+.fixed.top-0 {
+  z-index: 9999 !important;
+}
+
 /* Markdown Styles */
 .markdown {
   @apply text-sm leading-normal text-foreground;

@@ -3,12 +3,12 @@
   flex-direction: column;
   background: #fff;
   position: relative;
-  /* min-height: 100vh; */
+  min-height: 100vh;
 }
 
 .editorPanel {
   flex: 1 1;
-  /* overflow-y: scroll; */
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -19,6 +19,7 @@
 .editorContainer {
   position: relative;
   width: 100%;
+  min-height: unset;
   height: auto;
   margin: 0 auto;
   border: none;
@@ -38,8 +39,6 @@
   The following overrides for heading sizes were previously added for custom alignment.
   Commenting out to restore BlockNote's default heading styles and recenter the drag handle.
 */
-
-
 .editorContainer > [contenteditable="true"] {
   border-radius: inherit;
   flex-grow: 1;
