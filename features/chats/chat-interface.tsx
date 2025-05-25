@@ -24,6 +24,7 @@ import { createChatSession } from "@/api/chat-sessions";
 import MessageActions from "./components/message-actions";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
+import { HistoryPopup } from "./components/history-popup";
 
 // Function to check if a string is valid JSON with crypto data structure
 function isCryptoData(content: string): boolean {
@@ -62,6 +63,7 @@ export default function ChatInterface() {
   const agentId = searchParams.get("agentId") ?? "";
   const params = useParams();
   const sessionId = params.sessionId as string | null;
+  const router = useRouter();
 
   const {
     messages,
@@ -88,7 +90,6 @@ export default function ChatInterface() {
   const [isNearBottom, setIsNearBottom] = useState(true);
   // Remove isDragging and containerRef as they're no longer needed with ResizablePanelGroup
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
 
   // Remove manual resize handlers as they're no longer needed with ResizablePanelGroup
 
@@ -200,6 +201,41 @@ export default function ChatInterface() {
     }
   }
 
+  const handleSelectChat = (chatId: string) => {
+    // Navigate to the selected chat
+    router.push(`/chat/${chatId}`);
+  };
+
+  const handleNewChat = async () => {
+    // Reset the current chat state
+    setShowWelcome(true);
+    
+    try {
+      // Create a new chat session
+      const newSession = await createChatSession({
+        title: "New Conversation",
+        agent_id: agentId,
+        agent_code: "gpt-4o", // Default agent code
+      });
+      
+      // Navigate to the new chat session
+      router.push(`/chat/${newSession.session_id}?agentId=${agentId}`);
+      
+      toast({
+        title: "New Chat Created",
+        description: "Starting a fresh conversation",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error creating new chat session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat session",
+        duration: 3000,
+      });
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
@@ -207,10 +243,15 @@ export default function ChatInterface() {
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* Chat area */}
         <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full">
+        
+          
           {/* Header */}
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="p-4 border-b flex items-center justify-start">
+              <HistoryPopup onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
             <h1 className="text-xl font-medium">ChatGPT 4o</h1>
           </div>
+
+          
 
           {showWelcome ? (
             // Welcome screen with centered content
