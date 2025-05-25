@@ -67,7 +67,7 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
           {documents.map((doc) => (
             <Link 
               key={doc.id} 
-              href={`/documents/${doc.id}`} 
+              href={`/document/${doc.id}`} 
               className="group w-full max-w-[200px]"
             >
               <Card className="flex flex-col overflow-hidden border transition-all hover:border-primary/20 hover:shadow-sm w-full aspect-[3/4]">
