@@ -18,40 +18,82 @@ interface UseAgentChatReturn {
   messages: Message[];
   handleSubmit: (value?: string) => void;
   isLoading: boolean;
+  error: string | null;
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(!!ssid); // Track initial loading
   const [sessionCreated, setSessionCreated] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(ssid);
+  const [error, setError] = useState<string | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Validate API base URL on component mount
+  useEffect(() => {
+    if (!BASE_URL || BASE_URL === "undefined") {
+      console.error("API Base URL is not defined. Check your environment variables.");
+      setError("API configuration error. Please check your environment settings.");
+    }
+  }, []);
 
   useEffect(() => {
     const loadExistingMessages = async () => {
-      if (!ssid) return;
+      if (!ssid) {
+        setIsInitializing(false);
+        return;
+      }
+      
       try {
         setIsLoading(true);
+        setIsInitializing(true);
+        setError(null);
+        
         const response = await getChatSessionMessage(ssid);
         const formattedMessages = response.results.map(msg => ({
           id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
           content: msg.content,
           role: msg.role as 'user' | 'assistant'
         }));
+        
         setMessages(formattedMessages);
         setSessionCreated(true);
       } catch (error) {
         console.error('Error loading messages:', error);
+        setError('Failed to load messages. Please try refreshing the page.');
       } finally {
         setIsLoading(false);
+        setIsInitializing(false);
       }
     };
 
     loadExistingMessages();
+    
+    // Cleanup any existing requests when component unmounts or sessionId changes
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [ssid]);
 
   const handleSubmit = useCallback(async (value?: string) => {
     if (!value?.trim() || isLoading) return;
+    
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create a new abort controller
+    abortControllerRef.current = new AbortController();
+    
+    // Reset any previous errors
+    setError(null);
+    setIsLoading(true);
 
     let tempSessionId = sessionId;
 
@@ -67,6 +109,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setSessionCreated(true);
       } catch (error) {
         console.error('Failed to create chat session:', error);
+        setError('Failed to create chat session. Please check your connection and try again.');
+        setIsLoading(false);
         return;
       }
     }
@@ -78,28 +122,35 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     };
     setMessages(prev => [...prev, userMessage]);
 
-    setIsLoading(true);
-
     try {
       const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        throw new Error("Authentication token is missing");
+      }
+
       const payload = {
         agent_id: agentId,
         message: value ?? "",
         session_id: tempSessionId,
       };
 
-      setMessages(prev => [...prev, { id: Date.now().toString(), content: '', role: 'assistant' }]);
+      // Add empty assistant message to show typing indicator
+      const assistantMessageId = Date.now().toString();
+      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
 
-      const response = await fetch(`${BASE_URL}/reggie/api/v1/agent/stream-chat/`, {
+      const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
+        signal: abortControllerRef.current.signal,
       });
 
-      console.log("Response:", response);
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");
@@ -109,6 +160,11 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       let responseContent = '';
 
       while (true) {
+        // Check if request was aborted
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
+        
         const { value, done } = await reader.read();
         if (done) break;
 
@@ -126,11 +182,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
                 responseContent += parsedData.token;
                 setMessages(prev => {
                   const newMessages = [...prev];
-                  newMessages[newMessages.length - 1] = {
-                    id: newMessages[newMessages.length - 1].id,
-                    role: 'assistant',
-                    content: responseContent,
-                  };
+                  const lastMessageIndex = newMessages.length - 1;
+                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                    newMessages[lastMessageIndex] = {
+                      id: newMessages[lastMessageIndex].id,
+                      role: 'assistant',
+                      content: responseContent,
+                    };
+                  }
                   return newMessages;
                 });
               }
@@ -141,32 +200,50 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         }
       }
     } catch (error) {
-      console.error('Stream error:', error);
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage.role === 'assistant' && lastMessage.content === '') {
-          newMessages[newMessages.length - 1] = {
-            ...lastMessage,
-            content: 'Sorry, there was an error processing your request.',
-          };
-        }
-        return newMessages;
-      });
+      // Don't set error if it was due to an abort
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('Request was aborted');
+      } else {
+        console.error('Stream error:', error);
+        setError(error instanceof Error ? error.message : 'An unknown error occurred');
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastIndex = newMessages.length - 1;
+          if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
+            newMessages[lastIndex] = {
+              ...newMessages[lastIndex],
+              content: 'Sorry, there was an error processing your request.',
+            };
+          }
+          return newMessages;
+        });
+      }
     } finally {
       setIsLoading(false);
       if (readerRef.current) {
-        readerRef.current.releaseLock();
+        try {
+          readerRef.current.releaseLock();
+        } catch (e) {
+          console.error('Error releasing reader lock:', e);
+        }
         readerRef.current = null;
       }
     }
-  }, [isLoading, agentId, sessionCreated, sessionId]);
+  }, [agentId, sessionCreated, sessionId]); // Remove isLoading from dependencies to avoid re-render issues
 
-  // Cleanup reader on unmount
+  // Cleanup reader and abort controller on unmount
   useEffect(() => {
     return () => {
       if (readerRef.current) {
-        readerRef.current.releaseLock();
+        try {
+          readerRef.current.releaseLock();
+        } catch (e) {
+          console.error('Error releasing reader lock on unmount:', e);
+        }
+      }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -174,6 +251,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   return {
     messages,
     handleSubmit,
-    isLoading
+    isLoading: isLoading || isInitializing,
+    error
   };
 }

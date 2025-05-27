@@ -64,9 +64,16 @@ interface ChatItem {
     | string
     | ForwardRefExoticComponent<
         Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
-      >;
+      >
+    | (() => JSX.Element);
   url: string;
 }
+
+interface DividerItem {
+  type: "divider";
+}
+
+type NavigationItem = ChatItem | DividerItem;
 
 interface HistorySection {
   title: string;
@@ -80,7 +87,7 @@ const chats: ChatItem[] = [
 ];
 
 
-const navigationItems: (ChatItem | { type: "divider" })[] = [
+const navigationItems: NavigationItem[] = [
   { name: "Assistant", icon: Bot, url: "/chat" },
   {
     name: "Vault",
@@ -155,12 +162,21 @@ export default function Sidebar() {
     router.push(`/chat/${sessionId}`);
   };
 
-  const renderIcon = (icon: ChatItem["icon"]) => {
+  const renderIcon = (icon?: ChatItem["icon"]) => {
+    if (!icon) return null;
+    
     if (typeof icon === "string") {
       return icon;
     }
-    const IconComponent = icon;
-    return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
+    
+    // Handle FolderShieldIcon which is a function component
+    if (icon === FolderShieldIcon) {
+      return <FolderShieldIcon />;
+    }
+    
+    // Handle Lucide icons which are ForwardRefExoticComponent
+    const IconComponent = icon as ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+    return <IconComponent className="h-4 w-4" />;
   };
 
   const handleCreateProject = async (name: string, description: string) => {
@@ -188,29 +204,6 @@ export default function Sidebar() {
     }
   };
 
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [errorSessions, setErrorSessions] = useState<string | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const { isAuthenticated } = useAuth();
-
-  const fetchChatSessions = async () => {
-    if (!isAuthenticated) return;
-    setIsLoadingSessions(true);
-    setErrorSessions(null);
-    try {
-      const response = await getChatSessions();
-      setChatSessions(response.results);
-    } catch (err) {
-      console.error("Failed to fetch chat sessions:", err);
-      setErrorSessions("Failed to load chat sessions");
-    } finally {
-      setIsLoadingSessions(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChatSessions();
-  }, []);
 
   return (
     <div
@@ -252,29 +245,33 @@ export default function Sidebar() {
               // Change the onClick handler to properly handle navigation vs. dialog opening */}
 
               {navigationItems.map((item, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname === item.url ? "bg-gray-200" : ""}`}
-                  onClick={() => handleNavItemClick(item.url)}
-                >
-                  <div className="flex items-center gap-2">
-                    {renderIcon(item.icon)}
-                    <span>{item.name}</span>
+                'type' in item ? (
+                  <div key={index} className="h-px my-2"></div>
+                ) : (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname === item.url ? "bg-gray-200" : ""}`}
+                    onClick={() => handleNavItemClick(item.url)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {renderIcon(item.icon)}
+                      <span>{item.name}</span>
+                    </div>
+                    {item.name === "Vault" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-full hover:bg-gray-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreateProjectOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
-                  {item.name === "Vaults" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 rounded-full hover:bg-gray-300"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCreateProjectOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
+                )
               ))}
             </div>
           </div>
@@ -295,62 +292,6 @@ export default function Sidebar() {
                 </div>
               ))}
             </div>
-
-            {/* {historySections.map((section, sectionIndex) => ( */}
-            <div className="px-3 py-2">
-              {chatSessions.length > 0 && (
-                <h3 className="text-xs font-medium mb-2">History</h3>
-              )}
-              {chatSessions.map((item, itemIndex) => (
-                <div
-                  key={itemIndex}
-                  className={`flex items-center justify-between p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${pathname === `/chat/${item.session_id}` ? "bg-gray-200" : ""}`}
-                  onClick={() => handleHistoryItemClick(item.session_id)}
-                  onMouseEnter={() => setHoveredHistoryItem(item.session_id)}
-                  onMouseLeave={() => setHoveredHistoryItem(null)}
-                >
-                  <span className="text-sm truncate flex-1">{item.title}</span>
-
-                  {hoveredHistoryItem === item.session_id && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-full"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem className="cursor-pointer">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          <span>Continue Chat</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Star className="h-4 w-4 mr-2" />
-                          <span>Add to Favorites</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Edit className="h-4 w-4 mr-2" />
-                          <span>Rename</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Share2 className="h-4 w-4 mr-2" />
-                          <span>Share</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer text-red-600">
-                          <Trash className="h-4 w-4 mr-2" />
-                          <span>Delete from History</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              ))}
-            </div>
-            {/* ))} */}
           </div>
 
           <div className="p-3 border-t border-border">
@@ -394,49 +335,42 @@ export default function Sidebar() {
               // Change the onClick handler to properly handle navigation */}
 
               {navigationItems.map((item, index) => (
-                <div key={index} className="relative">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-full w-10 h-10 ${
-                      pathname.includes(item.url) ? "bg-gray-200" : ""
-                    }`}
-                    title={item.name}
-                    onClick={() => handleNavItemClick(item.url)}
-                  >
-                    {renderIcon(item.icon)}
-                  </Button>
-                  {item.name === "Vaults" && (
+                'type' in item ? (
+                  <div key={index} className="w-8 border-t border-gray-300 my-2"></div>
+                ) : (
+                  <div key={index} className="relative">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCreateProjectOpen(true);
-                      }}
-                      title="Create new project"
+                      className={`rounded-full w-10 h-10 ${
+                        pathname.includes(item.url) ? "bg-gray-200" : ""
+                      }`}
+                      title={item.name}
+                      onClick={() => handleNavItemClick(item.url)}
                     >
-                      <Plus className="h-3 w-3" />
+                      {renderIcon(item.icon)}
                     </Button>
-                  )}
-                </div>
+                    {item.name === "Vault" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreateProjectOpen(true);
+                        }}
+                        title="Create new project"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )
               ))}
 
               <div className="w-8 border-t border-gray-300 my-2"></div>
 
-              {/* Chat items */}
-              {chatSessions.map((chat, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-lg cursor-pointer hover:bg-gray-400 ${pathname === chat.session_id ? "ring-2 ring-primary" : ""}`}
-                  title={chat.title}
-                  onClick={() => handleChatItemClick(chat.session_id ?? "")}
-                >
-                  {/* {renderIcon(chat.icon)} */}
-                  <MessageCircle size={16} />
-                </div>
-              ))}
+             
             </div>
 
             {/* Add TeamSwitcher at the bottom of the sidebar */}

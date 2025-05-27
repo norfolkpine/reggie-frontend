@@ -25,6 +25,18 @@ import MessageActions from "./components/message-actions";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
 import { HistoryPopup } from "./components/history-popup";
+import { useAgentChat } from "@/hooks/use-agent-chat";
+import { createGoogleDoc } from "@/api/integration-google-drive";
+import { truncateText } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { InputMessage } from "./components/input-message";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 // Function to check if a string is valid JSON with crypto data structure
 function isCryptoData(content: string): boolean {
@@ -47,17 +59,6 @@ function isCryptoData(content: string): boolean {
   }
 }
 
-import { useAgentChat } from "@/hooks/use-agent-chat";
-import { createGoogleDoc } from "@/api/integration-google-drive";
-import { truncateText } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
-import { InputMessage } from "./components/input-message";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-
 export default function ChatInterface() {
   const searchParams = useSearchParams();
   const agentId = searchParams.get("agentId") ?? "";
@@ -69,6 +70,7 @@ export default function ChatInterface() {
     messages,
     handleSubmit: chatSubmit,
     isLoading,
+    error
   } = useAgentChat({
     agentId,
     sessionId: sessionId,
@@ -248,10 +250,24 @@ export default function ChatInterface() {
           {/* Header */}
           <div className="p-4 border-b flex items-center justify-start">
               <HistoryPopup onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
-            <h1 className="text-xl font-medium">ChatGPT 4o</h1>
+              <div className="text-lg font-semibold ml-2">Chat</div>
+              <Button
+                size="icon"
+                variant="outline"
+                className="ml-auto"
+                onClick={handleNewChat}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
           </div>
 
-          
+          {error && (
+            <Alert variant="destructive" className="mx-4 my-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           {showWelcome ? (
             // Welcome screen with centered content

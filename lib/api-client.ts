@@ -1,7 +1,16 @@
 import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
 
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+// Get base URL from environment variables with fallback and handling for client-side
+export const BASE_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin.includes('localhost') 
+     ? 'http://127.0.0.1:8000' 
+     : window.location.origin)
+  : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000');
+
+// Log the base URL during development to help with debugging
+if (process.env.NODE_ENV !== 'production') {
+  console.log('API Base URL:', BASE_URL);
+}
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -75,13 +84,18 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     ...config.headers,
   };
 
-  const response = await fetch(url.toString(), {
-    ...requestConfig,
-    headers,
-  });
+  try {
+    const response = await fetch(url.toString(), {
+      ...requestConfig,
+      headers,
+    });
 
-  // Pass HTTP method to handleResponse if available
-  return handleResponse(response, requestConfig.method);
+    // Pass HTTP method to handleResponse if available
+    return handleResponse(response, requestConfig.method);
+  } catch (error) {
+    console.error(`Network error when fetching ${url.toString()}:`, error);
+    throw error;
+  }
 }
 
 export const api = {
