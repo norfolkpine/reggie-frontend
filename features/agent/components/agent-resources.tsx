@@ -30,7 +30,7 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
   const [newUrl, setNewUrl] = useState("")
   const [urlError, setUrlError] = useState("")
   const [citeResources, setCiteResources] = useState(false)
-  const [knowledgeBaseId, setKnowledgeBaseId] = useState<number | null>(null)
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState<string | null>(null)
   const [searchKnowledge, setSearchKnowledge] = useState(false)
   const [citeKnowledge, setCiteKnowledge] = useState(false)
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
@@ -53,6 +53,7 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
       setIsLoadingKnowledgeBases(true)
       try {
         const response = await getKnowledgeBases()
+        console.log(response.results)
         setKnowledgeBases(response.results)
       } catch (error) {
         console.error("Failed to fetch knowledge bases:", error)
@@ -172,9 +173,8 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
       return
     }
     
-    const id = parseInt(value)
-    setKnowledgeBaseId(id)
-    if (id) {
+    setKnowledgeBaseId(value)
+    if (value) {
       setSearchKnowledge(true)
     }
   }
@@ -229,7 +229,7 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
                 {knowledgeBases.map((kb) => (
-                  <SelectItem key={kb.id} value={kb.id.toString()}>
+                  <SelectItem key={kb.knowledgebase_id} value={kb.knowledgebase_id}>
                     <div className="flex items-center">
                       <Database className="h-4 w-4 mr-2 text-muted-foreground" />
                       <span>{kb.name}</span>

@@ -23,7 +23,7 @@ const tabs = [
   { id: "details", label: "Details" },
   { id: "prompts", label: "Prompts" },
   { id: "engine", label: "AI engine" },
-  { id: "resources", label: "Resources" },
+  { id: "resources", label: "Knowledge Base" },
   // { id: "limits", label: "Limits" },
 ];
 

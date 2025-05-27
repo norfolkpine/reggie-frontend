@@ -234,7 +234,7 @@ export interface Agent {
   updated_at: string;
   user: number;
   model: number;
-  knowledge_base: number;
+  knowledge_base: string;
   team: number;
   subscriptions: number[];
 }
@@ -257,7 +257,7 @@ export interface AgentCreate {
     user: number;
     agent: number;
   };
-  knowledge_base: number;
+  knowledge_base: string;
   search_knowledge: boolean;
   cite_knowledge: boolean;
   add_datetime_to_instructions: boolean;

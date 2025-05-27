@@ -12,7 +12,7 @@ export type AgentForm = {
   limitPrompts?: number;
   limitCompletions?: number;
   limitMessages?: number;
-  knowledgeBaseId?: number | null;
+  knowledgeBaseId?: string | null;
   searchKnowledge?: boolean;
   citeKnowledge?: boolean;
 };
