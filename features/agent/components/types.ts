@@ -12,6 +12,9 @@ export type AgentForm = {
   limitPrompts?: number;
   limitCompletions?: number;
   limitMessages?: number;
+  knowledgeBaseId?: number | null;
+  searchKnowledge?: boolean;
+  citeKnowledge?: boolean;
 };
 
 export type UploadedFile = {

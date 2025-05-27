@@ -24,7 +24,7 @@ const tabs = [
   { id: "prompts", label: "Prompts" },
   { id: "engine", label: "AI engine" },
   { id: "resources", label: "Resources" },
-  { id: "limits", label: "Limits" },
+  // { id: "limits", label: "Limits" },
 ];
 
 function AgentCreationContent() {
@@ -70,6 +70,9 @@ function AgentCreationContent() {
             expectedTemplateId: agent.expected_output?.id.toString(),
             expectedOutput: agent.expected_output?.expected_output,
             model: agent.model.toString(),
+            knowledgeBaseId: agent.knowledge_base || null,
+            searchKnowledge: agent.search_knowledge || false,
+            citeKnowledge: false,
           });
         } catch (error) {
           console.error('Error fetching agent data:', error);
@@ -93,6 +96,9 @@ function AgentCreationContent() {
         custom_excpected_output: agentData.expectedOutput,
         model: Number(agentData.model) || 1,
         team: teamStorage.getActiveTeam()?.id || 0,
+        knowledge_base: agentData.knowledgeBaseId || undefined,
+        search_knowledge: agentData.searchKnowledge || false,
+        cite_knowledge: agentData.citeKnowledge || false,
       };
 
       if (agentId) {
@@ -172,16 +178,24 @@ function AgentCreationContent() {
             )}
             {activeTab === "resources" && (
               <AgentResources
-                onChange={(data) => {}
-                }
+                onChange={(data) => {
+                  setAgentData({
+                    knowledgeBaseId: data.knowledgeBaseId,
+                    searchKnowledge: data.searchKnowledge,
+                    citeKnowledge: data.citeKnowledge,
+                    files: data.files,
+                    urls: data.urls,
+                    isCite: data.isCite
+                  });
+                }}
               />
             )}
-            {activeTab === "limits" && (
+            {/* {activeTab === "limits" && (
               <AgentLimits
                 onChange={(data) => {}
                 }
               />
-            )}
+            )} */}
           </div>
 
           <div className="mt-8 flex justify-between">
