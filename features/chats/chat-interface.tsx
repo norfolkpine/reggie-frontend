@@ -61,7 +61,7 @@ function isCryptoData(content: string): boolean {
 
 export default function ChatInterface() {
   const searchParams = useSearchParams();
-  const agentId = searchParams.get("agentId") ?? "";
+  const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
   const params = useParams();
   const sessionId = params.sessionId as string | null;
   const router = useRouter();
@@ -72,7 +72,7 @@ export default function ChatInterface() {
     isLoading,
     error
   } = useAgentChat({
-    agentId,
+    agentId: agentId!,
     sessionId: sessionId,
   });
 
