@@ -15,7 +15,7 @@ import { getChatSessions, ChatSession } from "@/api/chat-sessions";
 import { useRouter } from "next/navigation";
 
 interface HistoryPopupProps {
-  onSelectChat?: (chatId: string) => void;
+  onSelectChat?: (chatId: string, agentCode?: string | null) => void;
   onNewChat?: () => void;
 }
 
@@ -61,12 +61,17 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
     }
   }, [searchQuery, chatSessions]);
 
-  const handleSelectChat = (chatId: string) => {
+  const handleSelectChat = (chatId: string,agentCode?: string | null) => {
     if (onSelectChat) {
-      onSelectChat(chatId);
+      onSelectChat(chatId,agentCode);
     } else {
       // Default navigation if no handler provided
-      router.push(`/chat/${chatId}`);
+      let url = `/chat/${chatId}`;
+      if (agentCode) {
+        const params = new URLSearchParams({ agentId:agentCode });
+        url += `?${params.toString()}`;
+      }
+      router.push(url);
     }
     setIsOpen(false);
   };
@@ -199,7 +204,7 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
               <div
                 key={session.session_id}
                 className="flex flex-col gap-1 rounded-md p-3 hover:bg-muted cursor-pointer transition-colors"
-                onClick={() => handleSelectChat(session.session_id)}
+                onClick={() => handleSelectChat(session.session_id, session.agent_code)}
               >
                 <div className="flex justify-between items-center">
                   <h4 className="font-medium text-sm line-clamp-1">{session.title}</h4>

@@ -203,9 +203,14 @@ export default function ChatInterface() {
     }
   }
 
-  const handleSelectChat = (chatId: string) => {
+  const handleSelectChat = (chatId: string, agentCode?: string | null) => {
     // Navigate to the selected chat
-    router.push(`/chat/${chatId}`);
+    let url = `/chat/${chatId}`;
+      if (agentCode) {
+        const params = new URLSearchParams({ agentId:agentCode });
+        url += `?${params.toString()}`;
+      }
+      router.push(url);
   };
 
   const handleNewChat = async () => {

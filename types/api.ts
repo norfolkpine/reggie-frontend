@@ -235,7 +235,7 @@ export interface Agent {
   user: number;
   model: number;
   knowledge_base: string;
-  team: number;
+  team: number | null;
   subscriptions: number[];
 }
 
@@ -266,7 +266,7 @@ export interface AgentCreate {
   debug_mode: boolean;
   num_history_responses: number;
   is_global: boolean;
-  team: number;
+  team: number | null;
   subscriptions: number[];
 }
 

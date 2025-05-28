@@ -158,9 +158,17 @@ export default function Sidebar() {
     router.push(url);
   };
 
-  const handleHistoryItemClick = (sessionId: string) => {
-    router.push(`/chat/${sessionId}`);
-  };
+  const handleHistoryItemClick = (
+  sessionId: string,
+  agentCode?: string | null
+) => {
+  let url = `/chat/${sessionId}`;
+  if (agentCode) {
+    const params = new URLSearchParams({ agentId:agentCode });
+    url += `?${params.toString()}`;
+  }
+  router.push(url);
+};
 
   const renderIcon = (icon?: ChatItem["icon"]) => {
     if (!icon) return null;

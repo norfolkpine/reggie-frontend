@@ -95,7 +95,7 @@ function AgentCreationContent() {
         custom_instruction: agentData.systemMessage,
         custom_excpected_output: agentData.expectedOutput,
         model: Number(agentData.model) || 1,
-        team: teamStorage.getActiveTeam()?.id || 0,
+        team: teamStorage.getActiveTeam()?.id || null,
         knowledge_base: agentData.knowledgeBaseId || undefined,
         search_knowledge: agentData.searchKnowledge || false,
         cite_knowledge: agentData.citeKnowledge || false,
