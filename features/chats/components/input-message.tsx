@@ -26,7 +26,8 @@ export function InputMessage({ onSubmit, loading, className }: InputMessageProps
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     onSubmit(textInput)
     setTextInput("")
   }

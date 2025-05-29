@@ -1,0 +1,69 @@
+import { api } from '@/lib/api-client';
+import { VaultFile } from '../types/api';
+import { handleApiError } from '@/lib/utils/handle-api-error';
+import { BASE_URL } from '@/lib/api-client';
+import { TOKEN_KEY } from '@/contexts/auth-context';
+
+export interface UploadFileParams {
+  file: File;
+  project: number;
+  uploaded_by: number;
+  team?: number;
+  shared_with_users?: number[];
+  shared_with_teams?: number[];
+}
+
+export async function getVaultFilesByProject(projectId: number): Promise<VaultFile[]> {
+  const response = await api.get(`/reggie/api/v1/vault-files/by-project/?project_id=${projectId}`);
+  return response.results as VaultFile[];
+}
+
+export async function uploadFiles({
+  file,
+  project,
+  uploaded_by,
+  team,
+  shared_with_users,
+  shared_with_teams,
+}: UploadFileParams) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('project', String(project));
+  formData.append('uploaded_by', String(uploaded_by));
+  if (typeof team !== 'undefined') {
+    formData.append('team', String(team));
+  }
+  if (shared_with_users) {
+    shared_with_users.forEach((user) => formData.append('shared_with_users', String(user)));
+  }
+  if (shared_with_teams) {
+    shared_with_teams.forEach((team) => formData.append('shared_with_teams', String(team)));
+  }
+
+
+  for (const [key, value] of formData.entries()) {
+    console.log(key, value);
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.detail || 'Upload failed';
+      throw new Error(message);
+    }
+    const data = await response.json();
+    return data as VaultFile;
+  } catch (error: any) {
+    const message = error?.message || 'Upload failed';
+    console.error(message);
+    throw new Error(message);
+  }
+}

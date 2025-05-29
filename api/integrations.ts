@@ -19,5 +19,5 @@ export const getIntegrations = async (page: number = 1) => {
   const response = await api.get('/integrations/apps/', {
     params: { page: page.toString() }
   });
-  return response as PaginatedIntegrationList;
+  return response as Integration[];
 };

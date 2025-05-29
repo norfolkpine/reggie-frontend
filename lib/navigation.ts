@@ -20,11 +20,11 @@ export const routes = {
     icon: BookOpen,
     description: "Browse your saved resources"
   },
-  projects: {
-    name: "Projects",
-    path: "/project",
+  vaults: {
+    name: "Vaults",
+    path: "/vault",
     icon: FolderGit2,
-    description: "Manage your projects"
+    description: "Manage your vaults"
   },
   exploreAgents: {
     name: "Explore Agents",

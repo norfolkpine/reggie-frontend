@@ -20,7 +20,7 @@ import { Button } from "@/components/custom/button";
 import { getIntegrations, Integration } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
-import { revokeGoogleDriveAccess } from "@/api/integration-google-drive";
+import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -54,7 +54,7 @@ export default function Apps() {
   const fetchApps = async () => {
     try {
       const data = await getIntegrations();
-      setApps(data.results ?? []);
+      setApps(data ?? []);
     } catch (error) {
       console.log(error);
     }
@@ -78,36 +78,39 @@ export default function Apps() {
     };
   }, []);
 
-  const handleConnectionApp = (integration: Integration) => {
+  const handleConnectionApp = async (integration: Integration) => {
     if (integration.key === 'google_drive' && !integration.is_connected) {
-      window.open(BASE_URL + "/integrations/gdrive/oauth/start/", '_blank');
+      try {
+        const redirectUrl = await startGoogleDriveAuth();
+        window.open(redirectUrl, '_blank', 'width=500,height=700');
+      } catch (err) {
+        console.error('Failed to start Google Drive OAuth:', err);
+      }
     }
-  }
+  };
+
   
-  const handleRevokeAccess = async () => {
-    if (!selectedApp) return;
-    
-    try {
-      setIsRevoking(true);
-      await revokeGoogleDriveAccess();
-      toast({
-        title: "Connection revoked",
-        description: `${selectedApp.title} has been disconnected successfully.`,
-      });
-      // Refresh the app list to show updated connection status
-      await fetchApps();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to revoke access. Please try again.",
-        variant: "destructive",
-      });
-      console.error(error);
-    } finally {
-      setIsRevoking(false);
-      setSelectedApp(null);
-    }
+  const handleRevokeAccess = async (app: Integration) => {
+  try {
+    setIsRevoking(true);
+    await revokeGoogleDriveAccess();
+    toast({
+      title: "Connection revoked",
+      description: `${app.title} has been disconnected successfully.`,
+    });
+    // Refresh the app list to show updated connection status
+    await fetchApps();
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to revoke access. Please try again.",
+      variant: "destructive",
+    });
+    console.error(error);
+  } finally {
+    setIsRevoking(false);
   }
+}
 
   const filteredApps = apps
     .sort((a, b) =>
@@ -196,37 +199,20 @@ export default function Apps() {
                   { app.icon_url && <img src={app.icon_url} />}
                 </div>
                 {app.is_connected ? (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedApp(app)}
-                        className="border border-blue-300 bg-blue-50 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:hover:bg-blue-900"
-                      >
-                        Connected
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Revoke Access</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to revoke access to {app.title}? This will disconnect the integration and you'll need to reconnect to use it again.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setSelectedApp(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleRevokeAccess}
-                          disabled={isRevoking}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          {isRevoking ? "Revoking..." : "Revoke Access"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                ) : (
+  <div className="flex gap-2">
+    <Button variant="success" size="sm" disabled>
+      Connected
+    </Button>
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={() => handleRevokeAccess(app)}
+      disabled={isRevoking}
+    >
+      {isRevoking ? "Revoking..." : "Revoke"}
+    </Button>
+  </div>
+) : (
                   <Button
                     variant="outline"
                     size="sm"

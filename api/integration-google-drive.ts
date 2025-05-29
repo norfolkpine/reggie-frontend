@@ -1,9 +1,19 @@
 import { api } from '@/lib/api-client';
 
-export const startGoogleDriveAuth = async () => {
-  const response = await api.get('/integrations/gdrive/oauth/start/');
-  return response;
+// export const startGoogleDriveAuth = async () => {
+//   const response = await api.get('/integrations/gdrive/oauth/start/');
+//   return response;
+// };
+export const startGoogleDriveAuth = async (): Promise<string> => {
+  // Authenticated call to your backend that returns a redirect URL with signed state
+  const response = await api.get('/integrations/gdrive/oauth/start/', {
+    headers: { Accept: 'application/json' },
+  });
+  // The backend returns { redirect_url }
+  const { redirect_url } = response;
+  return redirect_url;
 };
+
 
 export const handleGoogleDriveCallback = async () => {
   const response = await api.get('/integrations/gdrive/oauth/callback/');

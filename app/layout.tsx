@@ -9,8 +9,8 @@ import { ModalProvider } from "@/contexts/modal-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ChatGPT Clone",
-  description: "A ChatGPT clone built with Next.js and shadcn/ui",
+  title: "Reggie",
+  description: "Compliance and work automation engine",
     generator: 'v0.dev'
 }
 
@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <AppProvider>
         <AuthProvider>
           <AuthGuard allowedRoutes={allowedRoutes}>
             <SearchProvider>
@@ -38,6 +39,7 @@ export default function RootLayout({
           </AuthGuard>
         </AuthProvider>
         <Toaster />
+        </AppProvider>
       </body>
     </html>
   )
@@ -48,4 +50,5 @@ export default function RootLayout({
 import AuthGuard from "@/components/auth-guard"
 import { SearchProvider } from "@/contexts/search-context"
 import { cn } from "@/lib/utils"
+import { AppProvider } from "@/config/AppProvider"
 

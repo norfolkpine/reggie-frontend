@@ -1,63 +1,70 @@
 import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
 
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+// Get base URL from environment variables with fallback and handling for client-side
+export const BASE_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin.includes('localhost') 
+     ? 'http://127.0.0.1:8000' 
+     : window.location.origin)
+  : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000');
 
-interface RequestConfig extends RequestInit {
-  params?: Record<string, string | number | undefined>;
+// Log the base URL during development to help with debugging
+if (process.env.NODE_ENV !== 'production') {
+  console.log('API Base URL:', BASE_URL);
 }
 
-async function handleResponse(response: Response) {
+interface RequestConfig extends RequestInit {
+  params?: Record<string, string>;
+  // method is already inherited from RequestInit
+}
+
+async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshTokenLocal) {
-        throw new Error("No refresh token available");
-      }
+      if (refreshTokenLocal) {
+        try {
+          const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refresh: refreshTokenLocal }),
+          });
 
-      try {
-        const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh: refreshTokenLocal }),
-        });
+          if (!refreshResponse.ok) {
+            localStorage.clear();
+            window.location.href = "/sign-in";
+            throw new Error("Refresh token failed");
+          }
 
-        if (!refreshResponse.ok) {
+          const { access, refresh } = await refreshResponse.json();
+          localStorage.setItem(TOKEN_KEY, access);
+          localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+
+          // Retry the original request with new token
+          const retryResponse = await fetch(response.url, {
+            ...response,
+            headers: {
+              ...response.headers,
+              Authorization: `Bearer ${access}`,
+            },
+          });
+
+          return handleResponse(retryResponse, httpMethod);
+        } catch (error) {
           localStorage.clear();
           window.location.href = "/sign-in";
-          throw new Error("Refresh token failed");
+          throw error;
         }
-
-        const { access, refresh } = await refreshResponse.json();
-        localStorage.setItem(TOKEN_KEY, access);
-        localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-
-        const retryResponse = await fetch(response.url, {
-          ...response,
-          headers: {
-            ...response.headers,
-            Authorization: `Bearer ${access}`,
-          },
-        });
-
-        return handleResponse(retryResponse);
-      } catch (error) {
-        localStorage.clear();
-        window.location.href = "/sign-in";
-        throw error;
       }
     }
-
-    const errorData = await response.json();
-    throw errorData || {};
+    throw await response.json();
   }
-
-  try {
-    const data = await response.json();
-    return data || {};
-  } catch {
-    return {};
+  // If 204 No Content and DELETE, return nothing
+  if (response.status === 204 && (httpMethod?.toUpperCase() === 'DELETE')) {
+    return;
   }
+  return response.json();
 }
 
 async function apiClient(endpoint: string, config: RequestConfig = {}) {
@@ -67,9 +74,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
   const url = new URL(`${BASE_URL}${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.append(key, value.toString());
-      }
+      url.searchParams.append(key, value);
     });
   }
 
@@ -79,13 +84,18 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     ...config.headers,
   };
 
-  const response: Response = await fetch(url.toString(), {
-    ...requestConfig,
-    headers,
-  });
+  try {
+    const response = await fetch(url.toString(), {
+      ...requestConfig,
+      headers,
+    });
 
-  return handleResponse(response);
-
+    // Pass HTTP method to handleResponse if available
+    return handleResponse(response, requestConfig.method);
+  } catch (error) {
+    console.error(`Network error when fetching ${url.toString()}:`, error);
+    throw error;
+  }
 }
 
 export const api = {
@@ -116,6 +126,8 @@ export const api = {
 
   delete: (endpoint: string, config?: RequestConfig) =>
     apiClient(endpoint, { ...config, method: "DELETE" }),
+  options:  (endpoint: string, config?: RequestConfig) =>
+    apiClient(endpoint, { ...config, method: "OPTIONS" }),
 };
 
 export default api;

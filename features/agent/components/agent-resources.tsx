@@ -9,13 +9,15 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Info, Upload, X, FileText, File, Globe, Plus, Server } from "lucide-react"
+import { Info, Upload, X, FileText, File, Globe, Plus, Database, ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { AgentForm, UploadedFile, UrlResource } from "./types"
-
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getKnowledgeBases } from "@/api/knowledge-bases"
+import { KnowledgeBase } from "@/types/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface AgentResourcesProps {
   onChange: (agentData: AgentForm) => void
@@ -28,15 +30,40 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
   const [newUrl, setNewUrl] = useState("")
   const [urlError, setUrlError] = useState("")
   const [citeResources, setCiteResources] = useState(false)
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState<string | null>(null)
+  const [searchKnowledge, setSearchKnowledge] = useState(false)
+  const [citeKnowledge, setCiteKnowledge] = useState(false)
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
+  const [isLoadingKnowledgeBases, setIsLoadingKnowledgeBases] = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onChange({
       files: files,
       urls: urls,
       isCite: citeResources,
+      knowledgeBaseId: knowledgeBaseId,
+      searchKnowledge: searchKnowledge,
+      citeKnowledge: citeKnowledge
     })
-  }, [files, urls, citeResources])
+  }, [files, urls, citeResources, knowledgeBaseId, searchKnowledge, citeKnowledge])
 
+  useEffect(() => {
+    const fetchKnowledgeBases = async () => {
+      setIsLoadingKnowledgeBases(true)
+      try {
+        const response = await getKnowledgeBases()
+        console.log(response.results)
+        setKnowledgeBases(response.results)
+      } catch (error) {
+        console.error("Failed to fetch knowledge bases:", error)
+      } finally {
+        setIsLoadingKnowledgeBases(false)
+      }
+    }
+
+    fetchKnowledgeBases()
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -140,13 +167,109 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
     }
   }
 
+  const handleKnowledgeBaseChange = (value: string) => {
+    if (value === "none") {
+      setKnowledgeBaseId(null)
+      return
+    }
+    
+    setKnowledgeBaseId(value)
+    if (value) {
+      setSearchKnowledge(true)
+    }
+  }
+
+  const getSelectValue = () => {
+    if (knowledgeBaseId === null) return "none"
+    return knowledgeBaseId.toString()
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Agent resources</CardTitle>
+        <CardTitle>Knowledge Base</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex items-center space-x-2">
+        {/* Knowledge Base Dropdown */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Label className="text-sm font-medium">Choose a Knowledge Base</Label>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Info className="h-4 w-4 ml-2 text-muted-foreground cursor-help" />
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <p className="text-sm">
+                    Select a knowledge base for the agent to use when answering questions.
+                  </p>
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs"
+              onClick={() => window.open("/knowledge-base", "_blank")}
+            >
+              Manage knowledge bases
+            </Button>
+          </div>
+
+          {isLoadingKnowledgeBases ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <Select 
+              value={getSelectValue()} 
+              onValueChange={handleKnowledgeBaseChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a knowledge base" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {knowledgeBases.map((kb) => (
+                  <SelectItem key={kb.knowledgebase_id} value={kb.knowledgebase_id}>
+                    <div className="flex items-center">
+                      <Database className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>{kb.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* {knowledgeBaseId && (
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="search-knowledge" 
+                  checked={searchKnowledge} 
+                  onCheckedChange={setSearchKnowledge} 
+                />
+                <Label htmlFor="search-knowledge" className="text-sm font-medium">
+                  Search knowledge base for answers
+                </Label>
+              </div>
+
+              {searchKnowledge && (
+                <div className="flex items-center space-x-2 ml-6">
+                  <Switch 
+                    id="cite-knowledge" 
+                    checked={citeKnowledge} 
+                    onCheckedChange={setCiteKnowledge}
+                  />
+                  <Label htmlFor="cite-knowledge" className="text-sm font-medium">
+                    Cite knowledge base sources
+                  </Label>
+                </div>
+              )}
+            </div>
+          )} */}
+        </div>
+
+        {/* <div className="flex items-center space-x-2">
           <Switch id="cite-resources" checked={citeResources} onCheckedChange={setCiteResources} />
           <div className="flex items-center">
             <Label htmlFor="cite-resources" className="text-sm font-medium">
@@ -161,9 +284,9 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
               </HoverCardContent>
             </HoverCard>
           </div>
-        </div>
+        </div> */}
 
-        <Tabs defaultValue="files" className="w-full">
+        {/* <Tabs defaultValue="files" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="files">Upload Files</TabsTrigger>
             <TabsTrigger value="urls">Web URLs</TabsTrigger>
@@ -248,29 +371,30 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
                   />
                   {urlError && <p className="text-xs text-red-500 mt-1">{urlError}</p>}
                 </div>
-                <Button onClick={addUrl} type="button">
+                <Button type="button" onClick={addUrl}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add URL
+                  Add
                 </Button>
               </div>
             </div>
 
             {urls.length > 0 && (
               <div className="space-y-2">
-                <div className="text-sm font-medium">URL resources ({urls.length})</div>
+                <div className="text-sm font-medium">Added URLs ({urls.length})</div>
                 <div className="border rounded-md divide-y">
                   {urls.map((url) => (
                     <div key={url.id} className="flex items-center justify-between p-3">
                       <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
-                          <Globe className="h-4 w-4 text-blue-500" />
+                          <Globe className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium truncate mr-2">{url.url}</p>
-                            {getStatusBadge(url.status)}
+                          <p className="text-sm font-medium truncate">{url.url}</p>
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <span>Added: {formatTimestamp(url.addedAt)}</span>
+                            <span className="mx-2">•</span>
+                            <span>Status: {getStatusBadge(url.status)}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">Added {formatTimestamp(url.addedAt)}</p>
                         </div>
                       </div>
                       <button
@@ -292,7 +416,7 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
               </div>
             )}
           </TabsContent>
-        </Tabs>
+        </Tabs> */}
       </CardContent>
     </Card>
   )

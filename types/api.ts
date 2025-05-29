@@ -234,8 +234,8 @@ export interface Agent {
   updated_at: string;
   user: number;
   model: number;
-  knowledge_base: number;
-  team: number;
+  knowledge_base: string;
+  team: number | null;
   subscriptions: number[];
 }
 
@@ -257,7 +257,7 @@ export interface AgentCreate {
     user: number;
     agent: number;
   };
-  knowledge_base: number;
+  knowledge_base: string;
   search_knowledge: boolean;
   cite_knowledge: boolean;
   add_datetime_to_instructions: boolean;
@@ -266,7 +266,7 @@ export interface AgentCreate {
   debug_mode: boolean;
   num_history_responses: number;
   is_global: boolean;
-  team: number;
+  team: number | null;
   subscriptions: number[];
 }
 
@@ -402,6 +402,7 @@ export interface User {
   get_display_name: string;
   created_at: string;
   updated_at: string;
+  language?: string | 'en-US';
 }
 
 export interface PatchedUser extends Partial<User> {}
@@ -448,4 +449,18 @@ export interface ExpectedOutput {
   created_at: string;
   user: number;
   agent: number | null;
+}
+
+export interface VaultFile {
+  id: number;
+  file: string;
+  project: number;
+  uploaded_by: number;
+  team: number;
+  shared_with_users: number[];
+  shared_with_teams: number[];
+  inherited_users: string;
+  inherited_teams: string;
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
 }

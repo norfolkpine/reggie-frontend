@@ -19,6 +19,7 @@ export default function AgentEngine({  }: AgentEngineProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
   useEffect(() => {
     const fetchModelProviders = async () => {
       setIsLoading(true);
@@ -34,7 +35,9 @@ export default function AgentEngine({  }: AgentEngineProps) {
       }
     };
 
+
     fetchModelProviders();
+
   }, []);
 
 
@@ -64,11 +67,11 @@ export default function AgentEngine({  }: AgentEngineProps) {
           ) : error ? (
             <div className="text-destructive text-sm p-4 text-center">{error}</div>
           ) : (
-            <RadioGroup value={agentData.model} onValueChange={(value) => setAgentData({ model: value })} className="space-y-4">
+            <RadioGroup value={agentData.model} onValueChange={(value) => setAgentData({ model: value })} className="space-y-1">
               {modelProviders.map((model) => (
                 <div
                   key={model.model_name}
-                  className={`flex items-center space-x-2 border rounded-md p-4 ${
+                  className={`flex items-center space-x-1 border rounded-md p-2 ${
                     model.model_name === agentData.model ? "bg-muted/50" : ""
                   } ${!model.is_enabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
@@ -95,6 +98,7 @@ export default function AgentEngine({  }: AgentEngineProps) {
             </RadioGroup>
           )}
         </div>
+
       </CardContent>
     </Card>
   );

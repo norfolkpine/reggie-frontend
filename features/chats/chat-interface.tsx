@@ -24,6 +24,19 @@ import { createChatSession } from "@/api/chat-sessions";
 import MessageActions from "./components/message-actions";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
+import { HistoryPopup } from "./components/history-popup";
+import { useAgentChat } from "@/hooks/use-agent-chat";
+import { createGoogleDoc } from "@/api/integration-google-drive";
+import { truncateText } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { InputMessage } from "./components/input-message";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 // Function to check if a string is valid JSON with crypto data structure
 function isCryptoData(content: string): boolean {
@@ -46,29 +59,20 @@ function isCryptoData(content: string): boolean {
   }
 }
 
-import { useAgentChat } from "@/hooks/use-agent-chat";
-import { createGoogleDoc } from "@/api/integration-google-drive";
-import { truncateText } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
-import { InputMessage } from "./components/input-message";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-
 export default function ChatInterface() {
   const searchParams = useSearchParams();
-  const agentId = searchParams.get("agentId") ?? "";
+  const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
   const params = useParams();
   const sessionId = params.sessionId as string | null;
+  const router = useRouter();
 
   const {
     messages,
     handleSubmit: chatSubmit,
     isLoading,
+    error
   } = useAgentChat({
-    agentId,
+    agentId: agentId!,
     sessionId: sessionId,
   });
 
@@ -88,7 +92,6 @@ export default function ChatInterface() {
   const [isNearBottom, setIsNearBottom] = useState(true);
   // Remove isDragging and containerRef as they're no longer needed with ResizablePanelGroup
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
 
   // Remove manual resize handlers as they're no longer needed with ResizablePanelGroup
 
@@ -200,6 +203,46 @@ export default function ChatInterface() {
     }
   }
 
+  const handleSelectChat = (chatId: string, agentCode?: string | null) => {
+    // Navigate to the selected chat
+    let url = `/chat/${chatId}`;
+      if (agentCode) {
+        const params = new URLSearchParams({ agentId:agentCode });
+        url += `?${params.toString()}`;
+      }
+      router.push(url);
+  };
+
+  const handleNewChat = async () => {
+    // Reset the current chat state
+    setShowWelcome(true);
+    
+    try {
+      // Create a new chat session
+      const newSession = await createChatSession({
+        title: "New Conversation",
+        agent_id: agentId,
+        agent_code: "gpt-4o", // Default agent code
+      });
+      
+      // Navigate to the new chat session
+      router.push(`/chat/${newSession.session_id}?agentId=${agentId}`);
+      
+      toast({
+        title: "New Chat Created",
+        description: "Starting a fresh conversation",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error creating new chat session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat session",
+        duration: 3000,
+      });
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
@@ -207,10 +250,29 @@ export default function ChatInterface() {
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* Chat area */}
         <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full">
+        
+          
           {/* Header */}
-          <div className="p-4 border-b flex items-center justify-between">
-            <h1 className="text-xl font-medium">ChatGPT 4o</h1>
+          <div className="p-4 border-b flex items-center justify-start">
+              <HistoryPopup onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+              <div className="text-lg font-semibold ml-2">Chat</div>
+              <Button
+                size="icon"
+                variant="outline"
+                className="ml-auto"
+                onClick={handleNewChat}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
           </div>
+
+          {error && (
+            <Alert variant="destructive" className="mx-4 my-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           {showWelcome ? (
             // Welcome screen with centered content

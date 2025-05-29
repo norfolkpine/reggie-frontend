@@ -49,7 +49,7 @@ interface StreamChatRequest {
 }
 
 export const getAgentStreamChat = async (message: string, agentId: string, sessionId: string) => {
-  const response = await api.post('/reggie/api/v1/agent/stream-chat/', {
+  const response = await api.post('/reggie/api/v1/chat/stream/', {
     agent_id: agentId,
     message,
     session_id: sessionId,

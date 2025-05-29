@@ -6,7 +6,7 @@ const knowledgeBaseApi = '/reggie/api/v1/knowledge-bases/';
 
 export const getKnowledgeBases = async (page: number = 1, file_id?: string) => {
   const response = await api.get(knowledgeBaseApi, {
-    params: { page: page.toString(), file_id: file_id}
+    params: { page: page.toString(), file_id: file_id ?? ""}
   });
   return response as PaginatedKnowledgeBaseList;
 };

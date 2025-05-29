@@ -1,187 +1,152 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Plus,
-  FileText,
-  Star,
-  MoreHorizontal,
-  Edit,
-  Link2,
-  Trash,
-  Pencil,
-} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import SearchInput from "@/components/ui/search-input";
-import { DataTable } from "@/components/ui/data-table";
-import { EmptyState } from "@/components/ui/empty-state";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { ColumnDef } from "@tanstack/react-table";
+import { Menu, Search, Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { RecentDocuments } from "./_components/recent-documents";
+import { TemplateGallery } from "./_components/template-gallery";
+import { getPaginatedDocuments } from "@/api/documents";
+import { Document } from "@/types/api";
 
-interface DocumentRow {
-  title: string;
-  updated: string;
-  by: string;
-  byColor: string;
-  byInitial: string;
-  starred: boolean;
-}
+export default function DocumentListPage() {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  // Mock data for templates
+  const templates = [
+    {
+      id: "blank",
+      title: "Blank document",
+      category: "",
+      thumbnail: "",
+    },
+    {
+      id: "letter",
+      title: "Letter",
+      category: "Spearmint",
+      thumbnail: "",
+    },
+    {
+      id: "resume-serif",
+      title: "Resume",
+      category: "Serif",
+      thumbnail: "",
+    },
+    {
+      id: "resume-coral",
+      title: "Resume",
+      category: "Coral",
+      thumbnail: "",
+    },
+    {
+      id: "project-proposal",
+      title: "Project proposal",
+      category: "Tropic",
+      thumbnail: "",
+    },
+    {
+      id: "brochure",
+      title: "Brochure",
+      category: "Geometric",
+      thumbnail: "",
+    },
+    {
+      id: "report",
+      title: "Report",
+      category: "Luxe",
+      thumbnail: ""
+    },
+  ]
 
-const mockDocuments: DocumentRow[] = [
-  {
-    title: "Project Requirements Document",
-    updated: "2 hours ago",
-    by: "J",
-    byColor: "bg-blue-700",
-    byInitial: "J",
-    starred: true,
-  },
-  {
-    title: "Meeting Notes: Sprint Planning",
-    updated: "1 day ago",
-    by: "S",
-    byColor: "bg-green-700",
-    byInitial: "S",
-    starred: false,
-  },
-  {
-    title: "Research Findings: User Testing",
-    updated: "3 days ago",
-    by: "A",
-    byColor: "bg-orange-600",
-    byInitial: "A",
-    starred: false,
-  },
-  {
-    title: "Marketing Strategy Q3",
-    updated: "1 week ago",
-    by: "E",
-    byColor: "bg-purple-700",
-    byInitial: "E",
-    starred: true,
-  },
-  {
-    title: "Product Roadmap 2025",
-    updated: "2 weeks ago",
-    by: "M",
-    byColor: "bg-yellow-600",
-    byInitial: "M",
-    starred: false,
-  },
-];
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getPaginatedDocuments({
+          page,
+          title: searchQuery || undefined,
+        });
+        setDocuments(response.results);
+        setHasMore(!!response.next);
+      } catch (err) {
+        setError("Failed to load documents");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-const columns: ColumnDef<DocumentRow>[] = [
-  {
-    accessorKey: "title",
-    header: "Title",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <FileText className="h-4 w-4 text-blue-500" />
-        <span className="font-medium truncate max-w-[180px] sm:max-w-[240px] md:max-w-[300px] lg:max-w-[360px]">
-          {row.original.title}
-        </span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "updated",
-    header: "Updated",
-    cell: ({ row }) => row.original.updated,
-  },
-  {
-    accessorKey: "by",
-    header: "By",
-    cell: ({ row }) => (
-      <span
-        className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-white text-xs font-bold ${row.original.byColor}`}
-      >
-        {row.original.byInitial}
-      </span>
-    ),
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>
-            <Edit className="h-4 w-4 mr-2" /> Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Pencil className="h-4 w-4 mr-2" /> Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link2 className="h-4 w-4 mr-2" /> Copy link
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Star className="h-4 w-4 mr-2" /> Star
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-red-600">
-            <Trash className="h-4 w-4 mr-2" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
+    loadDocuments();
+  }, [page, searchQuery]);
 
-export default function DocumentsPage() {
-  const [search, setSearch] = useState("");
-  const [docs, setDocs] = useState<DocumentRow[]>(mockDocuments);
-
-  const filteredDocs = docs.filter((d) =>
-    d.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // Convert API documents to the format expected by RecentDocuments component
+  const recentDocuments = documents.map(doc => (
+    {
+      id: doc.id.toString(),
+      title: doc.title,
+      lastOpened: new Date(doc.updated_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+    }
+  ))
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
+      {/* Header */}
+      <div className="p-4 border-b flex justify-between items-center">
         <h1 className="text-xl font-medium">Documents</h1>
-        <Button className="gap-2">
-          <Plus className="h-5 w-5" />
-          Create
-        </Button>
       </div>
 
-      <div className="p-4 flex flex-col gap-4">
-        <SearchInput
-          placeholder="Search documents..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {filteredDocs.length === 0 ? (
-          <EmptyState
-            title="No documents found"
-            description="You have no documents yet. Create your first document to get started."
-            icon={<FileText className="h-8 w-8 text-muted-foreground" />}
-            action={
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Document
-              </Button>
-            }
-          />
-        ) : (
-          <div className="[&_tr]:h-8 [&_td]:p-2 [&_th]:py-2">
-            <DataTable columns={columns} data={filteredDocs} />
-          </div>
-        )}
+      {/* Main content */}
+      <div className="flex-1 overflow-auto p-4">
+        <div className="space-y-8">
+          {/* Template Gallery Section */}
+          <section className="space-y-4">
+            <TemplateGallery templates={templates} />
+          </section>
+
+          {/* Recent Documents Section */}
+          <section className="bg-card rounded-lg shadow-sm">
+            <div className="p-6">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-destructive">{error}</div>
+              ) : documents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No documents found
+                </div>
+              ) : (
+                <>
+                  <RecentDocuments documents={recentDocuments} />
+                  {hasMore && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPage(p => p + 1)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Load more
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
-  );
+  )
 }
