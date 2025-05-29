@@ -11,7 +11,7 @@ export const useCopyDocLink = (docId: Doc['id']) => {
 
   return useCallback(() => {
     copyToClipboard(
-      `${window.location.origin}/docs/${docId}/`,
+      `${window.location.origin}/documents/${docId}/`,
       t('Link Copied !'),
       t('Failed to copy link'),
     );
