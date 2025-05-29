@@ -6,10 +6,10 @@ import {
   useSelectedBlocks,
 } from '@blocknote/react';
 import {
-  Loader,
   VariantType,
   useToastProvider,
 } from '@openfun/cunningham-react';
+import { LoaderCircleIcon } from 'lucide-react';
 import { PropsWithChildren, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -350,7 +350,9 @@ const AIMenuItem = ({
         e.stopPropagation();
         void handleAIAction();
       }}
-      rightSection={isPending ? <Loader size="small" /> : undefined}
+      rightSection={isPending ? (
+  <LoaderCircleIcon className="animate-spin w-4 h-4 ml-2 text-muted-foreground" />
+) : undefined}
     >
       {children}
     </Item>

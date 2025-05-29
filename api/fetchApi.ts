@@ -1,3 +1,4 @@
+import { TOKEN_KEY } from '@/contexts/auth-context';
 import { baseApiUrl } from './config';
 import { getCSRFToken } from './utils';
 
@@ -12,11 +13,13 @@ export const fetchAPI = async (
 ) => {
   const apiUrl = `${baseApiUrl(apiVersion)}${input}`;
   const csrfToken = getCSRFToken();
+  const token = localStorage.getItem(TOKEN_KEY);
 
   const headers = {
     'Content-Type': 'application/json',
     ...init?.headers,
     ...(csrfToken && { 'X-CSRFToken': csrfToken }),
+    ...(token && { 'Authorization': `Bearer ${token}` }),
   };
 
   if (init?.withoutContentType) {

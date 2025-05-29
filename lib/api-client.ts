@@ -126,6 +126,8 @@ export const api = {
 
   delete: (endpoint: string, config?: RequestConfig) =>
     apiClient(endpoint, { ...config, method: "DELETE" }),
+  options:  (endpoint: string, config?: RequestConfig) =>
+    apiClient(endpoint, { ...config, method: "OPTIONS" }),
 };
 
 export default api;
