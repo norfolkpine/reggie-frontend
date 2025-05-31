@@ -32,5 +32,30 @@ export const fetchAPI = async (
     headers,
   });
 
+  if (!response.ok) {
+    let errorData: any = null;
+    let errorMessage = response.statusText;
+    try {
+      errorData = await response.json();
+      if (errorData && errorData.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData && typeof errorData === 'object' && Object.keys(errorData).length > 0) {
+        // Use the first value from the error data if detail is not present
+        const firstKey = Object.keys(errorData)[0];
+        errorMessage = String(errorData[firstKey]);
+      }
+    } catch (e) {
+      // Parsing JSON failed, use statusText as already set
+      console.error('Failed to parse error response JSON:', e);
+    }
+
+    const error = new Error(
+      `Request failed with status ${response.status}: ${errorMessage}`,
+    );
+    (error as any).status = response.status;
+    (error as any).data = errorData;
+    throw error;
+  }
+
   return response;
 };

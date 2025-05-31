@@ -118,7 +118,7 @@
     "recharts": "latest",
     "rehype-highlight": "latest",
     "remark-gfm": "latest",
-    "sonner": "latest",
+    "sonner": "^2.0.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tiptap-markdown": "^0.8.10",
