@@ -8,7 +8,6 @@ on:
 env:
   PROJECT_ID: bh-reggie-test
   IMAGE_NAME_FRONTEND: reggie-frontend
-  IMAGE_FRONTEND: gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
 
 jobs:
   build-and-deploy:
@@ -28,10 +27,20 @@ jobs:
         run: gcloud auth configure-docker --quiet
 
       - name: Build Docker image
-        run: docker build -t $IMAGE_FRONTEND .
+        run: |
+          IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+          docker build -t $IMAGE_FRONTEND .
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
 
       - name: Push Docker image to GCR
-        run: docker push $IMAGE_FRONTEND
+        run: |
+          IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+          docker push $IMAGE_FRONTEND
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
 
       - name: Ensure frontend directory exists on VM
         uses: appleboy/ssh-action@v1.0.3
@@ -59,6 +68,17 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env
+
+      - name: Replace IMAGE_FRONTEND in docker-compose.yml
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_NAME_FRONTEND,PROJECT_ID
+          script: |
+            IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+            sed -i "s|\${IMAGE_FRONTEND}|$IMAGE_FRONTEND|g" ~/frontend/docker-compose.yml
 
       - name: Deploy on VM (pull and restart)
         uses: appleboy/ssh-action@v1.0.3
