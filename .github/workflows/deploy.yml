@@ -1,0 +1,73 @@
+name: Deploy Frontend to GCP VM
+
+on:
+  push:
+    branches:
+      - bh-test-deployment
+
+env:
+  PROJECT_ID: bh-reggie-test
+  IMAGE_NAME_FRONTEND: reggie-frontend
+  IMAGE_FRONTEND: gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build Docker image
+        run: docker build -t $IMAGE_FRONTEND .
+
+      - name: Push Docker image to GCR
+        run: docker push $IMAGE_FRONTEND
+
+      - name: Ensure frontend directory exists on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/frontend
+
+      - name: Copy docker-compose.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "~/frontend/"
+
+      - name: Write .env file from secret
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env
+
+      - name: Deploy on VM (pull and restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/frontend
+            docker compose pull
+            docker rm -f frontend-app || true
+            docker compose up -d --remove-orphans
