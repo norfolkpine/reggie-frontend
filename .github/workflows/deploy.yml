@@ -16,8 +16,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: GCP Authentication
+        uses: google-github-actions/auth@v1
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
@@ -77,6 +77,16 @@ jobs:
           script: |
             IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
             sed -i "s|\${IMAGE_FRONTEND}|$IMAGE_FRONTEND|g" ~/frontend/docker-compose.yml
+
+      - name: Google Cloud Auth on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo '${{ secrets.GCP_SA_KEY }}' > ~/frontend/gcp-key.json
+            gcloud auth activate-service-account --key-file=~/frontend/gcp-key.json
 
       - name: Deploy on VM (pull and restart)
         uses: appleboy/ssh-action@v1.0.3
