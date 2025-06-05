@@ -82,7 +82,7 @@ interface HistorySection {
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "ChatGPT", icon: "🤖", url: "/chat" },
+  { name: "Reggie", icon: "🤖", url: "/chat" },
   // { name: "Explore Agents", icon: "🔍", url: "/agent" },
 ];
 
@@ -286,19 +286,7 @@ export default function Sidebar() {
 
           <div className="flex-1 overflow-y-auto">
             <div className="p-3 space-y-2">
-              {/* In the expanded sidebar section, update the chat items rendering: */}
-              {chats.map((chat, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center gap-3 p-2 rounded-lg hover:bg-gray-200 cursor-pointer ${pathname === chat.url ? "bg-gray-200" : ""}`}
-                  onClick={() => handleChatItemClick(chat.url)}
-                >
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-300 text-xs">
-                    {renderIcon(chat.icon)}
-                  </div>
-                  <span className="text-sm">{chat.name}</span>
-                </div>
-              ))}
+              
             </div>
           </div>
 
