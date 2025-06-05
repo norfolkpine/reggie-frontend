@@ -65,7 +65,7 @@ jobs:
           username: github-actions
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env
+            echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env.frontend
 
       - name: Replace IMAGE_FRONTEND in docker-compose.yml
         uses: appleboy/ssh-action@v1.0.3
