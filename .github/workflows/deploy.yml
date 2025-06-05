@@ -86,7 +86,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo '${{ secrets.GCP_SA_KEY }}' > ~/frontend/gcp-key.json
-            gcloud auth activate-service-account --key-file=~/frontend/gcp-key.json
+            cd ~/frontend
+            sudo gcloud auth activate-service-account --key-file=gcp-key.json
+            cd ..
 
       - name: Deploy on VM (pull and restart)
         uses: appleboy/ssh-action@v1.0.3
@@ -96,6 +98,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/frontend
-            docker compose pull
-            docker rm -f frontend-app || true
-            docker compose up -d --remove-orphans
+            sudo docker-compose pull
+            sudo docker rm -f frontend-app || true
+            sudo docker system prune -af
+            sudo docker-compose up -d --remove-orphans
