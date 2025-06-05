@@ -88,6 +88,7 @@ jobs:
             echo '${{ secrets.GCP_SA_KEY }}' > ~/frontend/gcp-key.json
             cd ~/frontend
             sudo gcloud auth activate-service-account --key-file=gcp-key.json
+            sudo gcloud auth configure-docker gcr.io --quiet
             cd ..
 
       - name: Deploy on VM (pull and restart)
