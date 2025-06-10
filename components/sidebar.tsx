@@ -103,6 +103,7 @@ const navigationItems: NavigationItem[] = [
     icon: LayoutGrid,
     url: "/app-integration",
   },
+  { type: "divider" },
   { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
 ];
 
@@ -254,7 +255,7 @@ export default function Sidebar() {
 
               {navigationItems.map((item, index) => (
                 'type' in item ? (
-                  <div key={index} className="h-px my-2"></div>
+                  <div key={index} className="sidebar-divider"></div>
                 ) : (
                   <div
                     key={index}
@@ -332,7 +333,7 @@ export default function Sidebar() {
 
               {navigationItems.map((item, index) => (
                 'type' in item ? (
-                  <div key={index} className="w-8 border-t border-gray-300 my-2"></div>
+                  <div key={index} className="sidebar-divider sidebar-divider--collapsed"></div>
                 ) : (
                   <div key={index} className="relative">
                     <Button
@@ -364,7 +365,7 @@ export default function Sidebar() {
                 )
               ))}
 
-              <div className="w-8 border-t border-gray-300 my-2"></div>
+              <div className="sidebar-divider sidebar-divider--collapsed"></div>
 
              
             </div>

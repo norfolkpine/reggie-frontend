@@ -113,6 +113,24 @@ body {
 
 /* Add global styles here */
 
+.sidebar-divider {
+  height: 10px;
+  margin: 0.3rem 0;
+  background: none;
+  border: none;
+  width: 100%;
+}
+
+.sidebar-divider--collapsed {
+  width: 2rem;
+  margin: 0.3rem 0;
+  height: 10px;
+  background: none;
+  border: none;
+  align-self: center;
+}
+
+
 /* Ensure BlockNote drag handle and overlays are always below the fixed page header */
 .bn-drag-handle, .mantine-drag-handle, [class*="drag-handle"], .bn-menu, .mantine-Menu-dropdown, [class*="bn-menu"] {
   z-index: 20 !important;
