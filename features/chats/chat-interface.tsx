@@ -300,7 +300,7 @@ export default function ChatInterface() {
                 >
                   {messages.map((message, index) => (
                     <div
-                      key={message.id}
+                      key={message.id + '-' + index}
                       style={{
                         transform: "translate3d(0, 0, 0)",
                         willChange: "transform",

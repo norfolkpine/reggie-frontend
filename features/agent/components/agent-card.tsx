@@ -14,6 +14,8 @@ import { Star, ArrowRight, LucideIcon } from "lucide-react";
 
 import { Agent } from "@/types/api";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { createChatSession } from "@/api/chat-sessions";
 
 interface AgentCardProps {
   agent: Agent;
@@ -61,7 +63,21 @@ export function AgentCard({ agent }: AgentCardProps) {
           Edit
         </Button>
         <Button
-          onClick={() => router.push(`/chat?agentId=${agent.agent_id}`)}
+          onClick={async () => {
+            try {
+              // You can customize the agent_code if needed, fallback to 'gpt-4o' if not present
+              const agent_code = (agent.model ? agent.model.toString() : "gpt-4o");
+              const session = await createChatSession({
+                title: `Chat with ${agent.name}`,
+                agent_id: agent.agent_id,
+                agent_code,
+              });
+              router.push(`/chat/${session.session_id}?agentId=${agent.agent_id}`);
+            } catch (e) {
+              // Optionally handle error, e.g., toast
+              alert("Failed to start chat session. Please try again.");
+            }
+          }}
           variant="ghost"
           size="sm"
           className="gap-1"

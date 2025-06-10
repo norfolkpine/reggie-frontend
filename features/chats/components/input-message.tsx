@@ -22,7 +22,8 @@ export function InputMessage({ onSubmit, loading, className }: InputMessageProps
         return;
       }
       e.preventDefault();
-      handleSubmit();
+      onSubmit(textInput);
+      setTextInput("");
     }
   }
 

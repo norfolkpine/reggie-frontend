@@ -456,11 +456,23 @@ export function KnowledgeBaseDetail({
       </div>
 
       {/* Tabs for files and configuration */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="files">Files</TabsTrigger>
+              <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            </TabsList>
+            {/* Only TabsList here, not TabsContent */}
+          </Tabs>
+        </div>
+        <Button variant="outline" onClick={onEdit}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit Configuration
+        </Button>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="configuration">Configuration</TabsTrigger>
-        </TabsList>
+
 
         <TabsContent value="files" className="space-y-4 pt-4">
           {/* Search and filters */}
@@ -594,12 +606,22 @@ export function KnowledgeBaseDetail({
                               <span className="text-sm">Error</span>
                             </div>
                           ) : (
-                            <div className="w-full bg-secondary h-2 rounded-full">
-                              <div
-                                className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${file.progress * 100}%` }}
-                              />
-                            </div>
+                            <div className="relative w-full max-w-xs min-w-[80px]">
+  <div className="bg-secondary h-2 rounded-full overflow-hidden">
+    <div
+      className="bg-primary h-2 rounded-full transition-all"
+      style={{ width: `${file.progress ?? 0}%` }}
+    />
+    <span
+      className={
+        `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold transition-colors pointer-events-none ` +
+        (typeof file.progress === 'number' && file.progress > 50 ? 'text-white' : 'text-gray-900')
+      }
+    >
+      {typeof file.progress === "number" ? `${Math.round(file.progress)}%` : "--"}
+    </span>
+  </div>
+</div>
                           )}
                           <Button
                             variant="ghost"
@@ -855,10 +877,7 @@ export function KnowledgeBaseDetail({
               </div>
             </div>
 
-            <Button variant="outline" onClick={onEdit} className="w-full">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Configuration
-            </Button>
+
           </div>
         </TabsContent>
       </Tabs>
