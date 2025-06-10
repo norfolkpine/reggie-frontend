@@ -27,7 +27,12 @@ jobs:
       - name: Build Docker image
         run: |
           IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
-          docker build -t $IMAGE_FRONTEND .
+          docker build \
+            --build-arg NEXT_PUBLIC_DEFAULT_AGENT_ID=${{ secrets.NEXT_PUBLIC_DEFAULT_AGENT_ID }} \
+            --build-arg NEXT_PUBLIC_API_ORIGIN=${{ secrets.NEXT_PUBLIC_API_ORIGIN }} \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }} \
+            --build-arg COLLABORATION_WS_URL=${{ secrets.COLLABORATION_WS_URL }} \
+            -t $IMAGE_FRONTEND .
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
@@ -65,12 +70,7 @@ jobs:
           username: github-actions
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p ~/frontend
-            cat > ~/frontend/.env.frontend <<EOF
-${{ secrets.ENV_FILE_CONTENTS }}
-EOF
-            ls -l ~/frontend
-            head -n 10 ~/frontend/.env.frontend
+            echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env.frontend
 
       - name: Replace IMAGE_FRONTEND in docker-compose.yml
         uses: appleboy/ssh-action@v1.0.3

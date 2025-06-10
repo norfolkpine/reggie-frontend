@@ -4,6 +4,12 @@ FROM node:18-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_DEFAULT_AGENT_ID
+ARG NEXT_PUBLIC_API_ORIGIN
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG COLLABORATION_WS_URL
+
 # Install dependencies
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN if [ -f package-lock.json ]; then npm ci; \
@@ -13,6 +19,12 @@ RUN if [ -f package-lock.json ]; then npm ci; \
 
 # Copy all files
 COPY . .
+
+# Set environment variables for build
+ENV NEXT_PUBLIC_DEFAULT_AGENT_ID=$NEXT_PUBLIC_DEFAULT_AGENT_ID
+ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
 
 # Build the Next.js app
 RUN npm run build
