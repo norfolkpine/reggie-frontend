@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import {
   Plus,
   Search,
@@ -33,7 +34,7 @@ import { useAuth } from "@/contexts/auth-context"
 export default function ProjectView({ projectId }: { projectId: number }) {
   const [project, setProject] = useState<Project | null>(null)
   const router = useRouter()
-  const [instructionDialogOpen, setInstructionDialogOpen] = useState(false)
+
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [pickedFiles, setPickedFiles] = useState<File[]>([])
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
@@ -41,7 +42,10 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   const [tab, setTab] = useState("all")
   const { toast } = useToast()
   const [uploading, setUploading] = useState(false);
-   const { user } = useAuth();
+  const { user } = useAuth();
+
+  // View mode: 'list' (table) or 'thumbnail' (grid)
+  const [viewMode, setViewMode] = useState<'list' | 'thumbnail'>('list');
 
   // Upload picked files when they change
   // Fetch vault files on mount and after upload
@@ -113,32 +117,6 @@ export default function ProjectView({ projectId }: { projectId: number }) {
     fetchProject()
   }, [])
 
-  // Mock chats for demo
-  const chats = [
-    {
-      id: 1,
-      title: "DLT Table Manager Fix",
-      description: "i want to keep the manager",
-      date: "2023-06-15",
-      by: "John Doe",
-      tags: ["Bugfix", "DLT"],
-      starred: true,
-    },
-    {
-      id: 2,
-      title: "Sprint Planning",
-      description: "Sprint planning for Q2",
-      date: "2023-05-20",
-      by: "Sarah Brown",
-      tags: ["Planning"],
-      starred: false,
-    },
-  ]
-
-  const filteredChats = chats.filter(chat =>
-    chat.title.toLowerCase().includes(search.toLowerCase()) ||
-    chat.description.toLowerCase().includes(search.toLowerCase())
-  )
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-4xl mx-auto px-2 sm:px-6 py-6 gap-4">
@@ -160,87 +138,150 @@ export default function ProjectView({ projectId }: { projectId: number }) {
         <Button variant="outline" className="gap-2" onClick={() => setUploadModalOpen(true)}>
           <FileText className="h-5 w-5" /> Upload File
         </Button>
-        <Button variant="outline" className="gap-2" onClick={() => setInstructionDialogOpen(true)}>
-          <Settings className="h-5 w-5" /> Instructions
-        </Button>
+
       </div>
 
       {/* Search and Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
         <SearchInput
-          placeholder="Search chats or files..."
+          placeholder="Search files..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <div className="flex gap-2 mt-2 sm:mt-0">
-          <Button variant={tab === "all" ? "default" : "outline"} size="sm" onClick={() => setTab("all")}>All</Button>
-          <Button variant={tab === "starred" ? "default" : "outline"} size="sm" onClick={() => setTab("starred")}>Starred</Button>
-        </div>
       </div>
 
-      
-        <Card className="p-3 mb-2">
-          <div className="text-xs font-medium mb-2">Files in this vault:</div>
-          <ul className="space-y-1">
-            { vaultFiles.length > 0 && vaultFiles.map((file) => (
-              <li key={file.id} className="flex items-center text-xs">
-                <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="truncate max-w-[180px]" title={file.file}>{file.file}</span>
-              </li>
-            ))}
+      <Card className="p-3 mb-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-medium">Files in this vault:</div>
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              aria-label="List view"
+            >
+              <FileText className="h-4 w-4 mr-1" /> List
+            </Button>
+            <Button
+              variant={viewMode === 'thumbnail' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('thumbnail')}
+              aria-label="Thumbnail view"
+            >
+              <FolderIcon className="h-4 w-4 mr-1" /> Thumbnails
+            </Button>
+          </div>
+        </div>
+        {viewMode === 'list' ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Filename</TableHead>
+                  <TableHead>Uploaded By</TableHead>
+                  <TableHead>Created At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vaultFiles.length > 0 ? (
+                  vaultFiles
+                    .filter(file =>
+                      file.filename.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .map(file => (
+                      <TableRow key={file.id}>
+                        <TableCell className="max-w-[220px] truncate">
+                          <a
+                            href={file.file}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline flex items-center gap-2"
+                            title={file.filename}
+                          >
+                            <FileText className="w-4 h-4 text-muted-foreground inline" />
+                            {file.filename}
+                          </a>
+                        </TableCell>
+                        <TableCell>
+                          {file.uploaded_by ? `User #${file.uploaded_by}` : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {file.created_at ? new Date(file.created_at).toLocaleString() : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">No files found.</TableCell>
+                  </TableRow>
+                )}
+                {/* Show uploading files at the bottom */}
+                {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
+                  <TableRow key={file.name + idx} className="opacity-60 italic">
+                    <TableCell className="max-w-[220px] truncate">
+                      <span className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 mr-1 text-muted-foreground animate-pulse" />
+                        {file.name} (Uploading...)
+                        <Loader className="animate-spin h-4 w-4 ml-2 text-primary" />
+                      </span>
+                    </TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {vaultFiles.length > 0 ? (
+              vaultFiles
+                .filter(file =>
+                  file.filename.toLowerCase().includes(search.toLowerCase())
+                )
+                .map(file => (
+                  <Card key={file.id} className="flex flex-col items-center p-3 gap-2 h-full">
+                    <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-md mb-2">
+                      {file.filename.match(/\.(png|jpg|jpeg|gif)$/i) ? (
+                        <img
+                          src={file.file}
+                          alt={file.filename}
+                          className="object-contain w-12 h-12"
+                        />
+                      ) : (
+                        <FileText className="w-8 h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    <a
+                      href={file.file}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline text-xs truncate max-w-[120px]"
+                      title={file.filename}
+                    >
+                      {file.filename}
+                    </a>
+                    <div className="text-[10px] text-muted-foreground mt-1">{file.created_at ? new Date(file.created_at).toLocaleDateString() : "-"}</div>
+                  </Card>
+                ))
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground">No files found.</div>
+            )}
             {/* Show uploading files at the bottom */}
             {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
-              <li key={file.name + idx} className="flex items-center text-xs opacity-60 italic">
-                <FileText className="w-4 h-4 mr-2 text-muted-foreground animate-pulse" />
-                <span className="truncate max-w-[140px]" title={file.name}>{file.name} (Uploading...)</span>
-                <Loader className="animate-spin h-4 w-4 ml-2 text-primary" />
-              </li>
+              <Card key={file.name + idx} className="flex flex-col items-center p-3 gap-2 h-full opacity-60 italic">
+                <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-md mb-2">
+                  <FileText className="w-8 h-8 text-muted-foreground animate-pulse" />
+                </div>
+                <span className="text-xs truncate max-w-[120px]">{file.name} (Uploading...)</span>
+                <Loader className="animate-spin h-4 w-4 text-primary mt-1" />
+              </Card>
             ))}
-          </ul>
-        </Card>
-      
-
-      {/* Chats Section as Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-        {filteredChats.length === 0 ? (
-          <Card className="col-span-full flex flex-col items-center justify-center py-12">
-            <span className="text-muted-foreground">No chats found.</span>
-          </Card>
-        ) : (
-          filteredChats.map(chat => (
-            <Card key={chat.id} className="flex flex-col gap-2 p-4">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                <span className="font-semibold text-base flex-1 truncate">{chat.title}</span>
-                {chat.starred && <Star className="h-4 w-4 text-yellow-400" />}
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="text-sm text-muted-foreground truncate">{chat.description}</div>
-              <div className="flex items-center gap-2 mt-2">
-                {chat.tags.map(tag => (
-                  <Badge key={tag} variant="outline">{tag}</Badge>
-                ))}
-                <span className="ml-auto text-xs text-muted-foreground">{chat.date}</span>
-                <span className="text-xs text-muted-foreground">{chat.by}</span>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <Button variant="outline" size="sm">View</Button>
-                <Button variant="outline" size="sm">Download</Button>
-              </div>
-            </Card>
-          ))
+          </div>
         )}
-      </div>
+      </Card>
 
-      <InstructionDialog
-        open={instructionDialogOpen}
-        onOpenChange={setInstructionDialogOpen}
-        onSubmit={(data) => {
-          setInstructionDialogOpen(false)
-        }}
-      />
+
       <UploadFileModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
