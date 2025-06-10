@@ -1,15 +1,18 @@
 import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
 
-// Get base URL from environment variables with fallback and handling for client-side
-export const BASE_URL = typeof window !== 'undefined' 
-  ? (process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin.includes('localhost') 
-     ? 'http://127.0.0.1:8000' 
-     : window.location.origin)
-  : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000');
+// Debug: Log env variable at build time
+console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PUBLIC_API_BASE_URL);
 
-// Log the base URL during development to help with debugging
-if (process.env.NODE_ENV !== 'production') {
-  console.log('API Base URL:', BASE_URL);
+// Robust BASE_URL logic
+export const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
+
+// Debug: Log BASE_URL at runtime (both server and client)
+if (typeof window === 'undefined') {
+  console.log('SERVER: BASE_URL =', BASE_URL);
+} else {
+  console.log('CLIENT: BASE_URL =', BASE_URL);
 }
 
 interface RequestConfig extends RequestInit {
