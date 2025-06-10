@@ -60,6 +60,8 @@ export const BlockNoteToolbar = () => {
 
         {/* Extra button to do some AI powered actions */}
         {conf?.AI_FEATURE_ENABLED && <AIGroupButton key="AIButton" />}
+        {/* Force AI Enabled 
+        {true && <AIGroupButton key="AIButton" />}*/}
 
         {/* Extra button to convert from markdown to json */}
         <MarkdownButton key="customButton" />
