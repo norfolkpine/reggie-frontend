@@ -3,7 +3,7 @@ name: Deploy Frontend to GCP VM
 on:
   push:
     branches:
-      - bh-test-deployment
+      - main
 
 env:
   PROJECT_ID: bh-reggie-test
