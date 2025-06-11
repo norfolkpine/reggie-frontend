@@ -1,0 +1,110 @@
+name: Deploy Frontend to GCP VM
+
+on:
+  push:
+    branches:
+      - bh-test-deployment
+
+env:
+  PROJECT_ID: bh-reggie-test
+  IMAGE_NAME_FRONTEND: reggie-frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build Docker image
+        run: |
+          IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+          docker build \
+            --build-arg NEXT_PUBLIC_DEFAULT_AGENT_ID=${{ secrets.NEXT_PUBLIC_DEFAULT_AGENT_ID }} \
+            --build-arg NEXT_PUBLIC_API_ORIGIN=${{ secrets.NEXT_PUBLIC_API_ORIGIN }} \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }} \
+            --build-arg COLLABORATION_WS_URL=${{ secrets.COLLABORATION_WS_URL }} \
+            -t $IMAGE_FRONTEND .
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
+
+      - name: Push Docker image to GCR
+        run: |
+          IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+          docker push $IMAGE_FRONTEND
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
+
+      - name: Ensure frontend directory exists on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/frontend
+
+      - name: Copy docker-compose.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "~/frontend/"
+
+      - name: Write .env file from secret
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.ENV_FILE_CONTENTS }}" > ~/frontend/.env.frontend
+
+      - name: Replace IMAGE_FRONTEND in docker-compose.yml
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_NAME_FRONTEND,PROJECT_ID
+          script: |
+            IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
+            sed -i "s|\${IMAGE_FRONTEND}|$IMAGE_FRONTEND|g" ~/frontend/docker-compose.yml
+
+      - name: Google Cloud Auth on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo '${{ secrets.GCP_SA_KEY }}' > ~/frontend/gcp-key.json
+            cd ~/frontend
+            sudo gcloud auth activate-service-account --key-file=gcp-key.json
+            sudo gcloud auth configure-docker gcr.io --quiet
+            cd ..
+
+      - name: Deploy on VM (pull and restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: github-actions
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/frontend
+            sudo docker-compose pull
+            sudo docker rm -f frontend-app || true
+            sudo docker system prune -af
+            sudo docker-compose up -d --remove-orphans
