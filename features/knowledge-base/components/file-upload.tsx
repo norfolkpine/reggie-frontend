@@ -116,13 +116,10 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
       await Promise.all(
         files.map(async (fileObj) => {
           try {
-            const computedTitle = title
-              ? `${title}-${fileObj.file.name}`
-              : fileObj.file.name;
             await uploadFiles([
               fileObj.file
             ], {
-              title: computedTitle,
+              title: title,
               description: "Files uploaded through knowledge base interface",
               ...(knowledgeBaseId && {
                 knowledgebase_id: knowledgeBaseId,

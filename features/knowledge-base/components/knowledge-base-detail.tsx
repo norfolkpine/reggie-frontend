@@ -65,7 +65,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getModelProviders, ModelProvider } from "@/api/agent-providers";
 import { getKnowledgeBaseFiles } from "@/api/knowledge-bases";
 import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base";
-import { unlinkFilesFromKb, patchFile, reingestFile } from "@/api/files";
+import { unlinkFilesFromKb, patchFile, reingestFile, unlinkFilesFromKbBulk } from "@/api/files";
 import { useDebounce } from "@/hooks/use-debounce";
 import { FileUpload } from "@/features/knowledge-base/components/file-upload"
 import { uploadFiles } from "@/api/files"
@@ -73,6 +73,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 interface KnowledgeBaseDetailProps {
   knowledgeBaseId: string;
+  knowledgeBaseCode: string;
   knowledgeBase: KnowledgeBase | null;
   onBack: () => void;
   onEdit: () => void;
@@ -99,6 +100,7 @@ const apiToLocalKnowledgeBase = (apiKB: ApiKnowledgeBase): KnowledgeBase => {
 
 export function KnowledgeBaseDetail({
   knowledgeBaseId,
+  knowledgeBaseCode,
   knowledgeBase,
   onBack,
   onEdit,
@@ -237,7 +239,7 @@ export function KnowledgeBaseDetail({
 
   const handleDeleteLink = async (fileId: string) => {
     try {
-      await unlinkFilesFromKb({ uuid: fileId });
+      await unlinkFilesFromKbBulk({ file_ids: [fileId], knowledgebase_ids: [knowledgeBaseCode] });
       toast({
         title: "Success",
         description: "File unlinked successfully",
@@ -253,11 +255,28 @@ export function KnowledgeBaseDetail({
     }
   };
 
+  const handleBulkUnlink = async () => {
+    try {
+      await unlinkFilesFromKbBulk({ file_ids: selectedFiles, knowledgebase_ids: [knowledgeBaseCode] });
+      toast({
+        title: "Success",
+        description: `${selectedFiles.length} files unlinked successfully`,
+      });
+      setSelectedFiles([]);
+      handleRefresh();
+    } catch (error) {
+      console.error("Failed to unlink files:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unlink selected files",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleBulkDelete = async () => {
     try {
-      await Promise.all(
-        selectedFiles.map((fileId) => unlinkFilesFromKb({ uuid: fileId }))
-      );
+      await unlinkFilesFromKbBulk({ file_ids: selectedFiles, knowledgebase_ids: [knowledgeBaseCode] });
 
       toast({
         title: "Success",
@@ -507,6 +526,13 @@ export function KnowledgeBaseDetail({
                 >
                   Remove Selected
                 </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkUnlink}
+                >
+                  Bulk Unlink
+                </Button>
               </div>
             </div>
           )}
@@ -607,27 +633,28 @@ export function KnowledgeBaseDetail({
                             </div>
                           ) : (
                             <div className="relative w-full max-w-xs min-w-[80px]">
-  <div className="bg-secondary h-2 rounded-full overflow-hidden">
-    <div
-      className="bg-primary h-2 rounded-full transition-all"
-      style={{ width: `${file.progress ?? 0}%` }}
-    />
-    <span
-      className={
-        `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold transition-colors pointer-events-none ` +
-        (typeof file.progress === 'number' && file.progress > 50 ? 'text-white' : 'text-gray-900')
-      }
-    >
-      {typeof file.progress === "number" ? `${Math.round(file.progress)}%` : "--"}
-    </span>
-  </div>
-</div>
+                            <div className="bg-secondary h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${file.progress ?? 0}%` }}
+                              />
+                              <span
+                                className={
+                                  `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold transition-colors pointer-events-none ` +
+                                  (typeof file.progress === 'number' && file.progress > 50 ? 'text-white' : 'text-gray-900')
+                                }
+                              >
+                                {typeof file.progress === "number" ? `${Math.round(file.progress)}%` : "--"}
+                              </span>
+                            </div>
+                          </div>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleReingestFile(file.file_id)}
+                          {file.status === "failed" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleReingestFile(file.file_id)}
                             disabled={reingestingFiles[file.file_id]}
                           >
                             <RefreshCw
@@ -638,6 +665,7 @@ export function KnowledgeBaseDetail({
                               }`}
                             />
                           </Button>
+                        )}
                         </div>
                       </TableCell>
                       <TableCell>

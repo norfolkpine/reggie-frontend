@@ -6,6 +6,11 @@ export interface Folder {
   createdAt: string
 }
 
+export interface Collection {
+  id: number;
+  name: string;
+}
+
 export interface File {
   uuid: string
   title: string
@@ -22,6 +27,8 @@ export interface File {
   is_global: boolean
   created_at: string
   updated_at: string
+  file_size?: number
+  collection?: Collection
 }
 
 export interface FileWithUI extends File {
@@ -196,6 +203,7 @@ export interface KnowledgeBaseFile {
   total_docs: number
   chunk_size: number
   chunk_overlap: number
+  collection?: Collection
 }
 
 export interface PaginatedKnowledgeBaseFileList {
