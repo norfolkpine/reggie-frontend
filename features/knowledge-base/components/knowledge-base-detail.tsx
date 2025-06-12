@@ -560,6 +560,7 @@ export function KnowledgeBaseDetail({
                     />
                   </TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Collection</TableHead>
                   <TableHead>File Size</TableHead>
                   <TableHead>Chunk Size</TableHead>
                   <TableHead>Uploaded At</TableHead>
@@ -571,7 +572,7 @@ export function KnowledgeBaseDetail({
               <TableBody>
                 {isLoading ? (
                   <TableRow key="loading">
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
@@ -604,6 +605,9 @@ export function KnowledgeBaseDetail({
                           <FileText className="h-4 w-4 mr-2" />
                           <span className="font-medium">{file.title}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {file.collection ? file.collection.name : '—'}
                       </TableCell>
                       <TableCell>{file.file_size} bytes</TableCell>
                       <TableCell>{file.chunk_size} tokens</TableCell>
