@@ -166,8 +166,9 @@ export default function ChatInterface() {
 
   // Find the message being edited
   const editingMessage = messages.find(
-    (message) => message.id === editingMessageId
+    (message) => message.id === editingMessageId && message.role =='system'
   );
+
 
   async function handleOnSend(
     id: "google-drive" | "journal",

@@ -6,7 +6,7 @@ import { BASE_URL } from '@/lib/api-client';
 interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
 }
 
 interface UseAgentChatProps {
