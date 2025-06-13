@@ -2,11 +2,13 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage } from '@/api/chat-sessions';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
+import { Feedback } from '@/api/chat-sessions';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant' | 'system';
+  feedback?: Feedback[];
 }
 
 interface UseAgentChatProps {
@@ -55,7 +57,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         const formattedMessages = response.results.map(msg => ({
           id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
           content: msg.content,
-          role: msg.role as 'user' | 'assistant'
+          role: msg.role as 'user' | 'assistant',
+          feedback: msg.feedback
         }));
         
         setMessages(formattedMessages);

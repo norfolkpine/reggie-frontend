@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, BookOpen, Pencil, MoreHorizontal, Send } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,16 +11,45 @@ export interface MessageActionsProps {
     copiedMessageId: string | null;
     onSend: (id: 'google-drive' | 'journal' ,text: string, messageId: string) => void;
     onOpenCanvas: (messageId: string) => void;
-  }
-  
- export default function MessageActions({
+    isGood?: boolean;
+    isBad?: boolean;
+    onGoodResponse?: (messageId: string) => void;
+    onBadResponse?: (messageId: string) => void;
+}
+
+export default function MessageActions({
     messageId,
     content,
     onCopy,
     copiedMessageId,
     onSend,
     onOpenCanvas,
-  }: MessageActionsProps) {
+    onGoodResponse,
+    onBadResponse,
+    isGood = false,
+    isBad = false,
+}: MessageActionsProps) {
+    const [localGood, setLocalGood] = useState<boolean>(false);
+    const [localBad, setLocalBad] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (isGood !== localGood) setLocalGood(isGood);
+        if (isBad !== localBad) setLocalBad(isBad);
+    }, [isGood, isBad]);
+
+    const handleGood = () => {
+        setLocalGood(true);
+        setLocalBad(false);
+        onGoodResponse && onGoodResponse(messageId);
+    };
+    const handleBad = () => {
+        setLocalBad(true);
+        setLocalGood(false);
+        onBadResponse && onBadResponse(messageId);
+    };
+    const showGood = localGood || isGood;
+    const showBad = localBad || isBad;
+
     return (
       <div className="flex items-center gap-2 mt-2 -mb-1">
         <Button
@@ -38,18 +68,20 @@ export interface MessageActionsProps {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          className={`h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
           title="Good response"
+          onClick={handleGood}
         >
-          <ThumbsUp className="h-4 w-4" />
+          <ThumbsUp className="h-4 w-4" style={{ fill: showGood ? '#eab308' : 'none' }} />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          className={`h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
           title="Bad response"
+          onClick={handleBad}
         >
-          <ThumbsDown className="h-4 w-4" />
+          <ThumbsDown className="h-4 w-4" style={{ fill: showBad ? '#eab308' : 'none' }} />
         </Button>
         <Button
           variant="ghost"
