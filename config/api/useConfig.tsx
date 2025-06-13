@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { APIError, errorCauses } from '@/api';
+import { APIError, errorCauses, fetchAPI } from '@/api';
 import { Theme } from '@/cunningham/';
 import { api } from '@/lib/api-client';
 
@@ -34,7 +34,7 @@ function setCachedTranslation(translations: ConfigResponse) {
 }
 
 export const getConfig = async (): Promise<ConfigResponse> => {
-  const response = await api.get('/api/v1.0/config/');
+  const response = await fetchAPI('config');
   if (!response.ok) {
     throw new APIError('Failed to get the doc', await errorCauses(response));
   }

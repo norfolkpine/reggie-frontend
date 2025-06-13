@@ -7,6 +7,7 @@ import { useLanguageSynchronizer } from '@/features/language/';
 import { CrispProvider } from '@/services';
 
 import { useConfig } from './api/useConfig';
+import { Loader2 } from 'lucide-react';
 
 export const ConfigProvider = ({ children }: PropsWithChildren) => {
   const { data: conf } = useConfig();
@@ -29,7 +30,7 @@ export const ConfigProvider = ({ children }: PropsWithChildren) => {
   if (!conf) {
     return (
       <div className='flex h-full items-center justify-center'>
-        <Loader />
+        <Loader2 />
       </div>
     );
   }
