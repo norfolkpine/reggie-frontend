@@ -1,4 +1,5 @@
 import { LucideIcon } from "lucide-react";
+import { Collection } from "./knowledge-base";
 
 export interface TokenRefresh {
   refresh: string;
@@ -344,6 +345,8 @@ export interface File {
   is_global: boolean;
   created_at: string;
   updated_at: string;
+  collection: Collection | null;
+  filesize: number;
 }
 
 export interface PaginatedFileList {

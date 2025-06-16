@@ -18,6 +18,15 @@ import {
   MoreHorizontal,
   BookOpen,
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
+} from "@/components/ui/dropdown-menu"
 import { useChat } from "ai/react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -289,38 +298,72 @@ export default function ChatInterface() {
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
             <div className="max-w-3xl mx-auto">
               <Card className="p-2 shadow-lg border-gray-200 rounded-2xl">
-                <form onSubmit={handleSubmit} className="flex items-center">
-                  <Button type="button" variant="ghost" size="icon" className="rounded-full">
-                    <Plus className="h-5 w-5" />
-                  </Button>
-
-                  <Input
-                    className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                    placeholder="Ask anything"
-                    value={input}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                  />
-
-                  <div className="flex items-center gap-2 px-2">
-                    <Button type="button" variant="ghost" size="icon" className="rounded-full">
-                      <Search className="h-5 w-5" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground px-2 border-x border-gray-200">Deep research</span>
-                    <Button type="button" variant="ghost" size="icon" className="rounded-full">
-                      <Mic className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
-                      disabled={isLoading || !input.trim()}
-                    >
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </form>
+  <div className="flex items-center">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="rounded-full">
+          <Plus className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem
+          onSelect={() => {
+            document.getElementById('chat-file-upload')?.click();
+          }}
+        >
+          Upload from files
+        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Upload from app</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem
+              onSelect={() => {
+                alert('Upload from Drive clicked (placeholder)');
+              }}
+            >
+              Upload from drive
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <input
+      id="chat-file-upload"
+      type="file"
+      className="hidden"
+      onChange={e => {
+        // handle file selection here
+      }}
+      accept="*"
+    />
+    <form onSubmit={handleSubmit} className="flex-1 flex items-center">
+      <Input
+        className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+        placeholder="Ask anything"
+        value={input}
+        onChange={handleInputChange}
+        disabled={isLoading}
+      />
+      <div className="flex items-center gap-2 px-2">
+        <Button type="button" variant="ghost" size="icon" className="rounded-full">
+          <Search className="h-5 w-5" />
+        </Button>
+        <span className="text-xs text-muted-foreground px-2 border-x border-gray-200">Deep research</span>
+        <Button type="button" variant="ghost" size="icon" className="rounded-full">
+          <Mic className="h-5 w-5" />
+        </Button>
+        <Button
+          type="submit"
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          disabled={isLoading || !input.trim()}
+        >
+          <Send className="h-5 w-5" />
+        </Button>
+      </div>
+    </form>
+  </div>
               </Card>
 
               <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">

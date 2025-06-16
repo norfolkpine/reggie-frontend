@@ -22,6 +22,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { createChatSession } from "@/api/chat-sessions";
 import MessageActions from "./components/message-actions";
+import { sendUserFeedback } from "./api/user-feedback";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
 import { HistoryPopup } from "./components/history-popup";
@@ -59,6 +60,8 @@ function isCryptoData(content: string): boolean {
   }
 }
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
 export default function ChatInterface() {
   const searchParams = useSearchParams();
   const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
@@ -93,8 +96,17 @@ export default function ChatInterface() {
   // Remove isDragging and containerRef as they're no longer needed with ResizablePanelGroup
   const { isAuthenticated } = useAuth();
 
-  // Remove manual resize handlers as they're no longer needed with ResizablePanelGroup
+  // State for feedback dialog
+  const [feedbackDialog, setFeedbackDialog] = useState<{
+    open: boolean;
+    messageId: string;
+    feedbackType: 'good' | 'bad' | null;
+    text?: string;
+  }>({ open: false, messageId: '', feedbackType: null, text: '' });
 
+  const [feedbackHighlight, setFeedbackHighlight] = useState<Record<string, 'good' | 'bad' | null>>({});
+
+  
   useEffect(() => {
     if (messages.length > 0) {
       setShowWelcome(false);
@@ -166,8 +178,9 @@ export default function ChatInterface() {
 
   // Find the message being edited
   const editingMessage = messages.find(
-    (message) => message.id === editingMessageId
+    (message) => message.id === editingMessageId && (message.role =='assistant' || message.role =='system')
   );
+
 
   async function handleOnSend(
     id: "google-drive" | "journal",
@@ -243,6 +256,24 @@ export default function ChatInterface() {
     }
   };
 
+  // Unified handler for feedback dialog actions
+  const handleFeedbackDialogClose = async (feedbackText?: string) => {
+    try {
+      if (feedbackDialog.feedbackType === 'good' || feedbackDialog.feedbackType === 'bad') {
+        await sendUserFeedback({
+          chat_id: feedbackDialog.messageId,
+          feedback_type: feedbackDialog.feedbackType,
+          feedback_text: feedbackText,
+          session: sessionId || undefined,
+        });
+      }
+      setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
+      // Optionally show toast
+    } catch (err) {
+      // Optionally handle error
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
@@ -300,7 +331,7 @@ export default function ChatInterface() {
                 >
                   {messages.map((message, index) => (
                     <div
-                      key={message.id}
+                      key={message.id + '-' + index}
                       style={{
                         transform: "translate3d(0, 0, 0)",
                         willChange: "transform",
@@ -359,6 +390,16 @@ export default function ChatInterface() {
                               copiedMessageId={copiedMessageId}
                               onSend={handleOnSend}
                               onOpenCanvas={setEditingMessageId}
+                              onGoodResponse={(messageId: string) => {
+                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                              }}
+                              onBadResponse={(messageId: string) => {
+                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                              }}
+                              isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                              isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
                             />
                           </>
                         )}
@@ -369,6 +410,43 @@ export default function ChatInterface() {
                   <div ref={messagesEndRef} />
                 </div>
               </div>
+
+              {/* Feedback Dialog (moved outside loop) */}
+              <Dialog open={feedbackDialog.open} onOpenChange={(open) => setFeedbackDialog((prev) => ({ ...prev, open }))}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{feedbackDialog.feedbackType === 'good' ? 'Good Response' : 'Bad Response'} Feedback</DialogTitle>
+                    <DialogDescription>
+                      Optional: Let us know why you think this response was {feedbackDialog.feedbackType === 'good' ? 'good' : 'bad'}.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Textarea
+                    value={feedbackDialog.text}
+                    onChange={e => setFeedbackDialog(prev => ({ ...prev, text: e.target.value }))}
+                    placeholder="Your feedback (optional)"
+                    rows={3}
+                  />
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Reset highlight for this message
+                        if (feedbackDialog.messageId) {
+                          setFeedbackHighlight(prev => ({ ...prev, [feedbackDialog.messageId]: null }));
+                        }
+                        setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => handleFeedbackDialogClose(feedbackDialog.text || undefined)}
+                    >
+                      Submit
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Fixed input at bottom when chatting */}
               <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">

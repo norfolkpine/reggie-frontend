@@ -101,43 +101,50 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
   }
 
   const uploadFilesHandler = async () => {
-    if (files.length === 0) return
+    if (files.length === 0) return;
 
-    setUploading(true)
-    setError(null)
+    setUploading(true);
+    setError(null);
 
     try {
       // Set all files to 50% progress before API call
-      setFiles((currentFiles) => 
-        currentFiles.map(file => ({ ...file, progress: 50 }))
-      )
+      setFiles((currentFiles) =>
+        currentFiles.map((file) => ({ ...file, progress: 50 }))
+      );
 
-      const response = await uploadFiles(
-        files.map(fileObj => fileObj.file),
-        {
-          title: title || "",
-          description: "Files uploaded through knowledge base interface",
-          ...(knowledgeBaseId && {
-            knowledgebase_id: knowledgeBaseId,
-            auto_ingest: true
-          }),
-          is_global: isGlobal
-        }
-      )
+      // Upload all files in parallel, each with its own title (file name)
+      await Promise.all(
+        files.map(async (fileObj) => {
+          try {
+            await uploadFiles([
+              fileObj.file
+            ], {
+              title: title || "",
+              description: "Files uploaded through knowledge base interface",
+              ...(knowledgeBaseId && {
+                knowledgebase_id: knowledgeBaseId,
+                auto_ingest: true
+              }),
+              is_global: isGlobal
+            });
+          } catch (err) {
+            // Optionally, set error on this fileObj
+          }
+        })
+      );
 
       // Update progress to 100% for all files
-      setFiles((currentFiles) => 
-        currentFiles.map(file => ({ ...file, progress: 100 }))
-      )
+      setFiles((currentFiles) =>
+        currentFiles.map((file) => ({ ...file, progress: 100 }))
+      );
 
-      onUploadComplete([])
-      setFiles([])
-      setError(null)
-      setTitle("") // Reset title after successful upload
+      onUploadComplete([]);
+      setFiles([]);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload files")
+      setError(err instanceof Error ? err.message : "Failed to upload files");
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
   }
 
@@ -171,7 +178,7 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
         <Label htmlFor="title">Title</Label>
         <Input
           id="title"
-          placeholder="Enter a title for the upload"
+          placeholder="Enter a collection or folder name (optional)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={uploading}

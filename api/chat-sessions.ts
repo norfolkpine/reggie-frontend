@@ -9,11 +9,22 @@ export interface ChatSession {
   updated_at: string;
 }
 
+export type UserFeedbackType = 'good' | 'bad';
+
+export interface Feedback {
+  id: string;
+  user: string;
+  feedback_type: UserFeedbackType;
+  feedback_text: string;
+  created_at: string;
+}
+
 export interface ChatMessage {
   role: string;
   content: string;
   id: string | null;
   timestamp: string | null;
+  feedback: Feedback[]; // Array of feedback objects, defaults to []
 }
 
 interface PaginatedChatSessionList {

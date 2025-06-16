@@ -20,6 +20,8 @@ import { NextPageWithLayout } from '@/types/next';
 import { Loader, WifiOff } from 'lucide-react';
 import { DocEditor } from '@/features/docs';
 import { TextErrors } from '@/components/text-errors';
+import { ConfigProvider } from '@/config';
+import { CunninghamProvider } from '@openfun/cunningham-react';
 
 export function DocLayout() {
   const { id } = useParams();
@@ -30,7 +32,11 @@ export function DocLayout() {
 
   return (
     <>
-      <DocPage id={id} />
+      <CunninghamProvider>
+        <ConfigProvider>
+            <DocPage id={id} />
+          </ConfigProvider>
+      </CunninghamProvider>
     </>
   );
 }

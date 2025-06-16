@@ -356,6 +356,7 @@ export function KnowledgeBaseManager() {
       <>
         <KnowledgeBaseDetail
           knowledgeBaseId={selectedKnowledgeBaseId}
+          knowledgeBaseCode={selectedKb?.knowledgebase_id!}
           knowledgeBase={selectedKb}
           onBack={() => setSelectedKnowledgeBaseId(null)}
           onEdit={() => {

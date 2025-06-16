@@ -48,7 +48,7 @@ export function LinkFilesModal({
       // Set initial selected state based on is_file_linked
       const linkedKbIds = response.results
         .filter(kb => kb.is_file_linked)
-        .map(kb => kb.id.toString())
+        .map(kb => kb.knowledgebase_id.toString())
       setSelectedKbIds(linkedKbIds)
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error)
@@ -122,7 +122,7 @@ export function LinkFilesModal({
                     <CommandItem
                       key={kb.id}
                       value={kb.name}
-                      onSelect={() => toggleKnowledgeBase(kb.id.toString())}
+                      onSelect={() => toggleKnowledgeBase(kb.knowledgebase_id.toString())}
                       className={cn(
                         "flex items-center justify-between px-4 py-2 cursor-pointer",
                         "aria-selected:bg-accent aria-selected:text-accent-foreground",
@@ -134,10 +134,10 @@ export function LinkFilesModal({
                         <div
                           className={cn(
                             "flex h-4 w-4 items-center justify-center rounded-sm border mr-2",
-                            selectedKbIds.includes(kb.id.toString()) ? "bg-primary border-primary" : "border-input",
+                            selectedKbIds.includes(kb.knowledgebase_id.toString()) ? "bg-primary border-primary" : "border-input",
                           )}
                         >
-                          {selectedKbIds.includes(kb.id.toString()) && <Check className="h-3 w-3 text-primary-foreground" />}
+                          {selectedKbIds.includes(kb.knowledgebase_id.toString()) && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
                         <span>{kb.name}</span>
                       </div>

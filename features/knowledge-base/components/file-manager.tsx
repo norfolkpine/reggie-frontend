@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Clock,
   Link,
+  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,8 +25,21 @@ import { FilePreview } from "./file-preview"
 import { toast } from "sonner"
 import { LinkFilesModal } from "./link-files-modal"
 import { File, FileWithUI, KnowledgeBase } from "@/types/knowledge-base"
-import { DataTable } from "@/components/ui/data-table"
-import { ColumnDef } from "@tanstack/react-table"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getFiles, deleteFile, listFiles, listFilesWithKbs, ingestSelectedFiles } from "@/api/files"
 
 interface ApiResponse {
@@ -63,29 +77,33 @@ export function FileManager() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [fileToLink, setFileToLink] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [filesCount, setFilesCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   useEffect(() => {
     fetchData()
-  }, [currentPage, searchQuery])
+  }, [currentPage, itemsPerPage, searchQuery])
 
   const fetchData = async () => {
     setIsLoading(true)
     try {
       const params: Record<string, string> = {
         page: currentPage.toString(),
-        page_size: "10",
+        page_size: itemsPerPage.toString(),
       }
       
       if (searchQuery) {
         params.search = searchQuery
       }
 
-      const response = await getFiles(currentPage)
+      // NOTE: If getFiles does not support page_size, update the API call accordingly
+      const response = await getFiles(currentPage, itemsPerPage, searchQuery)
       
       // Convert API response to FileWithUI format
       const convertedFiles: FileWithUI[] = response.results.map(apiResponse => {
-        // First convert the API response to match our File type
         const file: File = {
           uuid: apiResponse.uuid,
           title: apiResponse.title,
@@ -102,9 +120,9 @@ export function FileManager() {
           is_global: !!apiResponse.is_global,
           created_at: apiResponse.created_at,
           updated_at: apiResponse.updated_at,
+          collection: apiResponse.collection || undefined,
+          file_size: apiResponse.filesize || undefined,
         }
-
-        // Then extend it with UI-specific fields
         return {
           ...file,
           status: "ready" as const,
@@ -115,6 +133,8 @@ export function FileManager() {
       })
 
       setFiles(convertedFiles)
+      setFilesCount(response.count || 0);
+      setHasNextPage(!!response.next);
     } catch (error) {
       console.error("Failed to fetch data:", error)
       toast.error("Failed to load files")
@@ -183,6 +203,18 @@ export function FileManager() {
     setIsLinkModalOpen(true)
   }
 
+  const handleBulkDelete = async () => {
+    try {
+      await Promise.all(selectedFiles.map((fileId) => deleteFile(fileId)));
+      toast.success(`${selectedFiles.length} files deleted successfully`);
+      setSelectedFiles([]);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete files:", error);
+      toast.error("Failed to delete selected files");
+    }
+  };
+
   // Filter files based on search query
   const filteredFiles = files.filter((file) => {
     return file.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -236,88 +268,6 @@ export function FileManager() {
     }
   }
 
-  const columns: ColumnDef<FileWithUI>[] = [
-    {
-      accessorKey: "title",
-      header: "Name",
-      cell: ({ row }) => {
-        const file = row.original
-        return (
-          <div className="flex items-center">
-            <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span className="font-medium">{file.title}</span>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "file_type",
-      header: "Type",
-      cell: ({ row }) => {
-        const file = row.original
-        return (
-          <div className="flex items-center">
-            <span className="text-sm text-muted-foreground uppercase">{file.file_type}</span>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "created_at",
-      header: "Upload Date",
-      cell: ({ row }) => {
-        const file = row.original
-        return <span className="text-sm text-muted-foreground">{formatDate(file.created_at)}</span>
-      },
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const file = row.original
-        return (
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs"
-              onClick={() => handleOpenLinkModal(file.uuid)}
-            >
-              <Link className="h-3 w-3 mr-1" />
-              Link
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handlePreviewFile(file)}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <a href={file.file} download={file.title} className="flex items-center">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleOpenLinkModal(file.uuid)}>
-                  <Link className="h-4 w-4 mr-2" />
-                  Link to KB
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDeleteFile(file.uuid)}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )
-      },
-    },
-  ]
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -327,12 +277,252 @@ export function FileManager() {
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={files}
-        searchKey="title"
-        searchPlaceholder="Search files..."
-      />
+      {/* Search box */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-full max-w-xs">
+          <Input
+            type="text"
+            placeholder="Search files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Bulk actions bar for selected files */}
+      {selectedFiles.length > 0 && (
+        <div className="flex items-center justify-between bg-muted p-2 rounded-md mb-2">
+          <span className="text-sm">
+            {selectedFiles.length} files selected
+          </span>
+          <div className="space-x-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setSelectedFiles([])}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+            >
+              Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="border rounded-md overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+              <Checkbox
+                checked={
+                  selectedFiles.length === filteredFiles.length &&
+                  filteredFiles.length > 0
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedFiles(filteredFiles.map((file) => file.uuid));
+                  } else {
+                    setSelectedFiles([]);
+                  }
+                }}
+              />
+          </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>File Size</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Collection</TableHead>
+              <TableHead>Upload Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                  <div className="flex justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredFiles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? "No files match your search" : "No files found"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredFiles.map((file) => (
+                <TableRow key={file.uuid}>
+                  <TableCell>
+                  <Checkbox
+                    checked={selectedFiles.includes(file.uuid)}
+                    onCheckedChange={() => {
+                      if (selectedFiles.includes(file.uuid)) {
+                        setSelectedFiles(selectedFiles.filter((id) => id !== file.uuid));
+                      } else {
+                        setSelectedFiles([...selectedFiles, file.uuid]);
+                      }
+                    }}
+                  />
+                </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span className="font-medium">{file.title}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{file.file_size ? formatFileSize(file.file_size) : '--'}</TableCell>
+                  <TableCell className="text-xs uppercase text-muted-foreground">{file.file_type}</TableCell>
+                  <TableCell>{file.collection?.name || '-'}</TableCell>
+                  <TableCell>{formatDate(file.created_at)}</TableCell>
+                  <TableCell>
+                    {getStatusBadge(file.status)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => handleOpenLinkModal(file.uuid)}
+                      >
+                        <Link className="h-3 w-3 mr-1" />
+                        Link
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handlePreviewFile(file)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <a href={file.file} download={file.title} className="flex items-center">
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenLinkModal(file.uuid)}>
+                            <Link className="h-4 w-4 mr-2" />
+                            Link to KB
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteFile(file.uuid)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination - match knowledge-base-detail.tsx exactly */}
+      {filesCount > 0 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Total {filesCount} files
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+              </PaginationItem>
+              {(() => {
+                const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+                return Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                  let pageNum = i + 1;
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 3 + i;
+                    if (pageNum > totalPages) {
+                      pageNum = totalPages - (4 - i);
+                    }
+                  }
+                  if (pageNum <= totalPages) {
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <Button
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                });
+              })()}
+              {(() => {
+                const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+                return totalPages > 5 && currentPage < totalPages - 2 ? (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ) : null;
+              })()}
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.max(1, Math.ceil(filesCount / itemsPerPage))))}
+                  disabled={currentPage >= Math.ceil(filesCount / itemsPerPage) || !hasNextPage}
+                >
+                  Next
+                </Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Items per page:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {itemsPerPage}
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {[5, 10, 20, 50].map((value) => (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() => {
+                      setItemsPerPage(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {value}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )}
 
       {/* Upload Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>

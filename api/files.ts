@@ -16,9 +16,10 @@ interface FileIngest {
   knowledgebase_ids: string[];
 }
 
-export const getFiles = async (page: number = 1) => {
+export const getFiles = async (page: number = 1,page_size: number,
+  search: string) => {
   const response = await api.get(ENDPOINT, {
-    params: { page: page.toString() },
+    params: { page: page.toString(), page_size: page_size.toString(), search: search },
   });
   return response as PaginatedFileList;
 };
@@ -140,6 +141,11 @@ export const linkFilesToKb = async (data: Partial<File>) => {
 export const unlinkFilesFromKb = async (data: Partial<File>) => {
   const response = await api.post(ENDPOINT + 'unlink-from-kb/', data);
   return response as File;
+};
+
+export const unlinkFilesFromKbBulk = async (data: FileIngest) => {
+  const response = await api.post(ENDPOINT + 'unlink-from-kb/', data);
+  return response as FileIngest;
 };
 
 interface BulkFileUploadRequest {

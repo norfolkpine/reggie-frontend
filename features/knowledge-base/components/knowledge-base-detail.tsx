@@ -65,7 +65,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getModelProviders, ModelProvider } from "@/api/agent-providers";
 import { getKnowledgeBaseFiles } from "@/api/knowledge-bases";
 import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base";
-import { unlinkFilesFromKb, patchFile, reingestFile } from "@/api/files";
+import { unlinkFilesFromKb, patchFile, reingestFile, unlinkFilesFromKbBulk } from "@/api/files";
 import { useDebounce } from "@/hooks/use-debounce";
 import { FileUpload } from "@/features/knowledge-base/components/file-upload"
 import { uploadFiles } from "@/api/files"
@@ -73,6 +73,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 interface KnowledgeBaseDetailProps {
   knowledgeBaseId: string;
+  knowledgeBaseCode: string;
   knowledgeBase: KnowledgeBase | null;
   onBack: () => void;
   onEdit: () => void;
@@ -99,6 +100,7 @@ const apiToLocalKnowledgeBase = (apiKB: ApiKnowledgeBase): KnowledgeBase => {
 
 export function KnowledgeBaseDetail({
   knowledgeBaseId,
+  knowledgeBaseCode,
   knowledgeBase,
   onBack,
   onEdit,
@@ -237,7 +239,7 @@ export function KnowledgeBaseDetail({
 
   const handleDeleteLink = async (fileId: string) => {
     try {
-      await unlinkFilesFromKb({ uuid: fileId });
+      await unlinkFilesFromKbBulk({ file_ids: [fileId], knowledgebase_ids: [knowledgeBaseCode] });
       toast({
         title: "Success",
         description: "File unlinked successfully",
@@ -253,11 +255,28 @@ export function KnowledgeBaseDetail({
     }
   };
 
+  const handleBulkUnlink = async () => {
+    try {
+      await unlinkFilesFromKbBulk({ file_ids: selectedFiles, knowledgebase_ids: [knowledgeBaseCode] });
+      toast({
+        title: "Success",
+        description: `${selectedFiles.length} files unlinked successfully`,
+      });
+      setSelectedFiles([]);
+      handleRefresh();
+    } catch (error) {
+      console.error("Failed to unlink files:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unlink selected files",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleBulkDelete = async () => {
     try {
-      await Promise.all(
-        selectedFiles.map((fileId) => unlinkFilesFromKb({ uuid: fileId }))
-      );
+      await unlinkFilesFromKbBulk({ file_ids: selectedFiles, knowledgebase_ids: [knowledgeBaseCode] });
 
       toast({
         title: "Success",
@@ -456,11 +475,23 @@ export function KnowledgeBaseDetail({
       </div>
 
       {/* Tabs for files and configuration */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="files">Files</TabsTrigger>
+              <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            </TabsList>
+            {/* Only TabsList here, not TabsContent */}
+          </Tabs>
+        </div>
+        <Button variant="outline" onClick={onEdit}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit Configuration
+        </Button>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="configuration">Configuration</TabsTrigger>
-        </TabsList>
+
 
         <TabsContent value="files" className="space-y-4 pt-4">
           {/* Search and filters */}
@@ -495,6 +526,13 @@ export function KnowledgeBaseDetail({
                 >
                   Remove Selected
                 </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkUnlink}
+                >
+                  Bulk Unlink
+                </Button>
               </div>
             </div>
           )}
@@ -522,6 +560,7 @@ export function KnowledgeBaseDetail({
                     />
                   </TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Collection</TableHead>
                   <TableHead>File Size</TableHead>
                   <TableHead>Chunk Size</TableHead>
                   <TableHead>Uploaded At</TableHead>
@@ -533,7 +572,7 @@ export function KnowledgeBaseDetail({
               <TableBody>
                 {isLoading ? (
                   <TableRow key="loading">
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
@@ -567,6 +606,9 @@ export function KnowledgeBaseDetail({
                           <span className="font-medium">{file.title}</span>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {file.collection ? file.collection.name : '—'}
+                      </TableCell>
                       <TableCell>{file.file_size} bytes</TableCell>
                       <TableCell>{file.chunk_size} tokens</TableCell>
                       <TableCell>{formatDate(file.created_at)}</TableCell>
@@ -594,18 +636,29 @@ export function KnowledgeBaseDetail({
                               <span className="text-sm">Error</span>
                             </div>
                           ) : (
-                            <div className="w-full bg-secondary h-2 rounded-full">
+                            <div className="relative w-full max-w-xs min-w-[80px]">
+                            <div className="bg-secondary h-2 rounded-full overflow-hidden">
                               <div
                                 className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${file.progress * 100}%` }}
+                                style={{ width: `${file.progress ?? 0}%` }}
                               />
+                              <span
+                                className={
+                                  `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold transition-colors pointer-events-none ` +
+                                  (typeof file.progress === 'number' && file.progress > 50 ? 'text-white' : 'text-gray-900')
+                                }
+                              >
+                                {typeof file.progress === "number" ? `${Math.round(file.progress)}%` : "--"}
+                              </span>
                             </div>
+                          </div>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleReingestFile(file.file_id)}
+                          {file.status === "failed" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleReingestFile(file.file_id)}
                             disabled={reingestingFiles[file.file_id]}
                           >
                             <RefreshCw
@@ -616,6 +669,7 @@ export function KnowledgeBaseDetail({
                               }`}
                             />
                           </Button>
+                        )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -855,10 +909,7 @@ export function KnowledgeBaseDetail({
               </div>
             </div>
 
-            <Button variant="outline" onClick={onEdit} className="w-full">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Configuration
-            </Button>
+
           </div>
         </TabsContent>
       </Tabs>

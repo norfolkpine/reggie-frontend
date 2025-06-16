@@ -23,7 +23,7 @@ import Collaboration from '@tiptap/extension-collaboration'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BookOpen, Check, Copy, RefreshCw, Volume2, Undo, Redo, Square, Send } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, Copy, RefreshCw, Volume2, Undo, Redo, Square, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, truncateText } from '@/lib/utils'
 import '@/styles/editor.css'
@@ -52,6 +52,9 @@ interface EditorPanelProps {
   content: Message | null
 }
 
+import { ConfirmationDialog } from '@/components/confirmation-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
 export function EditorPanel({ 
   onClose, 
   title = 'Document Preview',
@@ -62,6 +65,8 @@ export function EditorPanel({
   const [isCopied, setIsCopied] = useState(false)
   const [isJournalSaved, setIsJournalSaved] = useState(false)
   const [isGoogleDriveLoading, setIsGoogleDriveLoading] = useState(false)
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [initialMarkdown, setInitialMarkdown] = useState<string | undefined>(undefined);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -134,9 +139,12 @@ export function EditorPanel({
         editor.commands.setContent(sanitizedContent, false, {
           preserveWhitespace: 'full'
         })
+        // Set initial markdown for dirty checking
+        setInitialMarkdown(editor.storage.markdown.getMarkdown() ?? '')
       } catch (error) {
         console.error('Error rendering markdown:', error)
         editor.commands.setContent(content?.content, false)
+        setInitialMarkdown(editor.storage.markdown.getMarkdown() ?? '')
       }
     }
   }, [editor, content])
@@ -180,33 +188,35 @@ export function EditorPanel({
   }
 
   return (
+    <>
     <div className="flex flex-col h-full bg-background">
       <div className="px-4 py-2 border-b flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => {
-            if (onSave) {
-              onSave(editor?.storage.markdown.getMarkdown() ?? '')
-            }
-            if (onClose) {
-              onClose()
+            const currentMarkdown = editor?.storage.markdown.getMarkdown() ?? '';
+            if (initialMarkdown !== undefined && currentMarkdown === initialMarkdown) {
+              if (onClose) onClose();
+            } else {
+              setShowCloseDialog(true);
             }
           }}
           className="h-9 w-9"
-          title="Save and close"
+          title="Close"
         >
-          <ArrowLeft className="h-4 w-4" />
+           <X className="h-4 w-4" />
         </Button>
+        
         <h2 className="text-lg font-medium">{title}</h2>
 
         <div className="flex items-center gap-2 py-2 px-2 ml-auto">
-        <ActionButton
-          icon={Copy}
-          activeIcon={Check}
-          isActive={isCopied}
-          onClick={() => {
-            if (editor) {
+          <ActionButton
+            icon={Copy}
+            activeIcon={Check}
+            isActive={isCopied}
+            onClick={() => {
+              if (editor) {
               navigator.clipboard.writeText(editor.getText())
               setIsCopied(true)
               setTimeout(() => setIsCopied(false), 2000)
@@ -282,5 +292,39 @@ export function EditorPanel({
       </div>
      
     </div>
+    {showCloseDialog && (
+      <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Are you sure you want to close?</DialogTitle>
+            <DialogDescription>
+              Changes will not be saved unless you save this canvas to your chat.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => {
+                setShowCloseDialog(false);
+                if (onSave) onSave(editor?.storage.markdown.getMarkdown() ?? '');
+                if (onClose) onClose();
+              }}
+            >
+              Save to chat
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowCloseDialog(false);
+                if (onClose) onClose();
+              }}
+            >
+              Don't save and close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   )
 }
