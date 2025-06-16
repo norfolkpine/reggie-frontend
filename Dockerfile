@@ -1,0 +1,50 @@
+# ---- Build Stage ----
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_DEFAULT_AGENT_ID
+ARG NEXT_PUBLIC_API_ORIGIN
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG COLLABORATION_WS_URL
+
+# Install dependencies
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+RUN if [ -f package-lock.json ]; then npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install; \
+    elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
+    else npm install; fi
+
+# Copy all files
+COPY . .
+
+# Set environment variables for build
+ENV NEXT_PUBLIC_DEFAULT_AGENT_ID=$NEXT_PUBLIC_DEFAULT_AGENT_ID
+ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
+
+# Build the Next.js app
+RUN npm run build
+
+# ---- Production Stage ----
+FROM node:18-alpine AS runner
+
+WORKDIR /app
+
+# Only copy over the necessary files from the build stage
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Set environment variables (can be customized)
+ENV NODE_ENV=production
+
+# Expose the port Next.js runs on
+EXPOSE 3000
+
+# Start the Next.js app
+CMD ["npm", "run", "start"]

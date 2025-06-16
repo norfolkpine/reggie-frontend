@@ -51,10 +51,10 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(currentFolderId)
-
+  const [title, setTitle] = useState("")
+  const [isGlobal, setIsGlobal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
-  const [title, setTitle] = useState("")
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -119,12 +119,13 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
             await uploadFiles([
               fileObj.file
             ], {
-              title: title,
+              title: title || "",
               description: "Files uploaded through knowledge base interface",
               ...(knowledgeBaseId && {
                 knowledgebase_id: knowledgeBaseId,
                 auto_ingest: true
-              })
+              }),
+              is_global: isGlobal
             });
           } catch (err) {
             // Optionally, set error on this fileObj
@@ -182,6 +183,7 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
           onChange={(e) => setTitle(e.target.value)}
           disabled={uploading}
         />
+
       </div>
 
       <div
@@ -221,6 +223,19 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
             onChange={handleFolderInputChange}
           />
         </div>
+      </div>
+
+      {/* Is Global checkbox below upload area */}
+      <div className="flex items-center gap-2 mb-2">
+        <input
+          id="is-global"
+          type="checkbox"
+          checked={isGlobal}
+          onChange={(e) => setIsGlobal(e.target.checked)}
+          disabled={uploading}
+          className="accent-primary h-4 w-4"
+        />
+        <Label htmlFor="is-global" className="text-sm cursor-pointer select-none">Is Global</Label>
       </div>
 
       {files.length > 0 && (
