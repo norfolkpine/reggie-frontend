@@ -398,8 +398,8 @@ export default function ChatInterface() {
                                 setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
                                 setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
                               }}
-                              isGood={feedbackHighlight[message.id] === 'good' || message.feedback?.[message.feedback.length - 1].feedback_type === 'good'}
-                              isBad={feedbackHighlight[message.id] === 'bad' || message.feedback?.[message.feedback.length - 1].feedback_type === 'bad'}
+                              isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                              isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
                             />
                           </>
                         )}
