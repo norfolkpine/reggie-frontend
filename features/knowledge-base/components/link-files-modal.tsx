@@ -105,7 +105,7 @@ export function LinkFilesModal({
         `Files linked to ${selectedKbIds.length} knowledge base(s)`
       );
       // For bulk, just pass the first fileId for callback compatibility
-      onLinkFiles(idsToLink[0], selectedKbIds[0]);
+
       onClose();
     } catch (error) {
       console.error('Failed to link files:', error);

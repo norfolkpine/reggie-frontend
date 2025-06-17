@@ -409,13 +409,13 @@ export function FileManager() {
                   <TableCell>
                     <Checkbox
                       checked={selectedFiles.includes(file.uuid)}
-                      onCheckedChange={() => {
-                        if (selectedFiles.includes(file.uuid)) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFiles([...selectedFiles, file.uuid]);
+                        } else {
                           setSelectedFiles(
                             selectedFiles.filter((id) => id !== file.uuid)
                           );
-                        } else {
-                          setSelectedFiles([...selectedFiles, file.uuid]);
                         }
                       }}
                     />
