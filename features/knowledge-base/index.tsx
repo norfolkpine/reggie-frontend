@@ -7,15 +7,27 @@ import { KnowledgeBaseManager } from "./components/knowledge-base-manager"
 import type { File, KnowledgeBase } from "@/types/knowledge-base"
 
 export default function KnowledgeManagement() {
-  const [activeTab, setActiveTab] = useState("files")
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kb_active_tab') || 'files';
+    }
+    return 'files';
+  })
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([])
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
+
+  // Persist activeTab in localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('kb_active_tab', activeTab);
+    }
+  }, [activeTab]);
 
   const fetchData = async () => {
     try {
@@ -47,7 +59,12 @@ export default function KnowledgeManagement() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <Tabs defaultValue="files" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="files" value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('kb_active_tab', value);
+          }
+        }}>
           <TabsList>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="knowledge-bases">Knowledge Bases</TabsTrigger>

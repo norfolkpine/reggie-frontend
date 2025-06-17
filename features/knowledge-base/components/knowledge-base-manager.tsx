@@ -136,7 +136,12 @@ export function KnowledgeBaseManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string | null>(null);
+  const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kb_selected_kb_id') || null;
+    }
+    return null;
+  });
   const [knowledgeBaseToEdit, setKnowledgeBaseToEdit] =
     useState<KnowledgeBase | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -346,6 +351,17 @@ export function KnowledgeBaseManager() {
       kb.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (kb.description || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Persist selectedKnowledgeBaseId in localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (selectedKnowledgeBaseId) {
+        localStorage.setItem('kb_selected_kb_id', selectedKnowledgeBaseId);
+      } else {
+        localStorage.removeItem('kb_selected_kb_id');
+      }
+    }
+  }, [selectedKnowledgeBaseId]);
 
   // If a knowledge base is selected, show its detail view
   if (selectedKnowledgeBaseId) {
