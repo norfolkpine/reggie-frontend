@@ -1,9 +1,13 @@
 import { api } from '@/lib/api-client';
 import { Team, PaginatedTeamList, PatchedTeam } from '../types/api';
 
-export const getTeams = async (page: number = 1) => {
+export const getTeams = async (page: number = 1, search?: string) => {
+  const params: Record<string, string> = { page: page.toString() };
+  if (search) {
+    params.search = search;
+  }
   const response = await api.get('/teams/api/teams/', {
-    params: { page: page.toString() }
+    params
   });
   return response as PaginatedTeamList;
 };

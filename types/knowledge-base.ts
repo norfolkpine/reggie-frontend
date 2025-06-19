@@ -54,7 +54,8 @@ export interface KnowledgeBase {
   created_at: string
   updated_at: string
   model_provider?: number
-  permissions?: KnowledgeBasePermission[]
+  permissions?: KnowledgeBasePermission[],
+  role?: "owner" | "editor" | "viewer"
 }
 
 export enum KnowledgeTypeEnum {
@@ -79,7 +80,8 @@ export enum KnowledgeTypeEnum {
 export interface KnowledgeBasePermission {
   id: string
   userId?: string
-  teamId?: string
+  team_id?: number
+  team_name?: string
   role: "owner" | "editor" | "viewer"
 }
 

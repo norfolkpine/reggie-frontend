@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { Collection } from "./knowledge-base";
+import { Collection, KnowledgeBasePermission } from "./knowledge-base";
 
 export interface TokenRefresh {
   refresh: string;
@@ -82,6 +82,9 @@ export interface KnowledgeBase {
   updated_at: string;
   model_provider: number;
   is_file_linked?: boolean;
+  permissions?: KnowledgeBasePermission[];
+  permissions_input?: KnowledgeBasePermission[];
+  role?: "owner" | "editor" | "viewer"
 }
 
 export interface PaginatedKnowledgeBaseList {
