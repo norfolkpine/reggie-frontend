@@ -475,10 +475,12 @@ export function KnowledgeBaseDetail({
       </div>
 
       {/* Tabs for files and configuration */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
+      {
+          loadedKnowledgeBase && loadedKnowledgeBase.role !== "viewer" && (
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="configuration">Configuration</TabsTrigger>
             </TabsList>
@@ -490,6 +492,8 @@ export function KnowledgeBaseDetail({
           Edit Configuration
         </Button>
       </div>
+      )
+      }
       <Tabs value={activeTab} onValueChange={setActiveTab}>
 
 

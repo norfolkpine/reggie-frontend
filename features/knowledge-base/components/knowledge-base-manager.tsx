@@ -41,11 +41,10 @@ import type { KnowledgeBase, KnowledgeTypeEnum } from "@/types/knowledge-base";
 import { useToast } from "@/components/ui/use-toast";
 import {
   getKnowledgeBases,
-  createKnowledgeBase,
-  updateKnowledgeBase,
   deleteKnowledgeBase,
 } from "@/api/knowledge-bases";
 import { KnowledgeBase as ApiKnowledgeBase } from "@/types/api";
+import React from "react";
 
 // Helper function to convert API KnowledgeBase to local KnowledgeBase format
 const apiToLocalKnowledgeBase = (apiKB: ApiKnowledgeBase): KnowledgeBase => {
@@ -62,7 +61,9 @@ const apiToLocalKnowledgeBase = (apiKB: ApiKnowledgeBase): KnowledgeBase => {
     chunk_overlap: apiKB.chunk_overlap,
     created_at: apiKB.created_at,
     updated_at: apiKB.updated_at,
-    model_provider: apiKB.model_provider
+    model_provider: apiKB.model_provider,
+    permissions: apiKB.permissions && apiKB.permissions.length > 0 ? apiKB.permissions : [],
+    role: apiKB.role
   }
 }
 
@@ -84,7 +85,7 @@ function KnowledgeBaseCard({ kb, onView, onEdit, onDelete }: KnowledgeBaseCardPr
   }
 
   return (
-    <Card key={kb.id} className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle>{kb.name}</CardTitle>
         <CardDescription>{kb.description || ""}</CardDescription>
@@ -110,16 +111,20 @@ function KnowledgeBaseCard({ kb, onView, onEdit, onDelete }: KnowledgeBaseCardPr
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(kb)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(kb.id)}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
+          {
+            kb.role !== "viewer" && (
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(kb)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDelete(kb.id)}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            )
+          }
         </DropdownMenu>
       </CardFooter>
     </Card>
@@ -275,12 +280,15 @@ export function KnowledgeBaseManager() {
     try {
       // Convert local format to API format
       const apiData = {
+        id: knowledgeBaseToEdit.id,
         name: data.name,
         description: data.description,
         model_provider: data.model_provider,
-      } as Omit<ApiKnowledgeBase, "id" | "created_at" | "updated_at">
+      } as ApiKnowledgeBase;
 
-      const response = await updateKnowledgeBase(knowledgeBaseToEdit.id, apiData)
+      if (data.permissions && data.permissions.length > 0) {
+        apiData.permissions = data.permissions
+      }
 
       setIsEditDialogOpen(false)
       setKnowledgeBaseToEdit(null)
@@ -296,7 +304,7 @@ export function KnowledgeBaseManager() {
         refreshData()
       } else {
         // Otherwise just update the knowledge base in the list
-        const updatedKb = apiToLocalKnowledgeBase(response)
+        const updatedKb = apiToLocalKnowledgeBase(apiData)
         setKnowledgeBases((prevKbs) =>
           prevKbs.map((kb) =>
             kb.id === knowledgeBaseToEdit.id ? updatedKb : kb
@@ -433,19 +441,21 @@ export function KnowledgeBaseManager() {
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="space-y-2">
-                <div className="h-5 bg-muted rounded w-1/2"></div>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                <div className="h-4 bg-muted rounded w-5/6"></div>
-              </CardContent>
-              <CardFooter>
-                <div className="h-4 bg-muted rounded w-1/3"></div>
-              </CardFooter>
-            </Card>
+            <React.Fragment key={i}>
+              <Card className="animate-pulse">
+                <CardHeader className="space-y-2">
+                  <div className="h-5 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-5/6"></div>
+                </CardContent>
+                <CardFooter>
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                </CardFooter>
+              </Card>
+            </React.Fragment>
           ))}
         </div>
       ) : filteredKnowledgeBases.length === 0 ? (
@@ -508,6 +518,25 @@ export function KnowledgeBaseManager() {
             onCancel={() => setIsCreateDialogOpen(false)}
             isSubmitting={isSubmitting}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Knowledge Base</DialogTitle>
+          </DialogHeader>
+          {knowledgeBaseToEdit && (
+            <KnowledgeBaseForm
+              knowledgeBase={knowledgeBaseToEdit}
+              onSubmit={handleEditKnowledgeBase}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setKnowledgeBaseToEdit(null);
+              }}
+              isSubmitting={isSubmitting}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

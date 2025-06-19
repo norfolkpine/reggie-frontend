@@ -15,6 +15,20 @@ import type { KnowledgeBase, ChunkMethod, KnowledgeBasePermission } from "@/type
 import { getModelProviders, ModelProvider } from "@/api/agent-providers"
 import { createKnowledgeBase, updateKnowledgeBase } from "@/api/knowledge-bases"
 import { KnowledgeBase as ApiKnowledgeBase } from "@/types/api"
+import { getTeams } from "@/api/teams"
+import _ from "lodash"
+
+interface Team {
+  id: number;
+  name: string;
+}
+
+interface TeamPermission {
+  id: string;
+  team_id: number;
+  team_name?: string;
+  role: "owner" | "editor" | "viewer";
+}
 
 interface KnowledgeBaseFormProps {
   knowledgeBase?: KnowledgeBase
@@ -22,6 +36,8 @@ interface KnowledgeBaseFormProps {
   onCancel: () => void
   isSubmitting: boolean
 }
+
+
 
 export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitting: isSubmittingProp }: KnowledgeBaseFormProps) {
   const [name, setName] = useState(knowledgeBase?.name || "")
@@ -36,6 +52,101 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
   const [isSubmitting, setIsSubmitting] = useState(isSubmittingProp)
   const { toast } = useToast()
   const [permissions, setPermissions] = useState<KnowledgeBasePermission[]>(knowledgeBase?.permissions || [])
+  const [teamPermissions, setTeamPermissions] = useState<TeamPermission[]>(knowledgeBase?.permissions?.filter((p): p is TeamPermission => p.team_id !== undefined) || [])
+  const [selectedTeam, setSelectedTeam] = useState<Team>()
+
+  useEffect(() => {
+    if (knowledgeBase?.permissions) {
+     
+      const teamPerms = knowledgeBase.permissions
+        .filter((p): p is TeamPermission => p.team_id !== undefined)
+        .map(p => ({
+          id: p.id,
+          team_id: p.team_id!,
+          team_name: p.team_name,
+          role: p.role
+        }))
+      setTeamPermissions(teamPerms)
+    }
+  }, [knowledgeBase])
+
+  const [newTeamName, setNewTeamName] = useState("")
+  const [newTeamRole, setNewTeamRole] = useState<KnowledgeBasePermission["role"]>("viewer")
+  const [teamSuggestions, setTeamSuggestions] = useState<Team[]>([])
+  const [isFetchingTeams, setIsFetchingTeams] = useState(false)
+
+  const fetchTeams = async (query: string) => {
+    if (!query.trim()) {
+      setTeamSuggestions([])
+      return
+    }
+
+    setIsFetchingTeams(true)
+    try {
+      const response = await getTeams(1, query.trim())
+      setTeamSuggestions(response.results)
+    } catch (error) {
+      console.error("Failed to fetch team suggestions:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch team suggestions",
+        variant: "destructive",
+      })
+    } finally {
+      setIsFetchingTeams(false)
+    }
+  }
+
+  const debouncedFetch = _.debounce((query: string) => {
+    fetchTeams(query)
+  }, 300)
+
+  // Add useEffect for team suggestions
+  useEffect(() => {
+    return () => {
+      debouncedFetch.cancel()
+    }
+  }, [toast])
+
+  // Add newTeamName change handler
+  const handleNewTeamNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   
+    setNewTeamName(e.target.value)
+    debouncedFetch(e.target.value)
+  }
+
+  // Add team permission handler
+  const handleSelectTeamName = (teamName: string) => {
+    if (!teamName.trim()) return
+
+    const selectedTeam = teamSuggestions.find(team => team.name === teamName)
+    if (!selectedTeam) {
+      toast({
+        title: "Error",
+        description: "Please select a team from the suggestions",
+        variant: "destructive",
+      })
+      return
+    }
+    setSelectedTeam(selectedTeam);
+    setTeamSuggestions([]);
+  }
+
+  const handleAddTeamPermission = () => {
+    if (!selectedTeam) return
+
+    const newPermission: TeamPermission = {
+      id: `team-perm-${Date.now()}`,
+      team_id: selectedTeam.id,
+      team_name: selectedTeam.name,
+      role: newTeamRole,
+    }
+
+    setTeamPermissions([...teamPermissions, newPermission])
+    setSelectedTeam(undefined)
+    setNewTeamRole("viewer")
+    setNewTeamName("");
+  }
 
   useEffect(() => {
     const fetchModelProviders = async () => {
@@ -98,6 +209,10 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
       model_provider: modelProvider,
     } as Omit<ApiKnowledgeBase, 'id' | 'created_at' | 'updated_at'>
 
+   if(teamPermissions && teamPermissions.length > 0) {
+    apiData.permissions_input = teamPermissions
+   }
+
     setIsSubmitting(true)
     try {
       let result
@@ -115,6 +230,7 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
         model_provider: modelProvider,
         created_at: result.created_at,
         updated_at: result.updated_at,
+        permissions: result.permissions,
       }
       
       toast({
@@ -161,7 +277,7 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
         <TabsList className="w-full">
           <TabsTrigger value="general" className="w-full">General</TabsTrigger>
           <TabsTrigger value="embedding" className="w-full">Embedding & Chunking</TabsTrigger>
-          <TabsTrigger value="permissions" className="w-full">Permissions</TabsTrigger>
+          <TabsTrigger value="team-permissions" className="w-full">Team Permissions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4 pt-4">
@@ -234,32 +350,29 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
           </div>
         </TabsContent>
 
-        <TabsContent value="permissions" className="space-y-6 pt-4">
+       
+
+        <TabsContent value="team-permissions" className="space-y-6 pt-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Users with Access</Label>
+              <Label>Teams with Access</Label>
               <Badge variant="outline" className="font-normal">
-                {permissions.length} {permissions.length === 1 ? "user" : "users"}
+                {teamPermissions.length} {teamPermissions.length === 1 ? "team" : "teams"}
               </Badge>
             </div>
 
             <div className="border rounded-md divide-y">
-              {permissions.map((permission) => (
+              {teamPermissions.map((permission) => (
                 <div key={permission.id} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback>
-                        {permission.userId === "current-user" ? "ME" : permission.userId?.charAt(0).toUpperCase()}
+                        {permission.team_name?.charAt(0).toUpperCase() || "T"}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium">
-                        {permission.userId === "current-user" ? "You" : `User ${permission.userId}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {permission.userId === "current-user"
-                          ? "your@email.com"
-                          : `user${permission.userId}@example.com`}
+                        {permission.team_name || `Team ${permission.team_id}`}
                       </p>
                     </div>
                   </div>
@@ -268,9 +381,8 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
                     <Select
                       value={permission.role}
                       onValueChange={(value: KnowledgeBasePermission["role"]) => {
-                        setPermissions(permissions.map((p) => (p.id === permission.id ? { ...p, role: value } : p)))
+                        setTeamPermissions(teamPermissions.map((p) => (p.id === permission.id ? { ...p, role: value } : p)))
                       }}
-                      disabled={permission.userId === "current-user"} // Can't change your own role
                     >
                       <SelectTrigger className="w-24">
                         <SelectValue />
@@ -282,16 +394,14 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
                       </SelectContent>
                     </Select>
 
-                    {permission.userId !== "current-user" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        onClick={() => handleRemovePermission(permission.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      onClick={() => setTeamPermissions(teamPermissions.filter((p) => p.id !== permission.id))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -299,22 +409,44 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
 
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-2">
-                <Label htmlFor="new-user-email">Add User by Email</Label>
-                <Input
-                  id="new-user-email"
-                  type="email"
-                  placeholder="user@example.com"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                />
+                <Label htmlFor="new-team-name">Add Team by Team Name</Label>
+                <div className="relative">
+                  <Input
+                    id="new-team-name"
+                    placeholder="Type team name..."
+                    value={newTeamName}
+                    onChange={handleNewTeamNameChange}
+                  />
+                  {isFetchingTeams && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <Server className="h-4 w-4 animate-spin" />
+                    </div>
+                  )}
+                  {teamSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                      {teamSuggestions.map((team) => (
+                        <div
+                          key={team.id}
+                          className="p-2 hover:bg-muted cursor-pointer"
+                          onClick={() => {
+                            setNewTeamName(team.name)
+                            handleSelectTeamName(team.name)
+                          }}
+                        >
+                          {team.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="w-24 space-y-2">
-                <Label htmlFor="new-user-role">Role</Label>
+                <Label htmlFor="new-team-role">Role</Label>
                 <Select
-                  value={newUserRole}
-                  onValueChange={(value: KnowledgeBasePermission["role"]) => setNewUserRole(value)}
+                  value={newTeamRole}
+                  onValueChange={(value: KnowledgeBasePermission["role"]) => setNewTeamRole(value)}
                 >
-                  <SelectTrigger id="new-user-role">
+                  <SelectTrigger id="new-team-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -324,7 +456,7 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="button" onClick={handleAddUser} className="mb-0.5">
+              <Button type="button" onClick={handleAddTeamPermission} className="mb-0.5">
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
@@ -341,6 +473,7 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
         </TabsContent>
       </Tabs>
 
+
       <div className="flex justify-end gap-2 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
@@ -349,6 +482,7 @@ export function KnowledgeBaseForm({ knowledgeBase, onSubmit, onCancel, isSubmitt
           {isSubmitting ? "Saving..." : knowledgeBase ? "Save Changes" : "Create Knowledge Base"}
         </Button>
       </div>
+
     </form>
   )
 }
