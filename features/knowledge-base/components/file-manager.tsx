@@ -58,6 +58,8 @@ import {
   listFilesWithKbs,
   ingestSelectedFiles,
 } from '@/api/files';
+import { teamStorage } from "@/lib/utils/team-storage";
+import { Team } from '@/types/api';
 
 interface ApiResponse {
   uuid: string;
@@ -99,6 +101,9 @@ export function FileManager() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filesCount, setFilesCount] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<Team | null>(() =>
+      teamStorage.getActiveTeam()
+    );
 
   useEffect(() => {
     fetchData();
@@ -192,6 +197,7 @@ export function FileManager() {
       await ingestSelectedFiles({
         file_ids: [fileId],
         knowledgebase_ids: [knowledgeBaseId],
+        team_id: activeTeam?.id,
       });
 
       toast.success('Files linked successfully');

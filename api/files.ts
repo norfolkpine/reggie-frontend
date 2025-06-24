@@ -14,6 +14,7 @@ interface UploadFileResponse {
 interface FileIngest {
   file_ids: string[];
   knowledgebase_ids: string[];
+  team_id?: number;
 }
 
 export const getFiles = async (page: number = 1,page_size: number,
