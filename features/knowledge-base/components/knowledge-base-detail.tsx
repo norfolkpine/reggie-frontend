@@ -65,7 +65,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getModelProviders, ModelProvider } from "@/api/agent-providers";
 import { getKnowledgeBaseFiles } from "@/api/knowledge-bases";
 import { KnowledgeTypeEnum, KnowledgeBaseFile } from "@/types/knowledge-base";
-import { unlinkFilesFromKb, patchFile, reingestFile, unlinkFilesFromKbBulk } from "@/api/files";
+import { unlinkFilesFromKb, patchFile, reingestFile, unlinkFilesFromKbBulk, bulkDeleteAndUnlink } from "@/api/files";
 import { useDebounce } from "@/hooks/use-debounce";
 import { FileUpload } from "@/features/knowledge-base/components/file-upload"
 import { uploadFiles } from "@/api/files"
@@ -276,7 +276,7 @@ export function KnowledgeBaseDetail({
 
   const handleBulkDelete = async () => {
     try {
-      await unlinkFilesFromKbBulk({ file_ids: selectedFiles, knowledgebase_ids: [knowledgeBaseCode] });
+      await bulkDeleteAndUnlink(selectedFiles, [knowledgeBaseCode]);
 
       toast({
         title: "Success",
