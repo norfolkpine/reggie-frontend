@@ -148,6 +148,43 @@ export const unlinkFilesFromKbBulk = async (data: FileIngest) => {
   return response as FileIngest;
 };
 
+/**
+ * Bulk delete and unlink files from knowledgebases.
+ * @param fileIds Array of file UUIDs to delete
+ * @param knowledgebaseIds (Optional) Array of knowledgebase IDs to unlink from
+ * @returns Summary of unlink and delete results
+ */
+export const bulkDeleteAndUnlink = async (
+  fileIds: string[],
+  knowledgebaseIds?: string[]
+): Promise<{
+  unlinkResult?: FileIngest | null;
+  deleteResults: { uuid: string; success: boolean; error?: any }[];
+}> => {
+  let unlinkResult: FileIngest | null = null;
+  if (knowledgebaseIds && knowledgebaseIds.length > 0) {
+    try {
+      unlinkResult = await unlinkFilesFromKbBulk({ file_ids: fileIds, knowledgebase_ids: knowledgebaseIds });
+    } catch (error) {
+      // Continue to delete even if unlink fails
+      unlinkResult = null;
+    }
+  }
+
+  const deleteResults = await Promise.all(
+    fileIds.map(async (uuid) => {
+      try {
+        await deleteFile(uuid);
+        return { uuid, success: true };
+      } catch (error) {
+        return { uuid, success: false, error };
+      }
+    })
+  );
+
+  return { unlinkResult, deleteResults };
+};
+
 interface BulkFileUploadRequest {
   files: string[];
   title?: string;
