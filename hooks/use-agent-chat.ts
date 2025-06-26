@@ -119,7 +119,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     }
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       content: value ?? "",
       role: 'user'
     };
@@ -138,7 +138,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       };
 
       // Add empty assistant message to show typing indicator
-      const assistantMessageId = Date.now().toString();
+      const assistantMessageId = `assistant-${crypto.randomUUID()}`;
       setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
@@ -181,15 +181,15 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
             try {
               const parsedData = JSON.parse(dataContent);
-              if (parsedData.token) {
-                responseContent += parsedData.token;
+              const tokenPart = parsedData.token ?? parsedData.content;
+              if (typeof tokenPart === 'string' && tokenPart.length > 0) {
+                responseContent += tokenPart;
                 setMessages(prev => {
                   const newMessages = [...prev];
                   const lastMessageIndex = newMessages.length - 1;
                   if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
                     newMessages[lastMessageIndex] = {
-                      id: newMessages[lastMessageIndex].id,
-                      role: 'assistant',
+                      ...newMessages[lastMessageIndex],
                       content: responseContent,
                     };
                   }

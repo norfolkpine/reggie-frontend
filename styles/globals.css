@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* highlight.js theme */
+@import "highlight.js/styles/github-dark.css";
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -250,5 +253,22 @@ body {
 
 .markdown hr {
   @apply my-4 border-t border-gray-300;
+}
+
+/* Shared code block styling */
+.code-block {
+  @apply rounded-md p-4 my-4 bg-gray-800 text-gray-200 font-mono text-sm whitespace-pre-wrap break-words;
+}
+
+.code-block code {
+  @apply font-mono text-sm text-gray-200;
+}
+
+/* Hide copy button until hover */
+.code-block .copy-btn {
+  @apply opacity-0 transition-opacity duration-200;
+}
+.code-block:hover .copy-btn {
+  @apply opacity-100;
 }
 

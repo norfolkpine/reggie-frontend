@@ -25,7 +25,7 @@ import MessageActions from "./components/message-actions";
 import { sendUserFeedback } from "./api/user-feedback";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
-import { HistoryPopup } from "./components/history-popup";
+import AgentChatDock from "./components/agent-chat-dock";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
@@ -275,7 +275,9 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex h-full">
+      <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+      <div className="flex-1 flex flex-col h-full">
       {/* Main content area with flexbox layout */}
 
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
@@ -285,7 +287,7 @@ export default function ChatInterface() {
           
           {/* Header */}
           <div className="p-4 border-b flex items-center justify-start">
-              <HistoryPopup onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+              
               <div className="text-lg font-semibold ml-2">Chat</div>
               <Button
                 size="icon"
@@ -364,43 +366,50 @@ export default function ChatInterface() {
                                   description="Price, Market Cap, and Volume"
                                 />
                               </div>
-                            ) : isLoading &&
-                              index === messages.length - 1 &&
-                              message.role === "assistant" ? (
-                              <div className="flex justify-start">
-                                <div>
-                                  <TypingIndicator />
-                                </div>
-                              </div>
                             ) : (
-                              <div className="markdown">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  rehypePlugins={[rehypeHighlight]}
-                                  components={MarkdownComponents}
-                                >
-                                  {message.content as string}
-                                </ReactMarkdown>
+                              <>
+                                <div className="markdown">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeHighlight]}
+                                    components={MarkdownComponents}
+                                  >
+                                    {message.content as string}
+                                  </ReactMarkdown>
+                                </div>
+                                {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
+                                  <div className="flex justify-start">
+                                    <TypingIndicator />
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {(() => {
+                                  const isNewestAssistant = index === messages.length - 1 && message.role === "assistant";
+                                  const showActions = !(isNewestAssistant && isLoading);
+                                  return showActions;
+                                })() && (
+                              <div className="flex items-center gap-2 mt-2 -mb-1">
+                                <MessageActions
+                                  messageId={message.id}
+                                  content={message.content as string}
+                                  onCopy={copyToClipboard}
+                                  copiedMessageId={copiedMessageId}
+                                  onSend={handleOnSend}
+                                  onOpenCanvas={setEditingMessageId}
+                                  onGoodResponse={(messageId: string) => {
+                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                                  }}
+                                  onBadResponse={(messageId: string) => {
+                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                                  }}
+                                  isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                                  isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
+                                />
                               </div>
                             )}
-                            <MessageActions
-                              messageId={message.id}
-                              content={message.content as string}
-                              onCopy={copyToClipboard}
-                              copiedMessageId={copiedMessageId}
-                              onSend={handleOnSend}
-                              onOpenCanvas={setEditingMessageId}
-                              onGoodResponse={(messageId: string) => {
-                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
-                                setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
-                              }}
-                              onBadResponse={(messageId: string) => {
-                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
-                                setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
-                              }}
-                              isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
-                              isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
-                            />
                           </>
                         )}
                       </div>
@@ -484,6 +493,7 @@ export default function ChatInterface() {
           </>
         )}
       </ResizablePanelGroup>
+      </div>
     </div>
   );
 }

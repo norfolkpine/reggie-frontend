@@ -3,7 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CopyButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
-  value: string;
+  value?: string;
 }
 
 export function CopyButton({ value, className, ...props }: CopyButtonProps) {
@@ -16,9 +16,19 @@ export function CopyButton({ value, className, ...props }: CopyButtonProps) {
     }
   }, [hasCopied]);
 
-  const handleCopy = async () => {
+  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
     try {
-      await navigator.clipboard.writeText(value);
+      let textToCopy = value;
+      if (!textToCopy || textToCopy.trim() === "") {
+        // Fallback: grab nearest <pre> ancestor text
+        const pre = (e.currentTarget as HTMLElement).closest("pre");
+        if (pre) {
+          textToCopy = pre.innerText;
+        }
+      }
+      if (textToCopy) {
+        await navigator.clipboard.writeText(textToCopy);
+      }
       setHasCopied(true);
     } catch (error) {
       console.error("Failed to copy text:", error);

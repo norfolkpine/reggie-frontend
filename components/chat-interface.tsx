@@ -43,17 +43,37 @@ const MarkdownComponents = {
   ul: ({ node, ...props }: any) => <ul className="list-disc pl-5 mb-4" {...props} />,
   ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-4" {...props} />,
   li: ({ node, ...props }: any) => <li className="mb-1" {...props} />,
-  pre: ({ node, ...props }: any) => <pre className="rounded-md p-4 mb-4 overflow-x-auto bg-gray-800" {...props} />,
+  pre: ({ node, ...props }: any) => {
+    let codeText = "";
+    if (props && props.children) {
+      const child: any = (props as any).children[0];
+      if (child && child.props && child.props.children) {
+        if (Array.isArray(child.props.children)) {
+          codeText = child.props.children.join("");
+        } else {
+          codeText = child.props.children as string;
+        }
+      }
+    }
+    return (
+      <pre className="code-block relative" {...props}>
+        <div className="absolute right-4 top-4">
+          <CopyButton className="copy-btn" value={codeText} />
+        </div>
+        {props.children}
+      </pre>
+    );
+  },
   code: ({ node, inline, className, children, ...props }: any) => {
     if (inline) {
       return (
-        <code className="font-mono text-sm rounded px-1 bg-gray-100" {...props}>
+        <code className={`${className ?? ''} font-mono text-sm rounded px-1 bg-gray-100`} {...props}>
           {children}
         </code>
       )
     }
     return (
-      <code className="block font-mono text-sm p-0 bg-transparent text-gray-200" {...props}>
+      <code className={`${className ?? ''} block font-mono text-sm p-0 bg-transparent text-gray-200`} {...props}>
         {children}
       </code>
     )
@@ -250,7 +270,9 @@ export default function ChatInterface() {
                 <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                      message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                      message.role === "user"
+                        ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        : "bg-muted"
                     }`}
                   >
                     {message.role === "user" ? (
