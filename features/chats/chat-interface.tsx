@@ -223,6 +223,7 @@ export default function ChatInterface() {
         const params = new URLSearchParams({ agentId:agentCode });
         url += `?${params.toString()}`;
       }
+      setShowWelcome(false);
       router.push(url);
   };
 
@@ -275,29 +276,28 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex h-full">
+    
+    <div className="flex-1 flex flex-col h-full">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b flex items-center justify-between">
+        <div className="text-lg font-semibold">Chat</div>
+        <Button size="icon" variant="outline" onClick={handleNewChat}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+      {/* Content Row */}
+      <div className="flex flex-1 overflow-hidden">
       <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col min-h-0">
       {/* Main content area with flexbox layout */}
 
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* Chat area */}
-        <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full">
+        <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full min-h-0">
         
           
-          {/* Header */}
-          <div className="p-4 border-b flex items-center justify-start">
-              
-              <div className="text-lg font-semibold ml-2">Chat</div>
-              <Button
-                size="icon"
-                variant="outline"
-                className="ml-auto"
-                onClick={handleNewChat}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-          </div>
+          
+                            
 
           {error && (
             <Alert variant="destructive" className="mx-4 my-2">
@@ -495,5 +495,6 @@ export default function ChatInterface() {
       </ResizablePanelGroup>
       </div>
     </div>
-  );
+  </div>
+ );
 }

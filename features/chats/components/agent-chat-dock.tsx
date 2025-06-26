@@ -21,29 +21,73 @@ interface ChatSection {
   expanded: boolean
 }
 
-export default function AgentChatDock() {
+import { useEffect } from "react"
+import { getChatSessions, ChatSession } from "@/api/chat-sessions"
+import { useRouter } from "next/navigation"
+
+export default function AgentChatDock({
+  onSelectChat,
+  onNewChat,
+}: {
+  onSelectChat?: (chatId: string, agentCode?: string | null) => void
+  onNewChat?: () => void
+}) {
   const [activeTab, setActiveTab] = useState<DockTab | null>("current")
   const [searchQuery, setSearchQuery] = useState("")
-  const [sections, setSections] = useState<ChatSection[]>([
-    {
-      title: "Today",
-      expanded: true,
-      items: [
-        { id: "1", title: "Code Helper", timestamp: "Just now", agent: "GPT-4" },
-        { id: "2", title: "Database Assistant", timestamp: "2 hours ago", agent: "Claude" },
-      ],
-    },
-    {
-      title: "History",
-      expanded: true,
-      items: [
-        { id: "3", title: "React Expert", timestamp: "Yesterday", agent: "GPT-4" },
-        { id: "4", title: "API Documentation", timestamp: "2 days ago", agent: "Claude" },
-        { id: "5", title: "Legal Assistant", timestamp: "3 days ago", agent: "Workflow Bot" },
-        { id: "6", title: "DevOps Helper", timestamp: "1 week ago", agent: "DevOps Agent" },
-      ],
-    },
-  ])
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [sections, setSections] = useState<ChatSection[]>([])
+
+  const router = useRouter()
+
+  // Fetch chat sessions on mount
+  useEffect(() => {
+    const fetchChats = async () => {
+      setIsLoading(true)
+      try {
+        const res = await getChatSessions()
+        setChatSessions(res.results)
+      } catch (e) {
+        console.error("Error fetching chat sessions", e)
+      }
+      setIsLoading(false)
+    }
+    fetchChats()
+  }, [])
+
+  // Build sections based on search & date
+  useEffect(() => {
+    const filtered = searchQuery.trim()
+      ? chatSessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      : chatSessions
+
+    const today: ChatItem[] = []
+    const history: ChatItem[] = []
+    const nowStr = new Date().toDateString()
+
+    filtered.forEach((s) => {
+      const updated = new Date(s.updated_at)
+      const chatItem: ChatItem = {
+        id: s.session_id,
+        title: s.title,
+        timestamp:
+          updated.toDateString() === nowStr
+            ? updated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : updated.toLocaleDateString(),
+        agent: s.agent_code || "",
+      }
+      if (updated.toDateString() === nowStr) {
+        today.push(chatItem)
+      } else {
+        history.push(chatItem)
+      }
+    })
+
+    const newSections: ChatSection[] = []
+    if (today.length) newSections.push({ title: "Today", expanded: true, items: today })
+    if (history.length) newSections.push({ title: "History", expanded: true, items: history })
+    setSections(newSections)
+  }, [chatSessions, searchQuery])
 
   const dockItems = [
     { id: "current" as DockTab, icon: Bot, label: "Current Agent" },
@@ -77,9 +121,9 @@ export default function AgentChatDock() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex bg-gray-50 sticky top-16 self-start h-[calc(100vh_-_64px)]">
       {/* Left Sidebar with Icons */}
-      <div className="w-12 bg-white border-r border-gray-200 flex flex-col py-2">
+      <div className="w-12 bg-white border-r border-gray-200 flex flex-col py-2 overflow-visible">
         {dockItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id
@@ -101,9 +145,9 @@ export default function AgentChatDock() {
               </Button>
 
               {/* Tooltip */}
-              <div className="absolute left-12 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 pointer-events-none whitespace-nowrap z-50">
                 {item.label}
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800 rotate-45"></div>
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
               </div>
             </div>
           )
@@ -156,14 +200,22 @@ export default function AgentChatDock() {
 
                 {section.expanded && (
                   <div className="space-y-2 mt-2">
-                    {section.items
-                      .filter((item) =>
-                        searchQuery ? item.title.toLowerCase().includes(searchQuery.toLowerCase()) : true,
-                      )
-                      .map((item) => (
+                    {(isLoading ? [] : section.items).map((item) => (
                         <div
                           key={item.id}
                           className="bg-gray-100 rounded-lg p-2 hover:bg-gray-200 cursor-pointer transition-colors duration-150"
+                          onClick={() => {
+                            if (onSelectChat) {
+                              onSelectChat(item.id, item.agent)
+                            } else {
+                              let url = `/chat/${item.id}`
+                              if (item.agent) {
+                                const params = new URLSearchParams({ agentId: item.agent })
+                                url += `?${params.toString()}`
+                              }
+                              router.push(url)
+                            }
+                          }}
                         >
                           <h4 className="font-medium text-sm text-gray-900 mb-1">
                             {item.id === "1"
@@ -200,13 +252,7 @@ export default function AgentChatDock() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center text-gray-500">
-          <Bot className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <h2 className="text-xl font-semibold mb-2">Agent Chat History</h2>
-          <p className="text-sm">Select an option from the sidebar to view chat history</p>
-        </div>
-      </div>
+      
     </div>
   )
 }
