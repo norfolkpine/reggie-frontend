@@ -94,7 +94,9 @@ interface ApiListResponse {
   previous: string | null;
 }
 
-export function FileManager() {
+/* Existing Knowledge-Base FileManager kept for reference above */
+
+export function KBFileManager() {
   const [files, setFiles] = useState<FileWithUI[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');

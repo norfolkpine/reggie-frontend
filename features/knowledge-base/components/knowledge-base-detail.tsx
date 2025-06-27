@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+// TanStack Table
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type ColumnFiltersState,
+} from "@tanstack/react-table";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +25,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Table,
@@ -120,6 +130,59 @@ export function KnowledgeBaseDetail({
   const [activeTab, setActiveTab] = useState("files");
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+
+  // Filters
+  const statusOptions = ["pending", "processing", "completed", "failed"];
+  const collectionOptions = useMemo(
+    () => Array.from(new Set(linkedFiles.map((f) => f.collection?.name).filter(Boolean))) as string[],
+    [linkedFiles]
+  );
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  // TanStack table for linked files
+  const multiSelectFilter: ColumnDef<KnowledgeBaseFile>["filterFn"] = (
+    row,
+    id,
+    value
+  ) => {
+    if (!Array.isArray(value) || value.length === 0) return true;
+    
+    // Handle differently based on column id
+    let cellValue: string;
+    if (id === "collection") {
+      cellValue = row.original.collection?.name ?? "";
+    } else {
+      cellValue = row.getValue<string>(id);
+    }
+    
+    return value.includes(cellValue);
+  };
+
+  const columns = useMemo<ColumnDef<KnowledgeBaseFile>[]>(
+    () => [
+      { accessorKey: "title" },
+      {
+        accessorKey: "status",
+        filterFn: multiSelectFilter,
+      },
+      {
+        id: "collection",
+        header: "Collection",
+        accessorFn: (row) => row.collection?.name ?? "",
+        filterFn: multiSelectFilter,
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable<KnowledgeBaseFile>({
+    data: linkedFiles,
+    columns,
+    state: { columnFilters },
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
   const [totalFiles, setTotalFiles] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [reingestingFiles, setReingestingFiles] = useState<
@@ -349,9 +412,16 @@ export function KnowledgeBaseDetail({
     }
   };
 
-  // Filter files based on search query - no need for local filtering since we're using API search
-  const filteredFiles = linkedFiles;
-  const totalPages = Math.ceil(totalFiles / itemsPerPage);
+  // Apply client-side filters from TanStack (title search + status/type)
+  const filteredFiles = table.getRowModel().rows.map((r) => r.original);
+  const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+
+  // Ensure current page is valid when filters change
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages === 0 ? 1 : totalPages);
+    }
+  }, [totalPages]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -500,12 +570,75 @@ export function KnowledgeBaseDetail({
         <TabsContent value="files" className="space-y-4 pt-4">
           {/* Search and filters */}
           <div className="flex items-center justify-between">
-            <div className="relative flex-1 max-w-sm">
+            <div className="flex items-center gap-2 w-full max-w-md">
               <Input
-                placeholder="Search files..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+                 placeholder="Search files..."
+                 value={(table.getColumn('title')?.getFilterValue() as string) ?? ''}
+                 onChange={(e) => table.getColumn('title')?.setFilterValue(e.target.value)}
+               />
+            
+              {/* Filters dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" /> Filters
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {/* Status filter */}
+                  <div className="px-3 py-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
+                    {statusOptions.map((status) => {
+                      const current: string[] = (table.getColumn('status')?.getFilterValue() as string[]) ?? [];
+                      const checked = current.includes(status);
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={status}
+                          checked={checked}
+                          onCheckedChange={(chk) => {
+                            const col = table.getColumn('status');
+                            const prev: string[] = (col?.getFilterValue() as string[]) ?? [];
+                            const updated = chk ? [...prev, status] : prev.filter((s) => s !== status);
+                            col?.setFilterValue(updated.length ? updated : undefined);
+                          }}
+                        >
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                  </div>
+                  <DropdownMenuSeparator />
+                  {/* Collection filter */}
+                  <div className="px-3 py-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Collection</p>
+                    {collectionOptions.map((col) => {
+                      const current: string[] = (table.getColumn('collection')?.getFilterValue() as string[]) ?? [];
+                      const checked = current.includes(col);
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={col}
+                          checked={checked}
+                          onCheckedChange={(chk) => {
+                            const column = table.getColumn('collection');
+                            const prev: string[] = (column?.getFilterValue() as string[]) ?? [];
+                            const updated = chk ? [...prev, col] : prev.filter((c) => c !== col);
+                            column?.setFilterValue(updated.length ? updated : undefined);
+                          }}
+                        >
+                          {col}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => {
+                    table.getColumn('status')?.setFilterValue(undefined);
+                    table.getColumn('collection')?.setFilterValue(undefined);
+                  }}>
+                    Clear Filters
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -555,7 +688,7 @@ export function KnowledgeBaseDetail({
                       onCheckedChange={(checked) => {
                         if (checked) {
                           setSelectedFiles(
-                            filteredFiles.map((file) => file.file_id)
+                            filteredFiles.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage).map((file) => file.file_id)
                           );
                         } else {
                           setSelectedFiles([]);
@@ -594,7 +727,9 @@ export function KnowledgeBaseDetail({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredFiles.map((file) => (
+                  filteredFiles
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((file) => (
                     <TableRow key={file.file_id}>
                       <TableCell>
                         <Checkbox
@@ -613,7 +748,7 @@ export function KnowledgeBaseDetail({
                       <TableCell>
                         {file.collection ? file.collection.name : '—'}
                       </TableCell>
-                      <TableCell>{file.file_size} bytes</TableCell>
+                      <TableCell>{formatFileSize(file.filesize)}</TableCell>
                       <TableCell>{file.chunk_size} tokens</TableCell>
                       <TableCell>{formatDate(file.created_at)}</TableCell>
                       <TableCell>

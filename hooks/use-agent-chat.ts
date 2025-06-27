@@ -9,6 +9,7 @@ interface Message {
   content: string;
   role: 'user' | 'assistant' | 'system';
   feedback?: Feedback[];
+  isDone?: boolean; // indicates if assistant stream finished
 }
 
 interface UseAgentChatProps {
@@ -21,12 +22,14 @@ interface UseAgentChatReturn {
   handleSubmit: (value?: string) => void;
   isLoading: boolean;
   error: string | null;
+  debugMessage: string | null;
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
   // Flag to track if this is a brand new conversation
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [debugMessage, setDebugMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(!!ssid); // Track initial loading
   const [sessionCreated, setSessionCreated] = useState(false);
@@ -156,13 +159,15 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       };
 
       // Add empty assistant message to show typing indicator
+      // Use UUID for more reliable ID generation
       const assistantMessageId = `assistant-${crypto.randomUUID()}`;
-      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
+      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant', isDone: false }]);
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
@@ -180,6 +185,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       const decoder = new TextDecoder();
       let responseContent = '';
 
+      let streamDone = false;
       while (true) {
         // Check if request was aborted
         if (abortControllerRef.current?.signal.aborted) {
@@ -195,24 +201,33 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         for (const line of lines) {
           if (line.startsWith("data:")) {
             const dataContent = line.slice(5).trim();
-            if (dataContent === "[DONE]") break;
+            if (dataContent === "[DONE]") { streamDone = true; break; }
 
             try {
               const parsedData = JSON.parse(dataContent);
+              let textChunk: string | undefined;
               
-              // Skip debug messages (but log them)
+              // Handle debug messages
               if (parsedData.debug) {
                 console.debug('Debug message:', parsedData.debug);
-                continue;
+                // Format debug messages in italics
+                textChunk = `\n_${parsedData.debug}_\n\n`;
+                // Update debug message state
+                setDebugMessage(parsedData.debug);
+              } else if (parsedData.tool) {
+                // Format tool usage messages in italics
+                textChunk = `\n_${parsedData.tool}_\n\n`;
+                // Clear debug message when new content arrives
+                setDebugMessage(null);
+              } else {
+                // Normal content
+                textChunk = parsedData.token ?? parsedData.content;
+                // Clear debug message when new content arrives
+                setDebugMessage(null);
               }
               
-              // Extract content from the response
-              const tokenPart = parsedData.token ?? parsedData.content;
-              
-              if (typeof tokenPart === 'string' && tokenPart.length > 0) {
-                responseContent += tokenPart;
-                
-                // Update messages state with new content
+              if (typeof textChunk === "string" && textChunk.length > 0) {
+                responseContent += textChunk;
                 setMessages(prev => {
                   const newMessages = [...prev];
                   const lastMessageIndex = newMessages.length - 1;
@@ -248,6 +263,15 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
           }
         }
       }
+      // mark assistant message done
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastIndex = newMessages.length - 1;
+        if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
+          newMessages[lastIndex] = { ...newMessages[lastIndex], isDone: true };
+        }
+        return newMessages;
+      });
     } catch (error) {
       // Don't set error if it was due to an abort
       if (error instanceof DOMException && error.name === 'AbortError') {

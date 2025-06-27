@@ -16,8 +16,14 @@ import {
   ArrowLeft,
   Star,
   Loader,
+  Filter,
+  ChevronDown,
+  Eye,
+  Download,
+  Link,
+  Trash2
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { InstructionDialog } from "./instructions-dialog"
 import { useRouter } from "next/navigation"
 import { Project } from "@/types/api"
@@ -30,6 +36,21 @@ import { UploadFileModal } from "./upload-file-modal"
 import SearchInput from "@/components/ui/search-input"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type ColumnFiltersState,
+} from "@tanstack/react-table"
 
 export default function ProjectView({ projectId }: { projectId: number }) {
   const [project, setProject] = useState<Project | null>(null)
@@ -42,10 +63,30 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   const [tab, setTab] = useState("all")
   const { toast } = useToast()
   const [uploading, setUploading] = useState(false);
+  const [fileToPreview, setFileToPreview] = useState<VaultFile | null>(null);
+  const [fileToLink, setFileToLink] = useState<string | null>(null);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const { user } = useAuth();
+  
+  // TanStack column filters
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  // View mode: 'list' (table) or 'thumbnail' (grid)
-  const [viewMode, setViewMode] = useState<'list' | 'thumbnail'>('list');
+  // Using only list view
+  const viewMode = 'list';
+  
+  // File type options extracted from file extensions
+  const typeOptions = useMemo(() => {
+    const types = new Set<string>();
+    vaultFiles.forEach(file => {
+      const extension = file.filename?.split('.').pop();
+      if (extension) {
+        types.add(extension.toLowerCase());
+        // Add file_type property to each file object for filtering
+        (file as any).file_type = extension.toLowerCase();
+      }
+    });
+    return Array.from(types).sort();
+  }, [vaultFiles]);
 
   // Upload picked files when they change
   // Fetch vault files on mount and after upload
@@ -53,7 +94,12 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   async function fetchFiles() {
     try {
       const files = await getVaultFilesByProject(projectId);
-      setVaultFiles(files);
+      // Add file_type property to each file based on filename extension
+      const filesWithType = files.map(file => ({
+        ...file,
+        file_type: file.filename?.split('.').pop()?.toLowerCase() || ''
+      }));
+      setVaultFiles(filesWithType);
     } catch (error) {
       console.error(error);
       // Optionally handle error
@@ -96,6 +142,36 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   function onBack() {
     router.back()
   }
+  
+  // Handler for file preview
+  const handlePreviewFile = (file: VaultFile) => {
+    setFileToPreview(file);
+    // You would typically open a modal here to show the file preview
+    window.open(file.file, '_blank');
+  };
+  
+  // Handler for linking file to KB
+  const handleOpenLinkModal = (fileId: string) => {
+    setFileToLink(fileId);
+    setIsLinkModalOpen(true);
+  };
+  
+  // Handler for deleting a file
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      // Add your delete API call here
+      // await deleteVaultFile(fileId);
+      toast({ title: "File deleted successfully" });
+      // Refresh the file list
+      fetchFiles();
+    } catch (error) {
+      const { message } = handleApiError(error);
+      toast({
+        title: message || "Failed to delete file",
+        variant: "destructive",
+      });
+    }
+  };
 
   async function fetchProject() {
     try {
@@ -117,6 +193,35 @@ export default function ProjectView({ projectId }: { projectId: number }) {
     fetchProject()
   }, [])
 
+  // TanStack table setup
+  const multiSelectFilter: ColumnDef<VaultFile>["filterFn"] = (row, id, value) => {
+    if (!Array.isArray(value) || value.length === 0) return true;
+    const cellValue = row.getValue<string>(id);
+    return value.includes(cellValue);
+  };
+
+  const columns = useMemo<ColumnDef<VaultFile>[]>(
+    () => [
+      { accessorKey: 'filename' },
+      { 
+        accessorKey: 'file_type',
+        filterFn: multiSelectFilter,
+        accessorFn: (row) => row.file_type || ''
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable<VaultFile>({
+    data: vaultFiles,
+    columns,
+    state: { columnFilters },
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  const filteredFiles = table.getRowModel().rows.map((r) => r.original);
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-4xl mx-auto px-2 sm:px-6 py-6 gap-4">
@@ -141,144 +246,176 @@ export default function ProjectView({ projectId }: { projectId: number }) {
 
       </div>
 
-      {/* Search and Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
-        <SearchInput
-          placeholder="Search files..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      {/* Search & Filters */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 w-full max-w-md">
+          <SearchInput
+            value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+            onChange={(value) => table.getColumn('filename')?.setFilterValue(value)}
+            placeholder="Search files..."
+          />
+          
+          {/* Filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="h-4 w-4 mr-1" /> Filters
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              {/* File type filter */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-medium text-muted-foreground mb-1">File Type</p>
+                {typeOptions.map((type) => {
+                  const current: string[] =
+                    (table.getColumn('file_type')?.getFilterValue() as string[]) ?? [];
+                  const checked = current.includes(type);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={type}
+                      checked={checked}
+                      onCheckedChange={(chk) => {
+                        const col = table.getColumn('file_type');
+                        const prev: string[] = (col?.getFilterValue() as string[]) ?? [];
+                        col?.setFilterValue(
+                          chk ? [...prev, type] : prev.filter((t) => t !== type)
+                        );
+                      }}
+                    >
+                      {type.toUpperCase()}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  table.getColumn('file_type')?.setFilterValue(undefined);
+                }}
+              >
+                Clear Filters
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <Card className="p-3 mb-2">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs font-medium">Files in this vault:</div>
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-            >
-              <FileText className="h-4 w-4 mr-1" /> List
-            </Button>
-            <Button
-              variant={viewMode === 'thumbnail' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('thumbnail')}
-              aria-label="Thumbnail view"
-            >
-              <FolderIcon className="h-4 w-4 mr-1" /> Thumbnails
-            </Button>
-          </div>
-        </div>
-        {viewMode === 'list' ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+
+      <Card className="overflow-hidden border rounded-md">
+        <div className="overflow-x-auto p-1">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Filename</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Uploaded By</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredFiles.length > 0 ? (
+                filteredFiles.map(file => (
+                    <TableRow key={file.id}>
+                      <TableCell className="max-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium truncate">{file.filename}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-slate-50">
+                          {file.filename?.split('.').pop()?.toUpperCase() || 'UNKNOWN'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {file.uploaded_by ? `User #${file.uploaded_by}` : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {file.created_at ? new Date(file.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handlePreviewFile(file)}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <a
+                                  href={file.file}
+                                  download={file.filename}
+                                  className="flex items-center w-full cursor-pointer"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenLinkModal(file.id)}
+                              >
+                                <Link className="h-4 w-4 mr-2" />
+                                Link to KB
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteFile(file.id)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              ) : (
                 <TableRow>
-                  <TableHead>Filename</TableHead>
-                  <TableHead>Uploaded By</TableHead>
-                  <TableHead>Created At</TableHead>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    {search ? 'No files match your search' : 'No files found in this vault'}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vaultFiles.length > 0 ? (
-                  vaultFiles
-                    .filter(file =>
-                      file.filename.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map(file => (
-                      <TableRow key={file.id}>
-                        <TableCell className="max-w-[220px] truncate">
-                          <a
-                            href={file.file}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline flex items-center gap-2"
-                            title={file.filename}
-                          >
-                            <FileText className="w-4 h-4 text-muted-foreground inline" />
-                            {file.filename}
-                          </a>
-                        </TableCell>
-                        <TableCell>
-                          {file.uploaded_by ? `User #${file.uploaded_by}` : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {file.created_at ? new Date(file.created_at).toLocaleString() : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">No files found.</TableCell>
-                  </TableRow>
-                )}
-                {/* Show uploading files at the bottom */}
-                {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
-                  <TableRow key={file.name + idx} className="opacity-60 italic">
-                    <TableCell className="max-w-[220px] truncate">
-                      <span className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 mr-1 text-muted-foreground animate-pulse" />
-                        {file.name} (Uploading...)
-                        <Loader className="animate-spin h-4 w-4 ml-2 text-primary" />
-                      </span>
-                    </TableCell>
-                    <TableCell>-</TableCell>
-                    <TableCell>-</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {vaultFiles.length > 0 ? (
-              vaultFiles
-                .filter(file =>
-                  file.filename.toLowerCase().includes(search.toLowerCase())
-                )
-                .map(file => (
-                  <Card key={file.id} className="flex flex-col items-center p-3 gap-2 h-full">
-                    <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-md mb-2">
-                      {file.filename.match(/\.(png|jpg|jpeg|gif)$/i) ? (
-                        <img
-                          src={file.file}
-                          alt={file.filename}
-                          className="object-contain w-12 h-12"
-                        />
-                      ) : (
-                        <FileText className="w-8 h-8 text-muted-foreground" />
-                      )}
+              )}
+              {/* Show uploading files at the bottom */}
+              {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
+                <TableRow key={file.name + idx} className="opacity-60 italic">
+                  <TableCell className="max-w-[220px]">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground animate-pulse flex-shrink-0" />
+                      <span className="truncate">{file.name} (Uploading...)</span>
+                      <Loader className="animate-spin h-4 w-4 ml-2 text-primary flex-shrink-0" />
                     </div>
-                    <a
-                      href={file.file}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline text-xs truncate max-w-[120px]"
-                      title={file.filename}
-                    >
-                      {file.filename}
-                    </a>
-                    <div className="text-[10px] text-muted-foreground mt-1">{file.created_at ? new Date(file.created_at).toLocaleDateString() : "-"}</div>
-                  </Card>
-                ))
-            ) : (
-              <div className="col-span-full text-center text-muted-foreground">No files found.</div>
-            )}
-            {/* Show uploading files at the bottom */}
-            {uploading && pickedFiles.length > 0 && pickedFiles.map((file, idx) => (
-              <Card key={file.name + idx} className="flex flex-col items-center p-3 gap-2 h-full opacity-60 italic">
-                <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-md mb-2">
-                  <FileText className="w-8 h-8 text-muted-foreground animate-pulse" />
-                </div>
-                <span className="text-xs truncate max-w-[120px]">{file.name} (Uploading...)</span>
-                <Loader className="animate-spin h-4 w-4 text-primary mt-1" />
-              </Card>
-            ))}
-          </div>
-        )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-slate-50 opacity-50">
+                      {file.name.split('.').pop()?.toUpperCase() || 'FILE'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>-</TableCell>
+                  <TableCell>-</TableCell>
+                  <TableCell>-</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
 

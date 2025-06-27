@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mic, Plus, Search, Send } from "lucide-react";
-import { useChat } from "ai/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -366,50 +365,43 @@ export default function ChatInterface() {
                                   description="Price, Market Cap, and Volume"
                                 />
                               </div>
-                            ) : (
-                              <>
-                                <div className="markdown">
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeHighlight]}
-                                    components={MarkdownComponents}
-                                  >
-                                    {message.content as string}
-                                  </ReactMarkdown>
+                            ) : isLoading &&
+                              index === messages.length - 1 &&
+                              message.role === "assistant" ? (
+                              <div className="flex justify-start">
+                                <div>
+                                  <TypingIndicator />
                                 </div>
-                                {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
-                                  <div className="flex justify-start">
-                                    <TypingIndicator />
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            {(() => {
-                                  const isNewestAssistant = index === messages.length - 1 && message.role === "assistant";
-                                  const showActions = !(isNewestAssistant && isLoading);
-                                  return showActions;
-                                })() && (
-                              <div className="flex items-center gap-2 mt-2 -mb-1">
-                                <MessageActions
-                                  messageId={message.id}
-                                  content={message.content as string}
-                                  onCopy={copyToClipboard}
-                                  copiedMessageId={copiedMessageId}
-                                  onSend={handleOnSend}
-                                  onOpenCanvas={setEditingMessageId}
-                                  onGoodResponse={(messageId: string) => {
-                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
-                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
-                                  }}
-                                  onBadResponse={(messageId: string) => {
-                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
-                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
-                                  }}
-                                  isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
-                                  isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
-                                />
+                              </div>
+                            ) : (
+                              <div className="markdown">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeHighlight]}
+                                  components={MarkdownComponents}
+                                >
+                                  {message.content as string}
+                                </ReactMarkdown>
                               </div>
                             )}
+                            <MessageActions
+                              messageId={message.id}
+                              content={message.content as string}
+                              onCopy={copyToClipboard}
+                              copiedMessageId={copiedMessageId}
+                              onSend={handleOnSend}
+                              onOpenCanvas={setEditingMessageId}
+                              onGoodResponse={(messageId: string) => {
+                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                              }}
+                              onBadResponse={(messageId: string) => {
+                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                              }}
+                              isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                              isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
+                            />
                           </>
                         )}
                       </div>

@@ -8,36 +8,47 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
-import { UploadCloud, X } from "lucide-react"
+import { UploadCloud, X, AlertCircle, FileText } from "lucide-react"
+import { uploadFiles } from "@/api/vault"
 
 interface UploadFileModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onFilesSelected: (files: File[]) => void
+  onUploadComplete: (files: any[]) => void
   supportedTypes: string[]
+  projectId: number
   maxFiles?: number
   title?: string
+}
+
+interface UploadingFile {
+  file: File
+  progress: number
+  error?: string
 }
 
 export function UploadFileModal({
   open,
   onOpenChange,
-  onFilesSelected,
+  onUploadComplete,
   supportedTypes,
+  projectId,
   maxFiles = 5,
   title = "Upload files",
 }: UploadFileModalProps) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pickedFiles, setPickedFiles] = useState<File[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [files, setFiles] = useState<UploadingFile[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
     setIsDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    processFiles(files)
+    processFiles(Array.from(e.dataTransfer.files))
   }
 
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
@@ -52,13 +63,12 @@ export function UploadFileModal({
 
   function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return
-    const files = Array.from(e.target.files)
-    processFiles(files)
+    processFiles(Array.from(e.target.files))
   }
 
-  function processFiles(files: File[]) {
+  function processFiles(input: File[]) {
     setError(null)
-    const accepted = files.filter((file) =>
+    const accepted = input.filter((file) =>
       supportedTypes.some((type) =>
         type.startsWith(".")
           ? file.name.toLowerCase().endsWith(type.toLowerCase())
@@ -69,35 +79,70 @@ export function UploadFileModal({
       setError("No supported files selected.")
       return
     }
-    if (accepted.length > maxFiles) {
+    if (accepted.length + files.length > maxFiles) {
       setError(`You can upload up to ${maxFiles} files.`)
       return
     }
-    setPickedFiles(accepted)
+    const newUploadingFiles = accepted.map((file) => ({ file, progress: 0 }))
+    setFiles((prev) => [...prev, ...newUploadingFiles])
+  }
+
+  function handleRemoveFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  async function handleUpload() {
+    if (!files.length) return
+
+    setUploading(true)
+    setError(null)
+    const uploaded: any[] = []
+
+    for (const [idx, fileObj] of files.entries()) {
+      try {
+        setFiles((prev) =>
+          prev.map((f, i) => (i === idx ? { ...f, progress: 50 } : f))
+        )
+
+        const formData = new FormData()
+        formData.append("file", fileObj.file)
+        formData.append("project", projectId.toString())
+
+        const result = await uploadFiles({ formData })
+        uploaded.push(result)
+
+        setFiles((prev) =>
+          prev.map((f, i) => (i === idx ? { ...f, progress: 100 } : f))
+        )
+      } catch {
+        setFiles((prev) =>
+          prev.map((f, i) =>
+            i === idx ? { ...f, error: "Failed to upload", progress: 0 } : f
+          )
+        )
+      }
+    }
+
+    setUploading(false)
+
+    if (uploaded.length) {
+      onUploadComplete(uploaded)
+      setTimeout(() => setFiles([]), 1500)
+      onOpenChange(false)
+    }
   }
 
   function handleClick() {
     inputRef.current?.click()
   }
 
-  function handleRemoveFile(idx: number) {
-    setPickedFiles((prev) => prev.filter((_, i) => i !== idx))
-  }
-
-  function handleConfirm() {
-    if (pickedFiles.length) {
-      onFilesSelected(pickedFiles)
-      setPickedFiles([])
-      onOpenChange(false)
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-4">
+      <DialogContent className="max-w-sm p-4 space-y-2">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
         </DialogHeader>
+
         <div
           className={cn(
             "flex flex-col items-center justify-center border-2 border-dashed rounded-md transition-colors cursor-pointer w-full min-h-[100px] text-center bg-muted/60 py-4",
@@ -123,25 +168,51 @@ export function UploadFileModal({
           <span className="text-xs text-muted-foreground mb-1">Drag & drop or click</span>
           <span className="text-xs text-muted-foreground">{supportedTypes.join(", ")}</span>
         </div>
-        {pickedFiles.length > 0 && (
-          <ul className="mt-2 space-y-1 max-h-24 overflow-auto w-full">
-            {pickedFiles.map((file, idx) => (
-              <li key={file.name + idx} className="flex items-center justify-between text-xs bg-background rounded px-2 py-1 border">
-                <span className="truncate max-w-[120px]" title={file.name}>{file.name}</span>
-                <button type="button" className="ml-2 text-destructive hover:underline" onClick={() => handleRemoveFile(idx)}>
+
+        {files.length > 0 && (
+          <ul className="space-y-2 max-h-40 overflow-auto w-full">
+            {files.map((fileObj, idx) => (
+              <li key={fileObj.file.name + idx} className="flex items-center justify-between text-xs bg-background rounded px-2 py-1 border">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-muted-foreground" />
+                  <span className="truncate max-w-[120px]" title={fileObj.file.name}>{fileObj.file.name}</span>
+                  {fileObj.progress > 0 && fileObj.progress < 100 && (
+                    <Progress value={fileObj.progress} className="w-20" />
+                  )}
+                  {fileObj.error && <AlertCircle className="w-4 h-4 text-destructive" />}
+                </div>
+                <button
+                  type="button"
+                  className="ml-2 text-destructive hover:underline"
+                  onClick={() => handleRemoveFile(idx)}
+                  disabled={uploading}
+                >
                   <X className="w-3 h-3" />
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {error && <div className="text-xs text-destructive mt-1">{error}</div>}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter className="mt-2">
           <DialogClose asChild>
-            <Button variant="ghost" size="sm" type="button">Cancel</Button>
+            <Button variant="ghost" size="sm" type="button" disabled={uploading}>
+              Cancel
+            </Button>
           </DialogClose>
-          <Button size="sm" type="button" onClick={handleConfirm} disabled={!pickedFiles.length}>
-            Upload
+          <Button
+            size="sm"
+            type="button"
+            onClick={handleUpload}
+            disabled={!files.length || uploading}
+          >
+            {uploading ? "Uploading..." : "Upload"}
           </Button>
         </DialogFooter>
       </DialogContent>
