@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Trash2,
@@ -22,6 +22,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -51,6 +53,14 @@ import {
   PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { Checkbox } from '@/components/ui/checkbox';
+// TanStack Table
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type ColumnFiltersState,
+} from '@tanstack/react-table';
 import {
   getFiles,
   deleteFile,
@@ -88,6 +98,15 @@ export function FileManager() {
   const [files, setFiles] = useState<FileWithUI[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // TanStack column filters
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const statusOptions = ['ready', 'processing', 'error'];
+  const typeOptions = ['pdf', 'docx', 'csv', 'xlsx', 'txt', 'jpeg', 'png'];
+  const collectionOptions = useMemo(
+    () => Array.from(new Set(files.map((f) => f.collection?.name).filter(Boolean))) as string[],
+    [files]
+  );
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [previewFile, setPreviewFile] = useState<FileWithUI | null>(null);
@@ -240,10 +259,38 @@ export function FileManager() {
     }
   };
 
-  // Filter files based on search query
-  const filteredFiles = files.filter((file) => {
-    return file.title.toLowerCase().includes(searchQuery.toLowerCase());
+  // TanStack table setup
+  const multiSelectFilter: ColumnDef<FileWithUI>["filterFn"] = (row, id, value) => {
+    if (!Array.isArray(value) || value.length === 0) return true;
+    const cellValue = row.getValue<string>(id);
+    return value.includes(cellValue);
+  };
+
+  const columns = useMemo<ColumnDef<FileWithUI>[]>(
+    () => [
+      { accessorKey: 'title' },
+      { accessorKey: 'status', filterFn: multiSelectFilter },
+      { accessorKey: 'file_type' },
+      {
+        accessorKey: 'collection_name',
+        header: 'Collection',
+        accessorFn: (row) => row.collection?.name ?? '',
+        filterFn: multiSelectFilter,
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable<FileWithUI>({
+    data: files,
+    columns,
+    state: { columnFilters },
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
+
+  const filteredFiles = table.getRowModel().rows.map((r) => r.original);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -313,16 +360,86 @@ export function FileManager() {
         </div>
       </div>
 
-      {/* Search box */}
+      {/* Search & Filters */}
       <div className="flex items-center justify-between mb-4">
-        <div className="relative w-full max-w-xs">
+        <div className="flex items-center gap-2 w-full max-w-md">
           <Input
             type="text"
             placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={(table.getColumn('title')?.getFilterValue() as string) ?? ''}
+            onChange={(e) =>
+              table.getColumn('title')?.setFilterValue(e.target.value)
+            }
             className="pl-10"
           />
+
+          {/* Filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="h-4 w-4 mr-1" /> Filters
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              {/* Status filter */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
+                {statusOptions.map((status) => {
+                  const current: string[] =
+                    (table.getColumn('status')?.getFilterValue() as string[]) ?? [];
+                  const checked = current.includes(status);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={status}
+                      checked={checked}
+                      onCheckedChange={(chk) => {
+                        const col = table.getColumn('status');
+                        const prev: string[] = (col?.getFilterValue() as string[]) ?? [];
+                        col?.setFilterValue(
+                          chk ? [...prev, status] : prev.filter((s) => s !== status)
+                        );
+                      }}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </div>
+              <DropdownMenuSeparator />
+              {/* Collection filter */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Collection</p>
+                {collectionOptions.map((col) => {
+                  const current: string[] =
+                    (table.getColumn('collection_name')?.getFilterValue() as string[]) ?? [];
+                  const checked = current.includes(col);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={col}
+                      checked={checked}
+                      onCheckedChange={(chk) => {
+                        const column = table.getColumn('collection_name');
+                        const prev: string[] = (column?.getFilterValue() as string[]) ?? [];
+                        const updated = chk ? [...prev, col] : prev.filter((c) => c !== col);
+                        column?.setFilterValue(updated.length ? updated : undefined);
+                      }}
+                    >
+                      {col}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  table.getColumn('status')?.setFilterValue(undefined);
+                  table.getColumn('collection_name')?.setFilterValue(undefined);
+                }}
+              >
+                Clear Filters
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
