@@ -5,19 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2, Settings, Activity, ArrowLeft } from "__barrel_optimize__?names=Activity,ArrowLeft,Loader2,Settings!=!lucide-react";
-import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal } from "lucide-react";
+import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { UploadFileModal } from "./upload-file-modal";
+import { FileUpload } from "./file-upload";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,6 +34,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -52,13 +58,19 @@ export function VaultManager() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showAllFiles, setShowAllFiles] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [filesCount, setFilesCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('vault_active_tab') || 'files';
@@ -70,7 +82,20 @@ export function VaultManager() {
   useEffect(() => {
     fetchProject();
     fetchFiles();
-  }, [projectId]);
+  }, [projectId, currentPage, itemsPerPage]);
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      } else {
+        fetchFiles();
+      }
+    }, 500);
+    
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   // Persist activeTab in localStorage
   useEffect(() => {
@@ -99,14 +124,23 @@ export function VaultManager() {
 
   const fetchFiles = async () => {
     try {
-      const files = await getVaultFilesByProject(Number(projectId));
+      const response = await getVaultFilesByProject(
+        Number(projectId),
+        currentPage,
+        itemsPerPage,
+        searchQuery
+      );
+      
+      setFilesCount(response.count);
+      setHasNextPage(!!response.next);
+      setHasPreviousPage(!!response.previous);
+      
       // Add file_type property based on filename extension or MIME type
-      const filesWithType: VaultFile[] = files.map(file => {
+      const filesWithType: VaultFile[] = response.results.map(file => {
         // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-        
-        // Or extract extension from filename
+                // Or extract extension from filename
         const fileExtension = file.filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
         
         return {
@@ -125,37 +159,17 @@ export function VaultManager() {
     }
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    if (!files || files.length === 0) return;
+  const handleFileUpload = async (uploadedFiles: any[]) => {
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
     
-    setUploading(true);
-    try {
-      const uploaded_by = user?.id || 0;
-      
-      for (const file of files) {
-        await uploadFiles({
-          file,
-          project: Number(projectId),
-          uploaded_by,
-        });
-      }
-      
-      toast({
-        title: "Success",
-        description: `${files.length} file(s) uploaded successfully`,
-      });
-      fetchFiles(); // Refresh the file list
-    } catch (error) {
-      const { message } = handleApiError(error);
-      toast({
-        title: "Error",
-        description: message || "Failed to upload files",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-      setUploadModalOpen(false);
-    }
+    // Close the upload dialog
+    setIsUploadDialogOpen(false);
+    
+    toast({
+      title: "Success",
+      description: `${uploadedFiles.length} file(s) uploaded successfully`,
+    });
+    fetchFiles(); // Refresh the file list
   };
 
   const handleFileDownload = (file: VaultFile) => {
@@ -324,101 +338,110 @@ export function VaultManager() {
               {/* Replace with custom file manager UI since shared component doesn't support our vault-specific API needs */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center justify-between pb-4">
-                    <div className="flex gap-2">
-                      <SearchInput 
-                        placeholder="Search by filename"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="max-w-sm"
-                      />
-                      {selectedFiles.length > 0 && (
-                        <Button 
-                          variant="destructive" 
-                          onClick={handleBulkDelete}
-                          disabled={isDeleting}
-                        >
-                          {isDeleting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Selected ({selectedFiles.length})
-                            </>
-                          )}
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="ml-auto">
-                            <Filter className="mr-2 h-4 w-4" />
-                            Filter
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56">
-                          <DropdownMenuCheckboxItem 
-                            checked={showAllFiles}
-                            onCheckedChange={(checked) => {
-                              setShowAllFiles(checked);
-                              if (checked) {
-                                setActiveFilters([]);
-                              }
-                            }}
-                          >
-                            Show all files
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuCheckboxItem 
-                            checked={activeFilters.includes('pdf') || showAllFiles}
-                            onCheckedChange={(checked) => {
-                              setShowAllFiles(false);
-                              setActiveFilters(prev => 
-                                checked 
-                                  ? [...prev, 'pdf'] 
-                                  : prev.filter(f => f !== 'pdf')
-                              );
-                            }}
-                          >
-                            PDF files
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem 
-                            checked={activeFilters.includes('docx') || activeFilters.includes('doc') || showAllFiles}
-                            onCheckedChange={(checked) => {
-                              setShowAllFiles(false);
-                              const docsFilters = ['docx', 'doc'];
-                              setActiveFilters(prev => 
-                                checked 
-                                  ? [...prev.filter(f => !docsFilters.includes(f)), ...docsFilters] 
-                                  : prev.filter(f => !docsFilters.includes(f))
-                              );
-                            }}
-                          >
-                            Documents
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem 
-                            checked={activeFilters.includes('jpg') || activeFilters.includes('jpeg') || activeFilters.includes('png') || showAllFiles}
-                            onCheckedChange={(checked) => {
-                              setShowAllFiles(false);
-                              const imageFilters = ['jpg', 'jpeg', 'png'];
-                              setActiveFilters(prev => 
-                                checked 
-                                  ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
-                                  : prev.filter(f => !imageFilters.includes(f))
-                              );
-                            }}
-                          >
-                            Images
-                          </DropdownMenuCheckboxItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  <div className="flex flex-col sm:flex-row sm:items-center py-4 gap-3 justify-between">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="relative w-full sm:max-w-sm">
+                        <SearchInput 
+                          placeholder="Search files..." 
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full" 
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-9">
+                              <Filter className="mr-2 h-4 w-4" />
+                              Filter
+                              <ChevronDown className="ml-1 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56">
+                            <DropdownMenuCheckboxItem 
+                              checked={showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(checked);
+                                if (checked) setActiveFilters([]);
+                              }}
+                            >
+                              All Files
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem 
+                              checked={activeFilters.includes('pdf') || showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(false);
+                                setActiveFilters(prev => checked 
+                                  ? [...prev.filter(f => f !== 'pdf'), 'pdf'] 
+                                  : prev.filter(f => f !== 'pdf'))
+                              }}
+                            >
+                              PDF Documents
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem 
+                              checked={activeFilters.includes('doc') || activeFilters.includes('docx') || showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(false);
+                                const docFilters = ['doc', 'docx'];
+                                setActiveFilters(prev => 
+                                  checked 
+                                    ? [...prev.filter(f => !docFilters.includes(f)), ...docFilters] 
+                                    : prev.filter(f => !docFilters.includes(f))
+                                );
+                              }}
+                            >
+                              Word Documents
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem 
+                              checked={activeFilters.includes('xls') || activeFilters.includes('xlsx') || showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(false);
+                                const excelFilters = ['xls', 'xlsx'];
+                                setActiveFilters(prev => 
+                                  checked 
+                                    ? [...prev.filter(f => !excelFilters.includes(f)), ...excelFilters] 
+                                    : prev.filter(f => !excelFilters.includes(f))
+                                );
+                              }}
+                            >
+                              Excel Spreadsheets
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem 
+                              checked={activeFilters.includes('txt') || activeFilters.includes('csv') || showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(false);
+                                const textFilters = ['txt', 'csv'];
+                                setActiveFilters(prev => 
+                                  checked 
+                                    ? [...prev.filter(f => !textFilters.includes(f)), ...textFilters] 
+                                    : prev.filter(f => !textFilters.includes(f))
+                                );
+                              }}
+                            >
+                              Text Files
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem 
+                              checked={activeFilters.includes('jpg') || activeFilters.includes('jpeg') || activeFilters.includes('png') || showAllFiles}
+                              onCheckedChange={(checked) => {
+                                setShowAllFiles(false);
+                                const imageFilters = ['jpg', 'jpeg', 'png'];
+                                setActiveFilters(prev => 
+                                  checked 
+                                    ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
+                                    : prev.filter(f => !imageFilters.includes(f))
+                                );
+                              }}
+                            >
+                              Images
+                            </DropdownMenuCheckboxItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button onClick={() => setUploadModalOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Upload
+                    <div className="flex items-center">
+                      <Button onClick={() => setIsUploadDialogOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Upload Files
                       </Button>
                     </div>
                   </div>
@@ -547,20 +570,128 @@ export function VaultManager() {
                 </div>
               </div>
               
-              {/* File Upload Modal */}
-              <UploadFileModal 
-                open={uploadModalOpen}
-                onOpenChange={setUploadModalOpen}
-                onFilesSelected={(files) => {
-                  handleFileUpload(files);
-                }}
-                supportedTypes={[
-                  '.pdf', '.doc', '.docx', '.xls', '.xlsx', 
-                  '.txt', '.csv', '.png', '.jpg', '.jpeg'
-                ]}
-                title="Upload Files to Vault"
-                maxFiles={10}
-              />
+              {/* Pagination - moved outside the box */}
+              <div className="flex items-center justify-between mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1 || !hasPreviousPage}
+                      >
+                        Previous
+                      </Button>
+                    </PaginationItem>
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+                      return totalPages > 5 && currentPage > 3 ? (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+                      const pageNums = [];
+                      let startPage = Math.max(1, currentPage - 2);
+                      let endPage = Math.min(totalPages, currentPage + 2);
+                      
+                      if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                      } else if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                      }
+                      
+                      for (let i = startPage; i <= endPage; i++) {
+                        pageNums.push(i);
+                      }
+                      
+                      return pageNums.map((pageNum) => {
+                        if (pageNum >= 1 && pageNum <= totalPages) {
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <Button
+                                variant={currentPage === pageNum ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setCurrentPage(pageNum)}
+                              >
+                                {pageNum}
+                              </Button>
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      });
+                    })()}
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+                      return totalPages > 5 && currentPage < totalPages - 2 ? (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : null;
+                    })()}
+                    <PaginationItem>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => 
+                          setCurrentPage((prev) => 
+                            Math.min(prev + 1, Math.max(1, Math.ceil(filesCount / itemsPerPage)))
+                          )
+                        }
+                        disabled={currentPage >= Math.ceil(filesCount / itemsPerPage) || !hasNextPage}
+                      >
+                        Next
+                      </Button>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Items per page:
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        {itemsPerPage}
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {[5, 10, 20, 50].map((value) => (
+                        <DropdownMenuItem
+                          key={value}
+                          onClick={() => {
+                            setItemsPerPage(value);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          {value}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              
+              {/* File Upload Dialog */}
+              <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Upload Files to Vault</DialogTitle>
+                    <DialogDescription>
+                      Upload files to your vault. Supported formats include PDF, DOCX, XLSX, TXT, CSV, JPEG, and PNG.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <FileUpload
+                    onUploadComplete={handleFileUpload}
+                    projectId={Number(projectId)}
+                  />
+                </DialogContent>
+              </Dialog>
             </TabsContent>
             
             <TabsContent value="activity" className="mt-4">

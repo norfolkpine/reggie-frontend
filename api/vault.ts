@@ -13,9 +13,27 @@ export interface UploadFileParams {
   shared_with_teams?: number[];
 }
 
-export async function getVaultFilesByProject(projectId: number): Promise<VaultFile[]> {
-  const response = await api.get(`/reggie/api/v1/vault-files/by-project/?project_id=${projectId}`);
-  return response.results as VaultFile[];
+export interface VaultFilesResponse {
+  results: VaultFile[];
+  count: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export async function getVaultFilesByProject(
+  projectId: number,
+  page: number = 1,
+  pageSize: number = 10,
+  search: string = ''
+): Promise<VaultFilesResponse> {
+  let url = `/reggie/api/v1/vault-files/by-project/?project_id=${projectId}&page=${page}&page_size=${pageSize}`;
+  
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  
+  const response = await api.get(url);
+  return response as VaultFilesResponse;
 }
 
 export async function uploadFiles({
