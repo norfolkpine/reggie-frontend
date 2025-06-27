@@ -218,22 +218,12 @@ export default function AgentChatDock({
                           }}
                         >
                           <h4 className="font-medium text-sm text-gray-900 mb-1">
-                            {item.id === "1"
-                              ? "Help with React components"
-                              : item.id === "2"
-                                ? "Database query optimization"
-                                : item.id === "3"
-                                  ? "Component state management"
-                                  : item.id === "4"
-                                    ? "REST API documentation"
-                                    : item.id === "5"
-                                      ? "Legal contract review"
-                                      : "DevOps pipeline setup"}
+                          {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                           </h4>
 
                           <div className="mb-1">
                             <span className="inline-block bg-white text-gray-800 text-xs font-medium px-1.5 py-0.5 rounded-full border">
-                              {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              {item.agent && item.agent.split('-').pop()?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                             </span>
                           </div>
 
