@@ -439,7 +439,26 @@ export function VaultManager() {
                         </DropdownMenu>
                       </div>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center space-x-2">
+                      {selectedFiles.length > 0 && (
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleBulkDelete}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Selected ({selectedFiles.length})
+                            </>
+                          )}
+                        </Button>
+                      )}
                       <Button onClick={() => setIsUploadDialogOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Upload Files
                       </Button>
