@@ -89,12 +89,14 @@ const chats: ChatItem[] = [
 
 const navigationItems: NavigationItem[] = [
   { name: "Assistant", icon: Bot, url: "/chat" },
+  { name: "Agents", icon: Workflow, url: "/agent" },
+  
   {
     name: "Vault",
     icon: FolderShieldIcon,
     url: "/vault",
   },
-  { name: "Workflows", icon: Workflow, url: "/agent" },
+  { name: "Workflows", icon: Workflow, url: "/workflow" },
   { type: "divider" }, 
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
