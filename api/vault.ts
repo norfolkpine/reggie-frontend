@@ -67,3 +67,12 @@ export async function uploadFiles({
     throw new Error(message);
   }
 }
+
+export async function deleteVaultFile(fileId: number): Promise<void> {
+  try {
+    await api.delete(`/reggie/api/v1/vault-files/${fileId}/`);
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to delete file');
+  }
+}
