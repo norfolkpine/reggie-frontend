@@ -84,7 +84,7 @@ export function VaultManager() {
     fetchFiles();
   }, [projectId, currentPage, itemsPerPage]);
 
-  // Reset to first page when search query changes
+  // Reset to first page when search query or filters change
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (currentPage !== 1) {
@@ -545,7 +545,7 @@ export function VaultManager() {
                                 formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
                                 'N/A'}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon">
