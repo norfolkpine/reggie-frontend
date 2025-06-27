@@ -200,7 +200,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
             try {
               const parsedData = JSON.parse(dataContent);
               
-              // Skip debug messages
+              // Skip debug messages (but log them)
               if (parsedData.debug) {
                 console.debug('Debug message:', parsedData.debug);
                 continue;
@@ -224,6 +224,19 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
                       content: responseContent,
                       id: parsedData.run_id || newMessages[lastMessageIndex].id, // Use run_id if available
                     };
+                  } else if (parsedData.event === 'RunResponse' && parsedData.content_type === 'str') {
+                    // Handle case where this is the first content message (not debug)
+                    // We need to add an assistant message but preserve all existing messages
+                    // Only add the assistant message if there isn't already one
+                    const hasAssistantMessage = newMessages.some(msg => msg.role === 'assistant');
+                    if (!hasAssistantMessage) {
+                      // Add assistant message while preserving user message
+                      newMessages.push({
+                        id: parsedData.run_id || crypto.randomUUID(),
+                        content: responseContent,
+                        role: 'assistant'
+                      });
+                    }
                   }
                   
                   return newMessages;
