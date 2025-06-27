@@ -146,7 +146,15 @@ export function KnowledgeBaseDetail({
     value
   ) => {
     if (!Array.isArray(value) || value.length === 0) return true;
-    const cellValue = row.getValue<string>(id);
+    
+    // Handle differently based on column id
+    let cellValue: string;
+    if (id === "collection") {
+      cellValue = row.original.collection?.name ?? "";
+    } else {
+      cellValue = row.getValue<string>(id);
+    }
+    
     return value.includes(cellValue);
   };
 
@@ -158,7 +166,7 @@ export function KnowledgeBaseDetail({
         filterFn: multiSelectFilter,
       },
       {
-        accessorKey: "collection_name",
+        id: "collection",
         header: "Collection",
         accessorFn: (row) => row.collection?.name ?? "",
         filterFn: multiSelectFilter,
@@ -604,14 +612,14 @@ export function KnowledgeBaseDetail({
                   <div className="px-3 py-2">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Collection</p>
                     {collectionOptions.map((col) => {
-                      const current: string[] = (table.getColumn('collection_name')?.getFilterValue() as string[]) ?? [];
+                      const current: string[] = (table.getColumn('collection')?.getFilterValue() as string[]) ?? [];
                       const checked = current.includes(col);
                       return (
                         <DropdownMenuCheckboxItem
                           key={col}
                           checked={checked}
                           onCheckedChange={(chk) => {
-                            const column = table.getColumn('collection_name');
+                            const column = table.getColumn('collection');
                             const prev: string[] = (column?.getFilterValue() as string[]) ?? [];
                             const updated = chk ? [...prev, col] : prev.filter((c) => c !== col);
                             column?.setFilterValue(updated.length ? updated : undefined);
@@ -625,7 +633,7 @@ export function KnowledgeBaseDetail({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => {
                     table.getColumn('status')?.setFilterValue(undefined);
-                    table.getColumn('collection_name')?.setFilterValue(undefined);
+                    table.getColumn('collection')?.setFilterValue(undefined);
                   }}>
                     Clear Filters
                   </DropdownMenuItem>
