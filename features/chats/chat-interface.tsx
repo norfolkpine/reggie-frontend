@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mic, Plus, Search, Send } from "lucide-react";
+import { useChat } from "ai/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -72,7 +73,11 @@ export default function ChatInterface() {
     messages,
     handleSubmit: chatSubmit,
     isLoading,
-    error
+    error,
+    currentDebugMessage, // Added in previous step
+    currentChatTitle     // Added for this step
+    // startNewConversation, // Potential from earlier steps
+    // currentSessionId    // Potential from earlier steps
   } = useAgentChat({
     agentId: agentId!,
     sessionId: sessionId,
@@ -279,7 +284,9 @@ export default function ChatInterface() {
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b flex items-center justify-between">
-        <div className="text-lg font-semibold">Chat</div>
+        <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
+          {currentChatTitle || "Chat"}
+        </div>
         <Button size="icon" variant="outline" onClick={handleNewChat}>
           <Plus className="h-4 w-4" />
         </Button>
@@ -295,7 +302,17 @@ export default function ChatInterface() {
         <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full min-h-0">
         
           
-          
+          {/* Display Debug Message (example placement: below messages, above input but within scrollable chat area) */}
+          {currentDebugMessage && (
+            <div className="max-w-3xl mx-auto w-full p-4 sticky top-0 z-10 bg-background"> {/* Made sticky */}
+              <Card className="p-3 bg-yellow-100 border-yellow-300 text-yellow-700 text-xs">
+                <pre className="whitespace-pre-wrap break-all">
+                  <strong>Debug Info:</strong><br />
+                  {currentDebugMessage}
+                </pre>
+              </Card>
+            </div>
+          )}
                             
 
           {error && (
@@ -365,43 +382,50 @@ export default function ChatInterface() {
                                   description="Price, Market Cap, and Volume"
                                 />
                               </div>
-                            ) : isLoading &&
-                              index === messages.length - 1 &&
-                              message.role === "assistant" ? (
-                              <div className="flex justify-start">
-                                <div>
-                                  <TypingIndicator />
-                                </div>
-                              </div>
                             ) : (
-                              <div className="markdown">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  rehypePlugins={[rehypeHighlight]}
-                                  components={MarkdownComponents}
-                                >
-                                  {message.content as string}
-                                </ReactMarkdown>
+                              <>
+                                <div className="markdown">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeHighlight]}
+                                    components={MarkdownComponents}
+                                  >
+                                    {message.content as string}
+                                  </ReactMarkdown>
+                                </div>
+                                {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
+                                  <div className="flex justify-start">
+                                    <TypingIndicator />
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {(() => {
+                                  const isNewestAssistant = index === messages.length - 1 && message.role === "assistant";
+                                  const showActions = !(isNewestAssistant && isLoading);
+                                  return showActions;
+                                })() && (
+                              <div className="flex items-center gap-2 mt-2 -mb-1">
+                                <MessageActions
+                                  messageId={message.id}
+                                  content={message.content as string}
+                                  onCopy={copyToClipboard}
+                                  copiedMessageId={copiedMessageId}
+                                  onSend={handleOnSend}
+                                  onOpenCanvas={setEditingMessageId}
+                                  onGoodResponse={(messageId: string) => {
+                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                                  }}
+                                  onBadResponse={(messageId: string) => {
+                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                                  }}
+                                  isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                                  isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
+                                />
                               </div>
                             )}
-                            <MessageActions
-                              messageId={message.id}
-                              content={message.content as string}
-                              onCopy={copyToClipboard}
-                              copiedMessageId={copiedMessageId}
-                              onSend={handleOnSend}
-                              onOpenCanvas={setEditingMessageId}
-                              onGoodResponse={(messageId: string) => {
-                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
-                                setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
-                              }}
-                              onBadResponse={(messageId: string) => {
-                                setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
-                                setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
-                              }}
-                              isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
-                              isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
-                            />
                           </>
                         )}
                       </div>

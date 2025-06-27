@@ -53,12 +53,15 @@ const generateFallbackTitle = (message: string): string => {
  * Updates the chat session title based on the first user message
  * @param sessionId The ID of the chat session to update
  * @param message The user message to generate the title from
+ * @returns The generated and saved title, or null if update failed
  */
-export const updateChatSessionTitle = async (sessionId: string, message: string): Promise<void> => {
+export const updateChatSessionTitle = async (sessionId: string, message: string): Promise<string | null> => {
   try {
     const title = await generateChatTitle(message);
-    await patchChatSession(sessionId, { title });
+    const updatedSession = await patchChatSession(sessionId, { title });
+    return updatedSession.title; // Return the title from the patched session object
   } catch (error: unknown) {
     console.error('Error updating chat session title:', error);
+    return null; // Indicate failure
   }
 };

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createChatSession, getChatSessionMessage } from '@/api/chat-sessions';
+import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
+import { updateChatSessionTitle } from '@/api/chat-utils';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
@@ -9,7 +10,6 @@ interface Message {
   content: string;
   role: 'user' | 'assistant' | 'system';
   feedback?: Feedback[];
-  isDone?: boolean; // indicates if assistant stream finished
 }
 
 interface UseAgentChatProps {
@@ -22,23 +22,24 @@ interface UseAgentChatReturn {
   handleSubmit: (value?: string) => void;
   isLoading: boolean;
   error: string | null;
-  debugMessage: string | null;
+  currentDebugMessage: string | null;
+  currentChatTitle: string | null;
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
-  // Flag to track if this is a brand new conversation
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [debugMessage, setDebugMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(!!ssid); // Track initial loading
+  const [isInitializing, setIsInitializing] = useState(!!ssid);
   const [sessionCreated, setSessionCreated] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(ssid);
+  const [internalSessionId, setInternalSessionId] = useState<string | null>(ssid);
   const [error, setError] = useState<string | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [currentDebugMessage, setCurrentDebugMessage] = useState<string | null>(null);
+  const debugMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentChatTitle, setCurrentChatTitle] = useState<string | null>(null);
 
-  // Validate API base URL on component mount
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
       console.error("API Base URL is not defined. Check your environment variables.");
@@ -47,23 +48,28 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   }, []);
 
   useEffect(() => {
-    const loadExistingMessages = async () => {
+    const loadExistingSessionDetails = async () => {
       if (!ssid) {
         setIsInitializing(false);
-        // If no session ID, this is a new conversation
         isNewConversationRef.current = true;
+        setCurrentChatTitle("New Chat");
+        setMessages([]);
+        setInternalSessionId(null);
+        setSessionCreated(false);
         return;
       }
-      // If we have a session ID, this is not a new conversation
+      
       isNewConversationRef.current = false;
+      setIsLoading(true);
+      setIsInitializing(true);
+      setError(null);
       
       try {
-        setIsLoading(true);
-        setIsInitializing(true);
-        setError(null);
+        const sessionDetails = await getChatSession(ssid);
+        setCurrentChatTitle(sessionDetails.title);
         
-        const response = await getChatSessionMessage(ssid);
-        const formattedMessages = response.results.map(msg => ({
+        const messageResponse = await getChatSessionMessage(ssid);
+        const formattedMessages = messageResponse.results.map(msg => ({
           id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
           content: msg.content,
           role: msg.role as 'user' | 'assistant',
@@ -71,58 +77,59 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         }));
         
         setMessages(formattedMessages);
+        setInternalSessionId(ssid);
         setSessionCreated(true);
       } catch (error) {
-        console.error('Error loading messages:', error);
-        setError('Failed to load messages. Please try refreshing the page.');
+        console.error('Error loading session details or messages:', error);
+        setError('Failed to load chat. Please try refreshing.');
+        setCurrentChatTitle("Chat");
       } finally {
         setIsLoading(false);
         setIsInitializing(false);
       }
     };
 
-    loadExistingMessages();
+    loadExistingSessionDetails();
     
-    // Cleanup any existing requests when component unmounts or sessionId changes
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
-        abortControllerRef.current = null;
+        // abortControllerRef.current = null; // Not strictly necessary, new one created on submit
+      }
+      if (debugMessageTimeoutRef.current) {
+        clearTimeout(debugMessageTimeoutRef.current);
       }
     };
   }, [ssid]);
 
   const handleSubmit = useCallback(async (value?: string) => {
-    if (!value?.trim() || isLoading) return;
+    if (!value?.trim() || (isLoading && !isInitializing)) return;
     
-    // Abort any existing request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create a new abort controller
+    if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     
-    // Reset any previous errors
     setError(null);
-    setIsLoading(true);
+    if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+    setCurrentDebugMessage(null);
 
-    let tempSessionId = sessionId;
+    let tempSessionId = internalSessionId;
+    let isNewSessionManuallyCreated = false;
 
-    if (!sessionCreated) {
+    if (!sessionCreated || !tempSessionId) {
+      setIsLoading(true); 
       try {
-        // Create a new chat session
+        const initialTitle = "New Chat"; 
+        setCurrentChatTitle(initialTitle); 
         const result = await createChatSession({
-          title: "New Chat",
+          title: initialTitle,
           agent_id: agentId,
         });
 
         tempSessionId = result.session_id;
-        setSessionId(result.session_id);
+        setInternalSessionId(tempSessionId);
         setSessionCreated(true);
-        
-        // For new sessions, mark that this is the first message
-        isNewConversationRef.current = true;
+        isNewSessionManuallyCreated = true;
+        isNewConversationRef.current = true; 
       } catch (error) {
         console.error('Failed to create chat session:', error);
         setError('Failed to create chat session. Please check your connection and try again.');
@@ -131,52 +138,61 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       }
     }
 
-    // Create the user message object
+    const userMessageContent = value ?? "";
     const userMessage: Message = {
       id: crypto.randomUUID(),
-      content: value ?? "",
+      content: userMessageContent,
       role: 'user'
     };
     
-    // For first messages in a new conversation, we need to ensure the message is preserved
-    if (isNewConversationRef.current) {
+    const isEffectivelyFirstUIMessage = messages.filter(m => m.role === 'user').length === 0;
+
+    if (isNewConversationRef.current && messages.length === 0) {
       setMessages([userMessage]);
-      isNewConversationRef.current = false; // No longer a new conversation after first message
     } else {
       setMessages(prev => [...prev, userMessage]);
     }
 
+    const knownPlaceholderTitles = ["New Chat", "New Conversation"];
+    const shouldUpdateTitle = tempSessionId &&
+                              (isNewSessionManuallyCreated ||
+                               (isEffectivelyFirstUIMessage && currentChatTitle && knownPlaceholderTitles.includes(currentChatTitle)));
+    
+    if (shouldUpdateTitle) {
+      updateChatSessionTitle(tempSessionId, userMessageContent)
+        .then((newTitle) => {
+          if (newTitle) setCurrentChatTitle(newTitle);
+        })
+        .catch(err => console.error(`Failed to update chat title for session ${tempSessionId}:`, err));
+    }
+    
+    if (isNewConversationRef.current) {
+        isNewConversationRef.current = false;
+    }
+    
+    setIsLoading(true);
+
     try {
       const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        throw new Error("Authentication token is missing");
-      }
+      if (!token) throw new Error("Authentication token is missing");
 
       const payload = {
         agent_id: agentId,
-        message: value ?? "",
+        message: userMessageContent, // Use the sanitized userMessageContent
         session_id: tempSessionId,
       };
 
-      // Add empty assistant message to show typing indicator
-      // Use UUID for more reliable ID generation
       const assistantMessageId = `assistant-${crypto.randomUUID()}`;
-      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant', isDone: false }]);
+      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");
@@ -184,147 +200,106 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
       const decoder = new TextDecoder();
       let responseContent = '';
+      let dataContentForDoneCheck = '';
 
-      let streamDone = false;
       while (true) {
-        // Check if request was aborted
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
+        if (abortControllerRef.current?.signal.aborted) break;
         
-        const { value, done } = await reader.read();
+        const { value: chunkValue, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
+        const chunk = decoder.decode(chunkValue);
         const lines = chunk.split("\n").filter(line => line.trim() !== "");
 
         for (const line of lines) {
           if (line.startsWith("data:")) {
-            const dataContent = line.slice(5).trim();
-            if (dataContent === "[DONE]") { streamDone = true; break; }
+            dataContentForDoneCheck = line.slice(5).trim();
+            if (dataContentForDoneCheck === "[DONE]") break;
 
             try {
-              const parsedData = JSON.parse(dataContent);
-              let textChunk: string | undefined;
+              const parsedData = JSON.parse(dataContentForDoneCheck);
               
-              // Handle debug messages
               if (parsedData.debug) {
                 console.debug('Debug message:', parsedData.debug);
-                // Format debug messages in italics
-                textChunk = `\n_${parsedData.debug}_\n\n`;
-                // Update debug message state
-                setDebugMessage(parsedData.debug);
-              } else if (parsedData.tool) {
-                // Format tool usage messages in italics
-                textChunk = `\n_${parsedData.tool}_\n\n`;
-                // Clear debug message when new content arrives
-                setDebugMessage(null);
-              } else {
-                // Normal content
-                textChunk = parsedData.token ?? parsedData.content;
-                // Clear debug message when new content arrives
-                setDebugMessage(null);
+                setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2)); 
+                if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+                debugMessageTimeoutRef.current = setTimeout(() => {
+                  setCurrentDebugMessage(null);
+                  debugMessageTimeoutRef.current = null;
+                }, 5000); 
+                continue; 
               }
               
-              if (typeof textChunk === "string" && textChunk.length > 0) {
-                responseContent += textChunk;
+              if (currentDebugMessage) { 
+                 if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+                 setCurrentDebugMessage(null);
+              }
+
+              const tokenPart = parsedData.token ?? parsedData.content;
+              
+              if (typeof tokenPart === 'string' && tokenPart.length > 0) {
+                responseContent += tokenPart;
                 setMessages(prev => {
                   const newMessages = [...prev];
                   const lastMessageIndex = newMessages.length - 1;
-                  
-                  // Make sure we have an assistant message to update
                   if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
                     newMessages[lastMessageIndex] = {
                       ...newMessages[lastMessageIndex],
                       content: responseContent,
-                      id: parsedData.run_id || newMessages[lastMessageIndex].id, // Use run_id if available
+                      id: parsedData.run_id || newMessages[lastMessageIndex].id, 
                     };
-                  } else if (parsedData.event === 'RunResponse' && parsedData.content_type === 'str') {
-                    // Handle case where this is the first content message (not debug)
-                    // We need to add an assistant message but preserve all existing messages
-                    // Only add the assistant message if there isn't already one
-                    const hasAssistantMessage = newMessages.some(msg => msg.role === 'assistant');
-                    if (!hasAssistantMessage) {
-                      // Add assistant message while preserving user message
-                      newMessages.push({
-                        id: parsedData.run_id || crypto.randomUUID(),
-                        content: responseContent,
-                        role: 'assistant'
-                      });
-                    }
                   }
-                  
                   return newMessages;
                 });
               }
             } catch (e) {
-              console.error("Failed to parse SSE data:", dataContent);
+              console.error("Failed to parse SSE data:", dataContentForDoneCheck, e);
             }
           }
         }
+        if (dataContentForDoneCheck === "[DONE]") break; 
       }
-      // mark assistant message done
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastIndex = newMessages.length - 1;
-        if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
-          newMessages[lastIndex] = { ...newMessages[lastIndex], isDone: true };
-        }
-        return newMessages;
-      });
     } catch (error) {
-      // Don't set error if it was due to an abort
       if (error instanceof DOMException && error.name === 'AbortError') {
-        console.log('Request was aborted');
+        console.log('Request was aborted.');
       } else {
         console.error('Stream error:', error);
         setError(error instanceof Error ? error.message : 'An unknown error occurred');
         setMessages(prev => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
-            newMessages[lastIndex] = {
-              ...newMessages[lastIndex],
-              content: 'Sorry, there was an error processing your request.',
-            };
+          if (lastIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
+            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
+          } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
+            newMessages.push({ id: crypto.randomUUID(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
           }
           return newMessages;
         });
       }
+      if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+      setCurrentDebugMessage(null);
     } finally {
       setIsLoading(false);
       if (readerRef.current) {
-        try {
-          readerRef.current.releaseLock();
-        } catch (e) {
-          console.error('Error releasing reader lock:', e);
-        }
+        try { readerRef.current.releaseLock(); } 
+        catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
+      if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
-  }, [agentId, sessionCreated, sessionId]); // Remove isLoading from dependencies to avoid re-render issues
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle]);
+  // Added currentChatTitle to dependencies of handleSubmit
 
-  // Cleanup reader and abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (readerRef.current) {
-        try {
-          readerRef.current.releaseLock();
-        } catch (e) {
-          console.error('Error releasing reader lock on unmount:', e);
-        }
-      }
-      
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
+  // Main unmount cleanup is implicitly handled by the return function in the useEffect([ssid])
+  // for abortController and debugMessageTimeoutRef. ReaderRef is cleaned in finally.
+  
   return {
     messages,
     handleSubmit,
     isLoading: isLoading || isInitializing,
-    error
+    error,
+    currentDebugMessage,
+    currentChatTitle,
   };
 }
