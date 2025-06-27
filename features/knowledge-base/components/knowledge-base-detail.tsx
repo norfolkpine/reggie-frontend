@@ -740,7 +740,7 @@ export function KnowledgeBaseDetail({
                       <TableCell>
                         {file.collection ? file.collection.name : '—'}
                       </TableCell>
-                      <TableCell>{file.file_size} bytes</TableCell>
+                      <TableCell>{formatFileSize(file.filesize)}</TableCell>
                       <TableCell>{file.chunk_size} tokens</TableCell>
                       <TableCell>{formatDate(file.created_at)}</TableCell>
                       <TableCell>
