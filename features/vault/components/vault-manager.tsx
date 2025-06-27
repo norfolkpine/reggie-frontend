@@ -10,27 +10,14 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-
-// Extended VaultFile interface with additional properties from the API response
-interface VaultFile extends BaseVaultFile {
-  filename?: string;
-  original_filename?: string;
-  size?: number;
-  type?: string;
-  file_type?: string; // This is derived from the filename extension for filtering
-}
 import { Loader2, Settings, Activity, ArrowLeft } from "__barrel_optimize__?names=Activity,ArrowLeft,Loader2,Settings!=!lucide-react";
 import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle 
-} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { UploadFileModal } from "./upload-file-modal";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -47,7 +34,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { UploadFileModal } from "./upload-file-modal";
+
+// Extended VaultFile interface with additional properties from the API response
+interface VaultFile extends BaseVaultFile {
+  filename?: string;
+  original_filename?: string;
+  size?: number;
+  // type is not included in the interface as we're accessing it with (file as any).type
+  file_type?: string; // This is derived from the filename extension or MIME type for filtering
+}
 
 export function VaultManager() {
   const params = useParams();
@@ -62,6 +57,8 @@ export function VaultManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showAllFiles, setShowAllFiles] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('vault_active_tab') || 'files';
@@ -103,10 +100,14 @@ export function VaultManager() {
   const fetchFiles = async () => {
     try {
       const files = await getVaultFilesByProject(Number(projectId));
-      // Add file_type property based on filename extension
+      // Add file_type property based on filename extension or MIME type
       const filesWithType: VaultFile[] = files.map(file => {
-        // Extract file extension for filtering
-        const fileExtension = file.filename?.split('.').pop()?.toLowerCase() || file.type?.split('/')[1] || '';
+        // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
+        const mimeType = (file as any).type;
+        const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
+        
+        // Or extract extension from filename
+        const fileExtension = file.filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
         
         return {
           ...file,
@@ -184,6 +185,8 @@ export function VaultManager() {
         description: "File deleted successfully",
       });
       fetchFiles(); // Refresh the file list
+      // Clear selected files after deletion
+      setSelectedFiles([]);
     } catch (error) {
       const { message } = handleApiError(error);
       toast({
@@ -192,6 +195,84 @@ export function VaultManager() {
         variant: "destructive",
       });
     }
+  };
+  
+  const handleBulkDelete = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Process deletion one by one
+      for (const fileId of selectedFiles) {
+        try {
+          await deleteVaultFile(fileId);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to delete file ID ${fileId}:`, error);
+          errorCount++;
+        }
+      }
+      
+      // Notify user about the results
+      if (successCount > 0) {
+        toast({
+          title: "Success",
+          description: `${successCount} file${successCount !== 1 ? 's' : ''} deleted successfully`,
+        });
+      }
+      
+      if (errorCount > 0) {
+        toast({
+          title: "Error",
+          description: `Failed to delete ${errorCount} file${errorCount !== 1 ? 's' : ''}`,
+          variant: "destructive",
+        });
+      }
+      
+      // Refresh the file list
+      fetchFiles();
+      // Clear selected files
+      setSelectedFiles([]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during bulk deletion",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const filteredFiles = vaultFiles
+        .filter(file => {
+          const fileType = file.file_type || '';
+          const matchesType = showAllFiles || 
+            (activeFilters.length === 0) || 
+            activeFilters.some((filter: string) => fileType.includes(filter));
+            
+          const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            false;
+          return matchesType && matchesSearch;
+        });
+      setSelectedFiles(filteredFiles.map(file => file.id));
+    } else {
+      setSelectedFiles([]);
+    }
+  };
+  
+  const toggleSelectFile = (fileId: number, checked: boolean) => {
+    setSelectedFiles(prev => 
+      checked 
+        ? [...prev, fileId] 
+        : prev.filter(id => id !== fileId)
+    );
   };
 
   if (!project && !loading) {
@@ -243,83 +324,103 @@ export function VaultManager() {
               {/* Replace with custom file manager UI since shared component doesn't support our vault-specific API needs */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="relative w-full max-w-sm">
-                      <SearchInput
-                        placeholder="Search files..."
+                  <div className="flex items-center justify-between pb-4">
+                    <div className="flex gap-2">
+                      <SearchInput 
+                        placeholder="Search by filename"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full"
+                        className="max-w-sm"
                       />
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Filter className="h-4 w-4 mr-2" /> Filter
-                          <ChevronDown className="h-4 w-4 ml-1" />
+                      {selectedFiles.length > 0 && (
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleBulkDelete}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Selected ({selectedFiles.length})
+                            </>
+                          )}
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56">
-                        <DropdownMenuCheckboxItem 
-                          checked={showAllFiles}
-                          onCheckedChange={(checked) => {
-                            setShowAllFiles(checked);
-                            if (checked) {
-                              setActiveFilters([]);
-                            }
-                          }}
-                        >
-                          Show all files
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem 
-                          checked={activeFilters.includes('pdf') || showAllFiles}
-                          onCheckedChange={(checked) => {
-                            setShowAllFiles(false);
-                            setActiveFilters(prev => 
-                              checked 
-                                ? [...prev, 'pdf'] 
-                                : prev.filter(f => f !== 'pdf')
-                            );
-                          }}
-                        >
-                          PDF files
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem 
-                          checked={activeFilters.includes('docx') || activeFilters.includes('doc') || showAllFiles}
-                          onCheckedChange={(checked) => {
-                            setShowAllFiles(false);
-                            const docsFilters = ['docx', 'doc'];
-                            setActiveFilters(prev => 
-                              checked 
-                                ? [...prev.filter(f => !docsFilters.includes(f)), ...docsFilters] 
-                                : prev.filter(f => !docsFilters.includes(f))
-                            );
-                          }}
-                        >
-                          Documents
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem 
-                          checked={activeFilters.includes('jpg') || activeFilters.includes('jpeg') || activeFilters.includes('png') || showAllFiles}
-                          onCheckedChange={(checked) => {
-                            setShowAllFiles(false);
-                            const imageFilters = ['jpg', 'jpeg', 'png'];
-                            setActiveFilters(prev => 
-                              checked 
-                                ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
-                                : prev.filter(f => !imageFilters.includes(f))
-                            );
-                          }}
-                        >
-                          Images
-                        </DropdownMenuCheckboxItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={() => setUploadModalOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" /> Upload
-                    </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="ml-auto">
+                            <Filter className="mr-2 h-4 w-4" />
+                            Filter
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                          <DropdownMenuCheckboxItem 
+                            checked={showAllFiles}
+                            onCheckedChange={(checked) => {
+                              setShowAllFiles(checked);
+                              if (checked) {
+                                setActiveFilters([]);
+                              }
+                            }}
+                          >
+                            Show all files
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem 
+                            checked={activeFilters.includes('pdf') || showAllFiles}
+                            onCheckedChange={(checked) => {
+                              setShowAllFiles(false);
+                              setActiveFilters(prev => 
+                                checked 
+                                  ? [...prev, 'pdf'] 
+                                  : prev.filter(f => f !== 'pdf')
+                              );
+                            }}
+                          >
+                            PDF files
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem 
+                            checked={activeFilters.includes('docx') || activeFilters.includes('doc') || showAllFiles}
+                            onCheckedChange={(checked) => {
+                              setShowAllFiles(false);
+                              const docsFilters = ['docx', 'doc'];
+                              setActiveFilters(prev => 
+                                checked 
+                                  ? [...prev.filter(f => !docsFilters.includes(f)), ...docsFilters] 
+                                  : prev.filter(f => !docsFilters.includes(f))
+                              );
+                            }}
+                          >
+                            Documents
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem 
+                            checked={activeFilters.includes('jpg') || activeFilters.includes('jpeg') || activeFilters.includes('png') || showAllFiles}
+                            onCheckedChange={(checked) => {
+                              setShowAllFiles(false);
+                              const imageFilters = ['jpg', 'jpeg', 'png'];
+                              setActiveFilters(prev => 
+                                checked 
+                                  ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
+                                  : prev.filter(f => !imageFilters.includes(f))
+                              );
+                            }}
+                          >
+                            Images
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => setUploadModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Upload
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
@@ -327,11 +428,28 @@ export function VaultManager() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[300px]">Name</TableHead>
+                        <TableHead className="w-[50px]">
+                            <Checkbox 
+                            checked={selectedFiles.length > 0 && selectedFiles.length === vaultFiles.filter((file) => {
+                              const fileType = file.file_type || '';
+                              const matchesType = showAllFiles || 
+                                (activeFilters.length === 0) || 
+                                activeFilters.some((filter: string) => fileType.includes(filter));
+                                
+                              const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                false;
+                              return matchesType && matchesSearch;
+                            }).length}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="Select all files"
+                          />
+                        </TableHead>
+                        <TableHead className="w-[350px]">Name</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Size</TableHead>
                         <TableHead>Last Modified</TableHead>
-                        <TableHead className="w-[100px]"></TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -342,7 +460,7 @@ export function VaultManager() {
                             const fileType = file.file_type || '';
                             const matchesType = showAllFiles || 
                               (activeFilters.length === 0) || 
-                              activeFilters.some(filter => fileType.includes(filter));
+                              activeFilters.some((filter: string) => fileType.includes(filter));
                             
                             // Apply search filter
                             const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -353,7 +471,14 @@ export function VaultManager() {
                           })
                           .map((file) => (
                           <TableRow key={file.id}>
-                            <TableCell className="font-medium">
+                            <TableCell>
+                              <Checkbox 
+                                checked={selectedFiles.includes(file.id)}
+                                onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
+                                aria-label={`Select ${file.original_filename || file.filename}`}
+                              />
+                            </TableCell>
+                             <TableCell className="font-medium">
                               <div className="flex items-center space-x-2">
                                 <FileText className="h-5 w-5 text-muted-foreground" />
                                 <span>
@@ -365,7 +490,14 @@ export function VaultManager() {
                             <TableCell>
                               <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
                             </TableCell>
-                            <TableCell>{file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</TableCell>
+                            <TableCell>
+                              {/* Display file size in KB or MB */}
+                              {file.size 
+                                ? file.size < 1024 * 1024 
+                                  ? `${(file.size / 1024).toFixed(1)} KB` 
+                                  : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                                : 'N/A'}
+                            </TableCell>
                             <TableCell>
                               {file.created_at ? 
                                 formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
@@ -415,28 +547,20 @@ export function VaultManager() {
                 </div>
               </div>
               
-              {/* File Upload Dialog */}
-              {uploadModalOpen && (
-                <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Upload Files</DialogTitle>
-                      <DialogDescription>
-                        Upload files to this vault. Supported formats: PDF, DOCX, XLSX, TXT, CSV, PNG, JPG.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <UploadFileModal 
-                        onUploadComplete={(files: File[]) => {
-                          handleFileUpload(files);
-                          setUploadModalOpen(false);
-                        }}
-                        supportedFileTypes={[".pdf", ".docx", ".xlsx", ".txt", ".csv", ".png", ".jpg", ".jpeg"]}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
+              {/* File Upload Modal */}
+              <UploadFileModal 
+                open={uploadModalOpen}
+                onOpenChange={setUploadModalOpen}
+                onFilesSelected={(files) => {
+                  handleFileUpload(files);
+                }}
+                supportedTypes={[
+                  '.pdf', '.doc', '.docx', '.xls', '.xlsx', 
+                  '.txt', '.csv', '.png', '.jpg', '.jpeg'
+                ]}
+                title="Upload Files to Vault"
+                maxFiles={10}
+              />
             </TabsContent>
             
             <TabsContent value="activity" className="mt-4">
