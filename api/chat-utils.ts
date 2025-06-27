@@ -20,7 +20,7 @@ export const generateChatTitle = async (message: string): Promise<string> => {
     // Fallback: If the API doesn't exist or doesn't return a title,
     // generate a simple title from the first few words of the message
     return generateFallbackTitle(message);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error generating chat title:', error);
     return generateFallbackTitle(message);
   }
@@ -58,7 +58,7 @@ export const updateChatSessionTitle = async (sessionId: string, message: string)
   try {
     const title = await generateChatTitle(message);
     await patchChatSession(sessionId, { title });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating chat session title:', error);
   }
 };

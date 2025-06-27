@@ -24,6 +24,8 @@ interface UseAgentChatReturn {
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
+  // Flag to track if this is a brand new conversation
+  const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(!!ssid); // Track initial loading
@@ -45,8 +47,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     const loadExistingMessages = async () => {
       if (!ssid) {
         setIsInitializing(false);
+        // If no session ID, this is a new conversation
+        isNewConversationRef.current = true;
         return;
       }
+      // If we have a session ID, this is not a new conversation
+      isNewConversationRef.current = false;
       
       try {
         setIsLoading(true);
@@ -102,6 +108,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
     if (!sessionCreated) {
       try {
+        // Create a new chat session
         const result = await createChatSession({
           title: "New Chat",
           agent_id: agentId,
@@ -110,6 +117,9 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         tempSessionId = result.session_id;
         setSessionId(result.session_id);
         setSessionCreated(true);
+        
+        // For new sessions, mark that this is the first message
+        isNewConversationRef.current = true;
       } catch (error) {
         console.error('Failed to create chat session:', error);
         setError('Failed to create chat session. Please check your connection and try again.');
@@ -118,12 +128,20 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       }
     }
 
+    // Create the user message object
     const userMessage: Message = {
       id: crypto.randomUUID(),
       content: value ?? "",
       role: 'user'
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    // For first messages in a new conversation, we need to ensure the message is preserved
+    if (isNewConversationRef.current) {
+      setMessages([userMessage]);
+      isNewConversationRef.current = false; // No longer a new conversation after first message
+    } else {
+      setMessages(prev => [...prev, userMessage]);
+    }
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
@@ -181,18 +199,33 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
             try {
               const parsedData = JSON.parse(dataContent);
+              
+              // Skip debug messages
+              if (parsedData.debug) {
+                console.debug('Debug message:', parsedData.debug);
+                continue;
+              }
+              
+              // Extract content from the response
               const tokenPart = parsedData.token ?? parsedData.content;
+              
               if (typeof tokenPart === 'string' && tokenPart.length > 0) {
                 responseContent += tokenPart;
+                
+                // Update messages state with new content
                 setMessages(prev => {
                   const newMessages = [...prev];
                   const lastMessageIndex = newMessages.length - 1;
+                  
+                  // Make sure we have an assistant message to update
                   if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
                     newMessages[lastMessageIndex] = {
                       ...newMessages[lastMessageIndex],
                       content: responseContent,
+                      id: parsedData.run_id || newMessages[lastMessageIndex].id, // Use run_id if available
                     };
                   }
+                  
                   return newMessages;
                 });
               }
