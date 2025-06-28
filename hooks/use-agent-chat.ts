@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
-import { updateChatSessionTitle } from '@/api/chat-utils';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
@@ -118,14 +117,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     if (!sessionCreated || !tempSessionId) {
       setIsLoading(true); 
       try {
-        const initialTitle = "New Chat"; 
-        setCurrentChatTitle(initialTitle); 
-        const result = await createChatSession({
-          title: initialTitle,
+        setCurrentChatTitle("New Chat"); 
+        const session = await createChatSession({
           agent_id: agentId,
         });
 
-        tempSessionId = result.session_id;
+        tempSessionId = session.session_id;
         setInternalSessionId(tempSessionId);
         setSessionCreated(true);
         isNewSessionManuallyCreated = true;
@@ -153,19 +150,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       setMessages(prev => [...prev, userMessage]);
     }
 
-    const knownPlaceholderTitles = ["New Chat", "New Conversation"];
-    const shouldUpdateTitle = tempSessionId &&
-                              (isNewSessionManuallyCreated ||
-                               (isEffectivelyFirstUIMessage && currentChatTitle && knownPlaceholderTitles.includes(currentChatTitle)));
-    
-    if (shouldUpdateTitle) {
-      updateChatSessionTitle(tempSessionId, userMessageContent)
-        .then((newTitle) => {
-          if (newTitle) setCurrentChatTitle(newTitle);
-        })
-        .catch(err => console.error(`Failed to update chat title for session ${tempSessionId}:`, err));
-    }
-    
     if (isNewConversationRef.current) {
         isNewConversationRef.current = false;
     }
