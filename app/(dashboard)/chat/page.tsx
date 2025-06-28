@@ -1,6 +1,7 @@
 
-import { CustomChat } from "@/features/chats/components/chatcn"
+//import { CustomChat } from "@/features/chats/components/chatcn"
 
+import ChatsComponent from "@/features/chats"
 export default function ChatPage() {
-  return <CustomChat agentId="o-ea5b30abd-reggie" />
+  return <ChatsComponent />
 }
