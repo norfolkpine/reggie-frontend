@@ -71,9 +71,9 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
   const isTyping = lastMessage?.role === "user";
 
   return (
-    <ChatContainer>
+    <ChatContainer className="max-w-full h-full">
       <div
-        className="flex-1 flex flex-col relative"
+        className="flex-1 flex flex-col relative h-full overflow-hidden"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -89,56 +89,69 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
             </div>
           </div>
         )}
-      {isEmpty && (
-        <PromptSuggestions
-          label="Try these prompts ✨"
-          append={(message) => {
-            setInput(message.content);
-            handleSubmit(message.content);
-            setInput("");
-          }}
-          suggestions={["What is the capital of France?", "Tell me a joke"]}
-        />
-      )}
-
-      {!isEmpty && (
-        <ChatMessages>
-          <MessageList messages={messages} isTyping={isTyping} />
-        </ChatMessages>
-      )}
-
-      {error && (
-        <div className="p-2 text-sm text-red-500 border-t bg-red-50">
-          {error}
-        </div>
-      )}
-
-      {currentDebugMessage && (
-        <div className="p-2 text-xs text-gray-500 border-t bg-yellow-50">
-          Debug: {currentDebugMessage}
-        </div>
-      )}
-
-      <ChatForm
-        className="mt-auto"
-        isPending={isLoading || isTyping}
-        handleSubmit={onSubmit}
-      >
-        {({ setFiles: setFormFiles }) => (
-          <MessageInput
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            allowAttachments
-            files={files}
-            setFiles={(newFiles) => {
-              setFiles(newFiles);
-              setFormFiles(newFiles);
-            }}
-            stop={() => {}}
-            isGenerating={isLoading}
-          />
+        
+        {isEmpty && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <PromptSuggestions
+              label="Try these prompts ✨"
+              className="w-full max-w-2xl mx-auto"
+              append={(message) => {
+                setInput(message.content);
+                handleSubmit(message.content);
+                setInput("");
+              }}
+              suggestions={["What is the capital of France?", "Tell me a joke"]}
+            />
+          </div>
         )}
-      </ChatForm>
+
+        {!isEmpty && (
+          <ChatMessages className="flex-1 p-4 overflow-y-auto">
+            <div className="max-w-3xl mx-auto w-full py-4">
+              <MessageList messages={messages} isTyping={isTyping} />
+            </div>
+          </ChatMessages>
+        )}
+
+        {error && (
+          <div className="p-3 text-sm text-red-500 border-t bg-red-50">
+            <div className="max-w-3xl mx-auto w-full">
+              {error}
+            </div>
+          </div>
+        )}
+
+        {currentDebugMessage && (
+          <div className="p-3 text-xs text-gray-500 border-t bg-yellow-50">
+            <div className="max-w-3xl mx-auto w-full">
+              Debug: {currentDebugMessage}
+            </div>
+          </div>
+        )}
+
+        <div className="border-t mt-auto">
+          <div className="max-w-3xl mx-auto w-full p-4">
+            <ChatForm
+              isPending={isLoading || isTyping}
+              handleSubmit={onSubmit}
+            >
+              {({ setFiles: setFormFiles }) => (
+                <MessageInput
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  allowAttachments
+                  files={files}
+                  setFiles={(newFiles) => {
+                    setFiles(newFiles);
+                    setFormFiles(newFiles);
+                  }}
+                  stop={() => {}}
+                  isGenerating={isLoading}
+                />
+              )}
+            </ChatForm>
+          </div>
+        </div>
       </div>
     </ChatContainer>
   );
