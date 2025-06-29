@@ -16,6 +16,7 @@ import { Agent } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createChatSession } from "@/api/chat-sessions";
+import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
 
 interface AgentCardProps {
   agent: Agent;
@@ -23,6 +24,8 @@ interface AgentCardProps {
 
 export function AgentCard({ agent }: AgentCardProps) {
   const router = useRouter();
+
+  const { refresh } = useChatSessionContext();
   return (
     <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50">
       <CardHeader className="p-4 pb-2">
@@ -72,6 +75,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                 agent_id: agent.agent_id,
                 agent_code,
               });
+              refresh();
               router.push(`/chat/${session.session_id}?agentId=${agent.agent_id}`);
             } catch (e) {
               // Optionally handle error, e.g., toast

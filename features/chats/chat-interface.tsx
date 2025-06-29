@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { sendUserFeedback } from "./api/user-feedback";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
 import AgentChatDock from "./components/agent-chat-dock";
+import { ChatSessionProvider } from "./ChatSessionContext"; // Import the provider
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
@@ -62,6 +63,20 @@ function isCryptoData(content: string): boolean {
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
+// Memoized AgentChatDock to prevent unnecessary re-renders
+const MemoizedAgentChatDock = memo(AgentChatDock, (prevProps, nextProps) => {
+  // Custom comparison function - only re-render if these specific props change
+  return (
+    prevProps.onSelectChat === nextProps.onSelectChat &&
+    prevProps.onNewChat === nextProps.onNewChat
+    // Add other props that should trigger re-render if they change
+    // For example: prevProps.selectedChatId === nextProps.selectedChatId
+  );
+});
+
+// Set display name for debugging
+MemoizedAgentChatDock.displayName = 'MemoizedAgentChatDock';
+
 export default function ChatInterface() {
   const searchParams = useSearchParams();
   const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
@@ -74,10 +89,8 @@ export default function ChatInterface() {
     handleSubmit: chatSubmit,
     isLoading,
     error,
-    currentDebugMessage, // Added in previous step
-    currentChatTitle     // Added for this step
-    // startNewConversation, // Potential from earlier steps
-    // currentSessionId    // Potential from earlier steps
+    currentDebugMessage,
+    currentChatTitle
   } = useAgentChat({
     agentId: agentId!,
     sessionId: sessionId,
@@ -91,13 +104,13 @@ export default function ChatInterface() {
 
     chatSubmit(value);
   };
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
-  // Remove isDragging and containerRef as they're no longer needed with ResizablePanelGroup
   const { isAuthenticated } = useAuth();
 
   // State for feedback dialog
@@ -110,36 +123,90 @@ export default function ChatInterface() {
 
   const [feedbackHighlight, setFeedbackHighlight] = useState<Record<string, 'good' | 'bad' | null>>({});
 
-  
-  useEffect(() => {
-    if (messages.length > 0) {
-      setShowWelcome(false);
-      if (isNearBottom) {
-        requestAnimationFrame(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Memoize the callback functions to prevent AgentChatDock re-renders
+  const handleSelectChat = useCallback((chatId: string, agentCode?: string | null) => {
+    // Don't navigate if we're already on this chat
+    if (sessionId === chatId) {
+      console.log('Already on this chat:', chatId);
+      return;
+    }
+
+    console.log('Navigating to chat:', chatId, 'with agent:', agentCode);
+    
+    // Navigate to the selected chat
+    let url = `/chat/${chatId}`;
+    if (agentCode) {
+      const params = new URLSearchParams({ agentId: agentCode });
+      url += `?${params.toString()}`;
+    } else if (agentId) {
+      // Use current agentId if no agentCode provided
+      const params = new URLSearchParams({ agentId: agentId });
+      url += `?${params.toString()}`;
+    }
+    
+    setShowWelcome(false);
+    
+    // Force navigation using replace to ensure route change
+    router.replace(url);
+    
+    // Alternatively, you can use router.push with refresh
+    // router.push(url);
+    // router.refresh();
+  }, [router, sessionId, agentId]); // Include sessionId and agentId in dependencies
+
+  const handleNewChat = useCallback(async () => {
+    console.log('Creating new chat...');
+    
+    // Reset the current chat state
+    setShowWelcome(true);
+    
+    try {
+      // Create a new chat session
+      const newSession = await createChatSession({
+        title: "New Conversation",
+        agent_id: agentId,
+        agent_code: "gpt-4o", // Default agent code
+      });
+      
+      console.log('New session created:', newSession.session_id);
+      
+      // Navigate to the new chat session
+      const url = `/chat/${newSession.session_id}?agentId=${agentId}`;
+      router.replace(url);
+      
+      toast({
+        title: "New Chat Created",
+        description: "Starting a fresh conversation",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error creating new chat session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat session",
+        duration: 3000,
+      });
+    }
+  }, [router, agentId]); // Only recreate if router or agentId changes
+
+  // Memoize other callback functions that don't need to change frequently
+  const handleFeedbackDialogClose = useCallback(async (feedbackText?: string) => {
+    try {
+      if (feedbackDialog.feedbackType === 'good' || feedbackDialog.feedbackType === 'bad') {
+        await sendUserFeedback({
+          chat_id: feedbackDialog.messageId,
+          feedback_type: feedbackDialog.feedbackType,
+          feedback_text: feedbackText,
+          session: sessionId || undefined,
         });
       }
+      setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
+    } catch (err) {
+      // Handle error
     }
-  }, [messages, isNearBottom]);
+  }, [feedbackDialog.feedbackType, feedbackDialog.messageId, sessionId]);
 
-  // Handle scroll position tracking
-  const handleScroll = () => {
-    if (!messageListRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = messageListRef.current;
-    const scrollPosition = scrollTop + clientHeight;
-    const isCloseToBottom = scrollHeight - scrollPosition < 100;
-    setIsNearBottom(isCloseToBottom);
-  };
-
-  useEffect(() => {
-    const messageList = messageListRef.current;
-    if (messageList) {
-      messageList.addEventListener("scroll", handleScroll);
-      return () => messageList.removeEventListener("scroll", handleScroll);
-    }
-  }, []);
-
-  const copyToClipboard = async (text: string, messageId: string) => {
+  const copyToClipboard = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
@@ -147,18 +214,18 @@ export default function ChatInterface() {
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  };
+  }, []);
 
-  const sendToJournal = (text: string, messageId: string) => {
+  const sendToJournal = useCallback((text: string, messageId: string) => {
     console.log(`Sending message ${messageId} to journal`);
     toast({
       title: "Sent to Journal",
       description: "This message has been saved to your journal.",
       duration: 3000,
     });
-  };
+  }, []);
 
-  const handleSaveEdit = (content: string) => {
+  const handleSaveEdit = useCallback((content: string) => {
     if (!editingMessageId) return;
     console.log(
       `Saving edited content for message ${editingMessageId}:`,
@@ -178,19 +245,13 @@ export default function ChatInterface() {
     });
 
     setEditingMessageId(null);
-  };
+  }, [editingMessageId, messages]);
 
-  // Find the message being edited
-  const editingMessage = messages.find(
-    (message) => message.id === editingMessageId && (message.role =='assistant' || message.role =='system')
-  );
-
-
-  async function handleOnSend(
+  const handleOnSend = useCallback(async (
     id: "google-drive" | "journal",
     text: string,
     messageId: string
-  ): Promise<void> {
+  ): Promise<void> => {
     if (id === "journal") {
       sendToJournal(text, messageId);
     } else if (id === "google-drive") {
@@ -218,69 +279,57 @@ export default function ChatInterface() {
         });
       }
     }
-  }
+  }, [sendToJournal]);
 
-  const handleSelectChat = (chatId: string, agentCode?: string | null) => {
-    // Navigate to the selected chat
-    let url = `/chat/${chatId}`;
-      if (agentCode) {
-        const params = new URLSearchParams({ agentId:agentCode });
-        url += `?${params.toString()}`;
-      }
-      setShowWelcome(false);
-      router.push(url);
-  };
+  // Find the message being edited
+  const editingMessage = useMemo(
+    () => messages.find(
+      (message) => message.id === editingMessageId && (message.role === 'assistant' || message.role === 'system')
+    ),
+    [messages, editingMessageId]
+  );
 
-  const handleNewChat = async () => {
-    // Reset the current chat state
-    setShowWelcome(true);
+  // Add effect to handle route parameter changes
+  useEffect(() => {
+    console.log('Route params changed:', { sessionId, agentId });
     
-    try {
-      // Create a new chat session
-      const newSession = await createChatSession({
-        title: "New Conversation",
-        agent_id: agentId,
-        agent_code: "gpt-4o", // Default agent code
-      });
-      
-      // Navigate to the new chat session
-      router.push(`/chat/${newSession.session_id}?agentId=${agentId}`);
-      
-      toast({
-        title: "New Chat Created",
-        description: "Starting a fresh conversation",
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error("Error creating new chat session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create a new chat session",
-        duration: 3000,
-      });
+    // Reset welcome state when we have a valid session
+    if (sessionId && sessionId !== 'undefined') {
+      setShowWelcome(false);
+    } else {
+      setShowWelcome(true);
     }
-  };
+  }, [sessionId, agentId]);
 
-  // Unified handler for feedback dialog actions
-  const handleFeedbackDialogClose = async (feedbackText?: string) => {
-    try {
-      if (feedbackDialog.feedbackType === 'good' || feedbackDialog.feedbackType === 'bad') {
-        await sendUserFeedback({
-          chat_id: feedbackDialog.messageId,
-          feedback_type: feedbackDialog.feedbackType,
-          feedback_text: feedbackText,
-          session: sessionId || undefined,
+  useEffect(() => {
+    if (messages.length > 0) {
+      setShowWelcome(false);
+      if (isNearBottom) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         });
       }
-      setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
-      // Optionally show toast
-    } catch (err) {
-      // Optionally handle error
     }
-  };
+  }, [messages, isNearBottom]);
+
+  // Handle scroll position tracking
+  const handleScroll = useCallback(() => {
+    if (!messageListRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messageListRef.current;
+    const scrollPosition = scrollTop + clientHeight;
+    const isCloseToBottom = scrollHeight - scrollPosition < 100;
+    setIsNearBottom(isCloseToBottom);
+  }, []);
+
+  useEffect(() => {
+    const messageList = messageListRef.current;
+    if (messageList) {
+      messageList.addEventListener("scroll", handleScroll);
+      return () => messageList.removeEventListener("scroll", handleScroll);
+    }
+  }, [handleScroll]);
 
   return (
-    
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b flex items-center justify-between">
@@ -291,226 +340,225 @@ export default function ChatInterface() {
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+      
       {/* Content Row */}
       <div className="flex flex-1 overflow-hidden">
-      <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
-      <div className="flex-1 flex flex-col min-h-0">
-      {/* Main content area with flexbox layout */}
-
-      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
-        {/* Chat area */}
-        <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full min-h-0">
+        {/* Use memoized AgentChatDock */}
+        <MemoizedAgentChatDock 
+          onSelectChat={handleSelectChat} 
+          onNewChat={handleNewChat} 
+        />
         
-          
-          {/* Display Debug Message (example placement: below messages, above input but within scrollable chat area) */}
-          {currentDebugMessage && (
-            <div className="max-w-3xl mx-auto w-full p-4 sticky top-0 z-10 bg-background"> {/* Made sticky */}
-              <Card className="p-3 bg-yellow-100 border-yellow-300 text-yellow-700 text-xs">
-                <pre className="whitespace-pre-wrap break-all">
-                  <strong>Debug Info:</strong><br />
-                  {currentDebugMessage}
-                </pre>
-              </Card>
-            </div>
-          )}
-                            
-
-          {error && (
-            <Alert variant="destructive" className="mx-4 my-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {showWelcome ? (
-            // Welcome screen with centered content
-            <div className="flex-1 flex flex-col items-center justify-center px-4">
-              <h2 className="text-3xl font-medium text-gray-800 mb-8">
-                What can I help with?
-              </h2>
-              <div className="w-full max-w-2xl">
-              <InputMessage loading={isLoading} onSubmit={handleSubmit} />
-
-
-                <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
-                  <span>Reggie can make mistakes. Check important info.</span>
-                  <span>?</span>
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Main content area with flexbox layout */}
+          <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+            {/* Chat area */}
+            <ResizablePanel defaultSize={editingMessageId ? 60 : 100} minSize={30} className="flex flex-col h-full min-h-0">
+              
+              {/* Display Debug Message */}
+              {currentDebugMessage && (
+                <div className="max-w-3xl mx-auto w-full p-4 sticky top-0 z-10 bg-background">
+                  <Card className="p-3 bg-yellow-100 border-yellow-300 text-yellow-700 text-xs">
+                    <pre className="whitespace-pre-wrap break-all">
+                      <strong>Debug Info:</strong><br />
+                      {currentDebugMessage}
+                    </pre>
+                  </Card>
                 </div>
-              </div>
-            </div>
-          ) : (
-            // Chat screen with messages
-            <>
-              <div className="flex-1 overflow-y-auto" ref={messageListRef}>
-                <div
-                  className="max-w-3xl mx-auto w-full space-y-6 p-4"
-                  style={{ willChange: "transform" }}
-                >
-                  {messages.map((message, index) => (
+              )}
+
+              {error && (
+                <Alert variant="destructive" className="mx-4 my-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {showWelcome ? (
+                // Welcome screen with centered content
+                <div className="flex-1 flex flex-col items-center justify-center px-4">
+                  <h2 className="text-3xl font-medium text-gray-800 mb-8">
+                    What can I help with?
+                  </h2>
+                  <div className="w-full max-w-2xl">
+                    <InputMessage loading={isLoading} onSubmit={handleSubmit} />
+                    <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
+                      <span>Reggie can make mistakes. Check important info.</span>
+                      <span>?</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Chat screen with messages
+                <>
+                  <div className="flex-1 overflow-y-auto" ref={messageListRef}>
                     <div
-                      key={message.id + '-' + index}
-                      style={{
-                        transform: "translate3d(0, 0, 0)",
-                        willChange: "transform",
-                        contain: "content",
-                      }}
-                      className={`flex ${
-                        message.role === "user"
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
+                      className="max-w-3xl mx-auto w-full space-y-6 p-4"
+                      style={{ willChange: "transform" }}
                     >
-                      <div
-                        className={`rounded-lg px-4 py-2 ${
-                          message.role === "user"
-                            ? "max-w-[80%] bg-primary text-primary-foreground"
-                            : ""
-                        }`}
-                      >
-                        {message.role === "user" ? (
-                          <p className="whitespace-pre-wrap">
-                            {message.content}
-                          </p>
-                        ) : (
-                          <>
-                            {isCryptoData(message.content as string) ? (
-                              <div className="my-4">
-                                <CryptoChart
-                                  data={JSON.parse(message.content as string)}
-                                  title="Cryptocurrency Data"
-                                  description="Price, Market Cap, and Volume"
-                                />
-                              </div>
+                      {messages.map((message, index) => (
+                        <div
+                          key={message.id + '-' + index}
+                          style={{
+                            transform: "translate3d(0, 0, 0)",
+                            willChange: "transform",
+                            contain: "content",
+                          }}
+                          className={`flex ${
+                            message.role === "user"
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`rounded-lg px-4 py-2 ${
+                              message.role === "user"
+                                ? "max-w-[80%] bg-primary text-primary-foreground"
+                                : ""
+                            }`}
+                          >
+                            {message.role === "user" ? (
+                              <p className="whitespace-pre-wrap">
+                                {message.content}
+                              </p>
                             ) : (
                               <>
-                                <div className="markdown">
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeHighlight]}
-                                    components={MarkdownComponents}
-                                  >
-                                    {message.content as string}
-                                  </ReactMarkdown>
-                                </div>
-                                {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
-                                  <div className="flex justify-start">
-                                    <TypingIndicator />
+                                {isCryptoData(message.content as string) ? (
+                                  <div className="my-4">
+                                    <CryptoChart
+                                      data={JSON.parse(message.content as string)}
+                                      title="Cryptocurrency Data"
+                                      description="Price, Market Cap, and Volume"
+                                    />
                                   </div>
+                                ) : (
+                                  <>
+                                    <div className="markdown">
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeHighlight]}
+                                        components={MarkdownComponents}
+                                      >
+                                        {message.content as string}
+                                      </ReactMarkdown>
+                                    </div>
+                                    {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
+                                      <div className="flex justify-start">
+                                        <TypingIndicator />
+                                      </div>
+                                    )}
+                                  </>
                                 )}
-                              </>
-                            )}
-                            {(() => {
+                                {(() => {
                                   const isNewestAssistant = index === messages.length - 1 && message.role === "assistant";
                                   const showActions = !(isNewestAssistant && isLoading);
                                   return showActions;
                                 })() && (
-                              <div className="flex items-center gap-2 mt-2 -mb-1">
-                                <MessageActions
-                                  messageId={message.id}
-                                  content={message.content as string}
-                                  onCopy={copyToClipboard}
-                                  copiedMessageId={copiedMessageId}
-                                  onSend={handleOnSend}
-                                  onOpenCanvas={setEditingMessageId}
-                                  onGoodResponse={(messageId: string) => {
-                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
-                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
-                                  }}
-                                  onBadResponse={(messageId: string) => {
-                                    setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
-                                    setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
-                                  }}
-                                  isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
-                                  isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
-                                />
-                              </div>
+                                  <div className="flex items-center gap-2 mt-2 -mb-1">
+                                    <MessageActions
+                                      messageId={message.id}
+                                      content={message.content as string}
+                                      onCopy={copyToClipboard}
+                                      copiedMessageId={copiedMessageId}
+                                      onSend={handleOnSend}
+                                      onOpenCanvas={setEditingMessageId}
+                                      onGoodResponse={(messageId: string) => {
+                                        setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                        setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                                      }}
+                                      onBadResponse={(messageId: string) => {
+                                        setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                        setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                                      }}
+                                      isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                                      isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
+                                    />
+                                  </div>
+                                )}
+                              </>
                             )}
-                          </>
-                        )}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </div>
+
+                  {/* Feedback Dialog */}
+                  <Dialog open={feedbackDialog.open} onOpenChange={(open) => setFeedbackDialog((prev) => ({ ...prev, open }))}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>{feedbackDialog.feedbackType === 'good' ? 'Good Response' : 'Bad Response'} Feedback</DialogTitle>
+                        <DialogDescription>
+                          Optional: Let us know why you think this response was {feedbackDialog.feedbackType === 'good' ? 'good' : 'bad'}.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Textarea
+                        value={feedbackDialog.text}
+                        onChange={e => setFeedbackDialog(prev => ({ ...prev, text: e.target.value }))}
+                        placeholder="Your feedback (optional)"
+                        rows={3}
+                      />
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (feedbackDialog.messageId) {
+                              setFeedbackHighlight(prev => ({ ...prev, [feedbackDialog.messageId]: null }));
+                            }
+                            setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => handleFeedbackDialogClose(feedbackDialog.text || undefined)}
+                        >
+                          Submit
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Fixed input at bottom when chatting */}
+                  <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
+                    <div className="max-w-3xl mx-auto">
+                      <InputMessage loading={isLoading} onSubmit={handleSubmit} />
+                      <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
+                        <span>
+                          Reggie can make mistakes. Check important info.
+                        </span>
+                        <span>?</span>
                       </div>
                     </div>
-                  ))}
-
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
-
-              {/* Feedback Dialog (moved outside loop) */}
-              <Dialog open={feedbackDialog.open} onOpenChange={(open) => setFeedbackDialog((prev) => ({ ...prev, open }))}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{feedbackDialog.feedbackType === 'good' ? 'Good Response' : 'Bad Response'} Feedback</DialogTitle>
-                    <DialogDescription>
-                      Optional: Let us know why you think this response was {feedbackDialog.feedbackType === 'good' ? 'good' : 'bad'}.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Textarea
-                    value={feedbackDialog.text}
-                    onChange={e => setFeedbackDialog(prev => ({ ...prev, text: e.target.value }))}
-                    placeholder="Your feedback (optional)"
-                    rows={3}
-                  />
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Reset highlight for this message
-                        if (feedbackDialog.messageId) {
-                          setFeedbackHighlight(prev => ({ ...prev, [feedbackDialog.messageId]: null }));
-                        }
-                        setFeedbackDialog({ open: false, messageId: '', feedbackType: null, text: '' });
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => handleFeedbackDialogClose(feedbackDialog.text || undefined)}
-                    >
-                      Submit
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Fixed input at bottom when chatting */}
-              <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
-                <div className="max-w-3xl mx-auto">
-                  <InputMessage loading={isLoading} onSubmit={handleSubmit} />
-
-                  <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
-                    <span>
-                      Reggie can make mistakes. Check important info.
-                    </span>
-                    <span>?</span>
                   </div>
-                </div>
-              </div>
-            </>
-          )}
-        </ResizablePanel>
-
-        {/* Editor panel */}
-        {editingMessageId && (
-          <>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={40} minSize={30} className="h-full">
-              <EditorPanel
-                content={{
-                  content: editingMessage?.content || "",
-                  role: editingMessage?.role as "user" | "assistant",
-                  id: editingMessage?.id || "",
-                }}
-                show
-                onSave={handleSaveEdit}
-                onClose={() => setEditingMessageId(null)}
-              />
+                </>
+              )}
             </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
+
+            {/* Editor panel */}
+            {editingMessageId && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={40} minSize={30} className="h-full">
+                  <EditorPanel
+                    content={{
+                      content: editingMessage?.content || "",
+                      role: editingMessage?.role as "user" | "assistant",
+                      id: editingMessage?.id || "",
+                    }}
+                    show
+                    onSave={handleSaveEdit}
+                    onClose={() => setEditingMessageId(null)}
+                  />
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </div>
       </div>
     </div>
-  </div>
- );
+  );
 }

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import AgentChatDock from "./components/agent-chat-dock";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
+import AgentChatDock from "./components/agent-chat-dock";
 
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = "o-ea5b30abd-reggie";

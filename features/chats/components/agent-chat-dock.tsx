@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, memo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock } from "lucide-react"
+import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useChatSessionContext } from "../ChatSessionContext"
 
 type DockTab = "current" | "all" | "workflow"
 
@@ -21,11 +22,9 @@ interface ChatSection {
   expanded: boolean
 }
 
-import { useEffect } from "react"
-import { getChatSessions, ChatSession } from "@/api/chat-sessions"
 import { useRouter } from "next/navigation"
 
-export default function AgentChatDock({
+const AgentChatDock = memo(function AgentChatDock({
   onSelectChat,
   onNewChat,
 }: {
@@ -34,33 +33,34 @@ export default function AgentChatDock({
 }) {
   const [activeTab, setActiveTab] = useState<DockTab | null>("current")
   const [searchQuery, setSearchQuery] = useState("")
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [sections, setSections] = useState<ChatSection[]>([])
 
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const router = useRouter()
+  const { chatSessions, isLoading, page, hasMore,setPage } = useChatSessionContext()
 
-  // Fetch chat sessions on mount
-  useEffect(() => {
-    const fetchChats = async () => {
-      setIsLoading(true)
-      try {
-        const res = await getChatSessions()
-        setChatSessions(res.results)
-      } catch (e) {
-        console.error("Error fetching chat sessions", e)
-      }
-      setIsLoading(false)
+  // Handler for infinite scroll
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const threshold = 24; // px
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+  
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
     }
-    fetchChats()
-  }, [])
+  
+    scrollTimeout.current = setTimeout(() => {
+      if (scrollTop + clientHeight >= scrollHeight - threshold && !isLoading && hasMore) {
+        setPage(page + 1);
+      }
+    }, 200); 
+  };
 
-  // Build sections based on search & date
-  useEffect(() => {
+  // Memoize sections based on search & date
+  const memoizedSections = useMemo(() => {
     const filtered = searchQuery.trim()
       ? chatSessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
       : chatSessions
-
     const today: ChatItem[] = []
     const history: ChatItem[] = []
     const nowStr = new Date().toDateString()
@@ -86,14 +86,19 @@ export default function AgentChatDock({
     const newSections: ChatSection[] = []
     if (today.length) newSections.push({ title: "Today", expanded: true, items: today })
     if (history.length) newSections.push({ title: "History", expanded: true, items: history })
-    setSections(newSections)
+    return newSections
   }, [chatSessions, searchQuery])
 
-  const dockItems = [
+  // Update sections state when memoizedSections changes
+  useEffect(() => {
+    setSections(memoizedSections)
+  }, [memoizedSections])
+
+  const dockItems = useMemo(() => [
     { id: "current" as DockTab, icon: Bot, label: "Current Agent" },
     { id: "all" as DockTab, icon: Users, label: "All Agents" },
     { id: "workflow" as DockTab, icon: Workflow, label: "Workflow History" },
-  ]
+  ], []);
 
   const toggleSection = (index: number) => {
     setSections((prev) =>
@@ -129,7 +134,7 @@ export default function AgentChatDock({
           const isActive = activeTab === item.id
 
           return (
-            <div key={item.id} className="relative group">
+            <div key={`button ${item.id}`} className="relative group">
               <Button
                 onClick={() => handleTabClick(item.id)}
                 variant="ghost"
@@ -187,7 +192,7 @@ export default function AgentChatDock({
           </div>
 
           {/* Chat History Sections */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4" onScroll={handleScroll}>
             {sections.map((section, sectionIndex) => (
               <div key={section.title} className="mb-4">
                 <button
@@ -200,9 +205,9 @@ export default function AgentChatDock({
 
                 {section.expanded && (
                   <div className="space-y-2 mt-2">
-                    {(isLoading ? [] : section.items).map((item) => (
+                    {(isLoading && page == 1 ? [] : section.items).map((item, itemIndex) => (
                         <div
-                          key={item.id}
+                          key={`chat ${item.id} ${itemIndex}`}
                           className="bg-gray-100 rounded-lg p-2 hover:bg-gray-200 cursor-pointer transition-colors duration-150"
                           onClick={() => {
                             if (onSelectChat) {
@@ -238,11 +243,20 @@ export default function AgentChatDock({
               </div>
             ))}
           </div>
+
+          {isLoading && page > 1 && (
+            <div className="flex justify-center items-center py-4">
+              <Loader2 className="animate-spin text-gray-400 w-6 h-6" />
+            </div>
+          )}
         </div>
       )}
 
       {/* Main Content Area */}
+     
       
     </div>
   )
-}
+});
+
+export default AgentChatDock;

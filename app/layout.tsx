@@ -33,7 +33,9 @@ export default function RootLayout({
           <AuthGuard allowedRoutes={allowedRoutes}>
             <SearchProvider>
               <ModalProvider>
-                {children}
+                <ChatSessionProvider>
+                  {children}
+                </ChatSessionProvider>
               </ModalProvider>
             </SearchProvider>
           </AuthGuard>
@@ -51,4 +53,5 @@ import AuthGuard from "@/components/auth-guard"
 import { SearchProvider } from "@/contexts/search-context"
 import { cn } from "@/lib/utils"
 import { AppProvider } from "@/config/AppProvider"
+import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
 

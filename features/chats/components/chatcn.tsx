@@ -103,7 +103,7 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
                 handleSubmit(message.content);
                 setInput("");
               }}
-              suggestions={["What is the capital of France?", "Tell me a joke"]}
+              suggestions={["What is a sophisticated investor?", "What is AML/KYC?"]}
             />
           </div>
         )}
