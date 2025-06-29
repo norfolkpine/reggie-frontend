@@ -70,7 +70,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               // You can customize the agent_code if needed, fallback to 'gpt-4o' if not present
               const agent_code = (agent.model ? agent.model.toString() : "gpt-4o");
               const session = await createChatSession({
-                title: `Chat with ${agent.name}`,
+                title: `New chat with ${agent.name}`,
                 agent_id: agent.agent_id,
                 agent_code,
               });
