@@ -26,7 +26,7 @@ import { sendUserFeedback } from "./api/user-feedback";
 import { MarkdownComponents } from "./components/markdown-component";
 import TypingIndicator from "./components/typing-indicator";
 import AgentChatDock from "./components/agent-chat-dock";
-import { ChatSessionProvider } from "./ChatSessionContext"; // Import the provider
+import { ChatSessionProvider, useChatSessionContext } from "./ChatSessionContext"; // Import the provider and hook
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
@@ -79,10 +79,13 @@ MemoizedAgentChatDock.displayName = 'MemoizedAgentChatDock';
 
 export default function ChatInterface() {
   const searchParams = useSearchParams();
+  // agentId is now primarily used by the ChatSessionProvider at a higher level.
+  // It's still needed here for creating new chats with the correct agentId.
   const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
   const params = useParams();
   const sessionId = params.sessionId as string | null;
   const router = useRouter();
+  const { refresh: refreshChatList } = useChatSessionContext(); // Get refresh function
 
   const {
     messages,
@@ -102,7 +105,12 @@ export default function ChatInterface() {
       return;
     }
 
-    chatSubmit(value);
+    await chatSubmit(value); // Await the completion of the hook's submit
+
+    // After chatSubmit (which includes potential title update and message processing) is done, refresh the list.
+    if (refreshChatList) {
+      refreshChatList();
+    }
   };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -172,8 +180,15 @@ export default function ChatInterface() {
       
       // Navigate to the new chat session
       const url = `/chat/${newSession.session_id}?agentId=${agentId}`;
-      router.replace(url);
+      router.replace(url); // It's important that refresh happens after navigation conceptually,
+                           // or at least ensures the context will pick up the new state.
+                           // The context's useEffect for agentId might handle re-fetch if agentId changes,
+                           // but for a new chat under the *same* agentId, an explicit refresh is good.
       
+      if (refreshChatList) {
+        refreshChatList();
+      }
+
       toast({
         title: "New Chat Created",
         description: "Starting a fresh conversation",
@@ -343,7 +358,7 @@ export default function ChatInterface() {
       
       {/* Content Row */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Use memoized AgentChatDock */}
+        {/* AgentChatDock now relies on ChatSessionProvider from ChatDetailPage */}
         <MemoizedAgentChatDock 
           onSelectChat={handleSelectChat} 
           onNewChat={handleNewChat} 

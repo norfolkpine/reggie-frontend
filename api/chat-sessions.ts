@@ -42,10 +42,12 @@ interface PaginatedChatMessageList {
 }
 
 
-export const getChatSessions = async (page: number = 1) => {
-  const response = await api.get('/reggie/api/v1/chat-sessions/', {
-    params: { page: page.toString() },
-  });
+export const getChatSessions = async (page: number = 1, agentId?: string) => {
+  const params: { page: string; agent_id?: string } = { page: page.toString() };
+  if (agentId) {
+    params.agent_id = agentId;
+  }
+  const response = await api.get('/reggie/api/v1/chat-sessions/', { params });
   return response as PaginatedChatSessionList;
 };
 

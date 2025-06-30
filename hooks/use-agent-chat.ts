@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
+import { createChatSession, getChatSessionMessage, getChatSession, patchChatSession } from '@/api/chat-sessions';
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
+import { truncateText } from '@/lib/utils'; // For truncating title
 
 interface Message {
   id: string;
@@ -142,7 +143,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       role: 'user'
     };
     
-    const isEffectivelyFirstUIMessage = messages.filter(m => m.role === 'user').length === 0;
+    const isFirstMessageInNewOrGenericChat = isNewSessionManuallyCreated ||
+                                             (currentChatTitle === "New Chat" || currentChatTitle === "New Conversation");
 
     if (isNewConversationRef.current && messages.length === 0) {
       setMessages([userMessage]);
@@ -155,6 +157,19 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     }
     
     setIsLoading(true);
+
+    // Update title if it's the first message of a new/generic chat
+    if (tempSessionId && userMessageContent && isFirstMessageInNewOrGenericChat) {
+      const newTitle = truncateText(userMessageContent, 50); // Max 50 chars for title
+      try {
+        await patchChatSession(tempSessionId, { title: newTitle });
+        setCurrentChatTitle(newTitle);
+        // The actual refresh of the list in AgentChatDock will be triggered in chat-interface.tsx
+      } catch (e) {
+        console.error("Failed to update chat session title:", e);
+        // Continue with sending message even if title update fails
+      }
+    }
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
