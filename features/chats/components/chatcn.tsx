@@ -29,6 +29,7 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
     error,
     currentDebugMessage,
     currentChatTitle,
+    isAgentResponding,
   } = useAgentChat({ agentId, sessionId });
 
   const [input, setInput] = useState("");
@@ -71,7 +72,11 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
 
   const isEmpty = messages.length === 0;
   const lastMessage = messages.at(-1);
-  const isTyping = lastMessage?.role === "user";
+  
+  // Only show typing indicator when the agent is responding AND
+  // there's no content yet (empty assistant message) or no assistant message at all
+  const hasAssistantMessageWithContent = lastMessage?.role === 'assistant' && lastMessage.content.trim().length > 0;
+  const isTyping = isAgentResponding && !hasAssistantMessageWithContent;
 
   return (
     <ChatContainer className="max-w-full h-full">

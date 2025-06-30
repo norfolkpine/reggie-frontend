@@ -38,6 +38,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   const [currentDebugMessage, setCurrentDebugMessage] = useState<string | null>(null);
   const debugMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [currentChatTitle, setCurrentChatTitle] = useState<string | null>(null);
+  const [isAgentResponding, setIsAgentResponding] = useState<boolean>(false);
 
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
@@ -155,6 +156,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     }
     
     setIsLoading(true);
+    setIsAgentResponding(true); // Agent starts "responding" phase
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
@@ -183,8 +185,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       readerRef.current = reader;
 
       const decoder = new TextDecoder();
-      let responseContent = '';
-      let dataContentForDoneCheck = '';
+      let dataContentForDoneCheck = ''; // Used to check for the [DONE] signal
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -211,30 +212,49 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
                   setCurrentDebugMessage(null);
                   debugMessageTimeoutRef.current = null;
                 }, 5000); 
-                continue; 
+                continue; // Skip further processing for this debug line
               }
               
+              // Clear any existing debug message if this is not a debug message itself
               if (currentDebugMessage) { 
                  if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
                  setCurrentDebugMessage(null);
               }
 
-              const tokenPart = parsedData.token ?? parsedData.content;
-              
-              if (typeof tokenPart === 'string' && tokenPart.length > 0) {
-                responseContent += tokenPart;
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  const lastMessageIndex = newMessages.length - 1;
-                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
-                    newMessages[lastMessageIndex] = {
-                      ...newMessages[lastMessageIndex],
-                      content: responseContent,
-                      id: parsedData.run_id || newMessages[lastMessageIndex].id, 
-                    };
+              if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
+                setCurrentChatTitle(parsedData.title);
+                // Do not continue to content processing for ChatTitle event
+              } else if (parsedData.event === "RunResponse") {
+                const tokenPart = parsedData.token ?? parsedData.content;
+                if (typeof tokenPart === 'string' && tokenPart.length > 0) {
+                  if (isAgentResponding) {
+                    setIsAgentResponding(false); // First content chunk received, stop "responding" indicator
                   }
-                  return newMessages;
-                });
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        content: newMessages[lastMessageIndex].content + tokenPart, // Append to content from prev state
+                        // Update ID if current parsedData has a run_id, otherwise keep existing.
+                        // This handles the transition from temp ID to run_id for the message.
+                        id: parsedData.run_id || newMessages[lastMessageIndex].id, 
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
+              } else if (parsedData.event) {
+                // Log other known event types or unknown ones for diagnostics
+                console.log("Received unhandled event type with data:", parsedData.event, parsedData);
+              } else {
+                // Data received without a specific event type
+                // Depending on backend contract, might need to process content here too
+                // For now, logging it. If content from such lines is expected,
+                // the condition `else if (parsedData.event === "RunResponse")` might need adjustment.
+                console.log("Received data without a recognized event type:", parsedData);
               }
             } catch (e) {
               console.error("Failed to parse SSE data:", dataContentForDoneCheck, e);
@@ -269,10 +289,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
+      // Ensure isAgentResponding is false when stream ends or on error
+      if (isAgentResponding) {
+        setIsAgentResponding(false);
+      }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle]);
-  // Added currentChatTitle to dependencies of handleSubmit
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding]);
+  // Added currentChatTitle and isAgentResponding to dependencies of handleSubmit
 
 
   // Main unmount cleanup is implicitly handled by the return function in the useEffect([ssid])
@@ -285,5 +309,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     error,
     currentDebugMessage,
     currentChatTitle,
+    isAgentResponding, // Expose the new state
   };
 }
