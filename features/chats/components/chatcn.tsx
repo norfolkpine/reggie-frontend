@@ -5,21 +5,30 @@ import {
   ChatContainer,
   ChatForm,
   ChatMessages,
-} from "@/components/ui/chat";
+} from "@/components/ui/chat"; // Keep ChatMessages if it's just a container
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions";
 import { MessageInput } from "@/components/ui/message-input";
-import { MessageList } from "@/components/ui/message-list";
+// MessageList might be replaced by direct mapping if ChatMessages from @/components/ui/chat doesn't suit
+// For now, let's assume we will map directly and use ChatMessage component
+// import { MessageList } from "@/components/ui/message-list";
 import { useAgentChat } from "@/hooks/use-agent-chat";
+import { ChatMessage, Message } from "@/components/ui/chat-message"; // Import ChatMessage
+import { Card } from "@/components/ui/card"; // For Final Answer display
+import ReactMarkdown from "react-markdown"; // For Final Answer display (optional)
+import remarkGfm from "remark-gfm"; // For Final Answer display (optional)
+
 import { Paperclip } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import { MarkdownComponents } from "./markdown-component";
+// ReactMarkdown and rehypeHighlight might not be needed directly here if ChatMessage handles it.
+// import ReactMarkdown from "react-markdown";
+// import remarkGfm from "remark-gfm";
+// import rehypeHighlight from "rehype-highlight";
+// import { MarkdownComponents } from "./markdown-component";
+
 
 interface CustomChatProps {
   agentId: string;
   sessionId?: string;
-  onTitleUpdate?: (title: string | null) => void;
+  onTitleUpdate?: (title: string | null) => void; // Prop to update title in parent if needed
 }
 
 export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProps) {
@@ -29,13 +38,18 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
     isLoading,
     error,
     currentDebugMessage,
-    currentChatTitle: _currentChatTitle,
+    // currentChatTitle is handled by the parent ChatsComponent which gets it from its own useAgentChat instance
+    // onTitleUpdate can be used if CustomChat needs to inform parent of title changes originating from its specific interactions
     isAgentResponding,
-    fileUploads, // Destructure new state
-    isUploadingFiles, // Destructure new state
+    fileUploads,
+    isUploadingFiles,
+    finalAnswer, // Get finalAnswer
+    buildTime,   // Get buildTime
   } = useAgentChat({ 
     agentId, 
     sessionId,
+    // Pass the onTitleUpdate callback to the hook if it's designed to call it
+    // This hook instance in CustomChat might generate its own title if it creates a new session
     onTitleChange: onTitleUpdate
   });
 
@@ -129,83 +143,67 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
         )}
 
         {!isEmpty && (
-          <ChatMessages className="flex-1 p-4 overflow-y-auto">
-            <div className="max-w-3xl mx-auto w-full py-4">
-              <MessageList 
-                messages={messages} 
-                isTyping={isTyping}
-                customComponents={{
-                  message: ({ message }) => {
-                    if (message.role === 'assistant') {
-                      return (
-                        <div className="prose prose-sm dark:prose-invert max-w-none custom-markdown">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight]}
-                            components={{
-                              ...MarkdownComponents,
-                              // Override heading styles to match BlockNote specs
-                              h1: ({ children, ...props }) => (
-                                <h1 
-                                  className="text-[32px] leading-[1.5] mb-[1rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h1>
-                              ),
-                              h2: ({ children, ...props }) => (
-                                <h2 
-                                  className="text-[24px] leading-[1.5] mb-[0.75rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h2>
-                              ),
-                              h3: ({ children, ...props }) => (
-                                <h3 
-                                  className="text-[18.7px] leading-[1.5] mb-[0.6rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h3>
-                              )
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      );
-                    }
-                    return null; // Default rendering for user messages
-                  }
-                }}
-              />
+          <ChatMessages className="flex-1 p-4 overflow-y-auto"> {/* ChatMessages here is likely just a styled div for scrolling */}
+            <div className="max-w-3xl mx-auto w-full py-4 space-y-4"> {/* Added space-y-4 for spacing between messages */}
+              {messages.map((message, index) => {
+                const isLastMessage = index === messages.length - 1;
+                // Actions are not currently part of CustomChat's design, but ChatMessage supports an 'actions' prop
+                // const showActions = message.role === 'assistant' && !(isLastMessage && isLoading);
+
+                return (
+                  <div
+                    key={message.id + '-' + index}
+                    className={`flex w-full ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <ChatMessage
+                      {...(message as Message)} // Cast to the Message type expected by ChatMessage
+                      animation="slide"
+                      // actions={showActions ? <YourActionsComponent /> : undefined} // Example if actions were needed
+                    />
+                  </div>
+                );
+              })}
             </div>
           </ChatMessages>
         )}
 
+        {/* Final Answer Display */}
+        {finalAnswer && !isLoading && ( // Show only if finalAnswer exists and not loading new response
+          <div className="max-w-3xl mx-auto w-full p-4">
+            <Card className="p-4 bg-sky-50 border-sky-200 shadow-md">
+              <h3 className="text-md font-semibold text-sky-700 mb-2">Summary</h3>
+              <div className="prose prose-sm dark:prose-invert max-w-none custom-markdown">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {finalAnswer.summary}
+                </ReactMarkdown>
+              </div>
+            </Card>
+          </div>
+        )}
+
         <div className="border-t mt-auto">
-          {/* Error Message - Positioned above the input box */}
           {error && (
-            <div className="py-[2px] px-3 text-sm text-red-500 bg-red-50 leading-tight">
+            <div className="py-1 px-3 text-sm text-red-500 bg-red-50 leading-tight">
               <div className="max-w-3xl mx-auto w-full">
                 {error}
               </div>
             </div>
           )}
 
-          {/* Debug Message - Positioned above the input box */}
           {currentDebugMessage && (
-            <div className="py-[2px] px-3 text-xs text-gray-500 bg-yellow-50 leading-tight">
+            <div className="py-1 px-3 text-xs text-gray-500 bg-yellow-50 leading-tight">
               <div className="max-w-3xl mx-auto w-full inline-flex items-center">
-                <span className="font-medium mr-1">Debug:</span> {currentDebugMessage}
+                <span className="font-medium mr-1">Debug:</span>
+                <pre className="whitespace-pre-wrap break-all">{currentDebugMessage}</pre>
               </div>
             </div>
           )}
           
           <div className="max-w-3xl mx-auto w-full p-4">
             <ChatForm
-              isPending={isLoading || isTyping}
+              isPending={isLoading || isAgentResponding} {/* Use isAgentResponding for more accurate pending state */}
               handleSubmit={(event) => {
                 event?.preventDefault?.();
                 onSubmit();
@@ -224,12 +222,17 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
                   stop={() => {
                     // Add logic to stop/abort uploads if needed, via useAgentChat's abortController
                   }}
-                  isGenerating={isLoading} // isLoading now includes isUploadingFiles
-                  fileUploads={fileUploads} // Pass down fileUploads
-                  isUploadingFiles={isUploadingFiles} // Pass down isUploadingFiles
+                  isGenerating={isLoading || isAgentResponding}
+                  fileUploads={fileUploads}
+                  isUploadingFiles={isUploadingFiles}
                 />
               )}
             </ChatForm>
+            {buildTime && (
+              <div className="mt-2 text-xs text-muted-foreground text-center">
+                Agent Build Time: {buildTime}
+              </div>
+            )}
           </div>
         </div>
       </div>
