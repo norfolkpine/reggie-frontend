@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
+import { uploadFiles as apiUploadFiles } from '@/api/files'; // Renamed to avoid conflict
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
@@ -11,6 +12,13 @@ interface Message {
   feedback?: Feedback[];
 }
 
+export interface FileUploadStatus {
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
+  progress?: number; // Optional: for future progress tracking
+}
+
 interface UseAgentChatProps {
   agentId: string;
   sessionId?: string | null;
@@ -18,11 +26,14 @@ interface UseAgentChatProps {
 
 interface UseAgentChatReturn {
   messages: Message[];
-  handleSubmit: (value?: string) => void;
+  handleSubmit: (value?: string, files?: File[]) => void; // Added files parameter
   isLoading: boolean;
   error: string | null;
   currentDebugMessage: string | null;
   currentChatTitle: string | null;
+  isAgentResponding: boolean;
+  fileUploads: FileUploadStatus[]; // To track file upload status
+  isUploadingFiles: boolean; // True if any file is currently uploading
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
@@ -39,6 +50,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   const debugMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [currentChatTitle, setCurrentChatTitle] = useState<string | null>(null);
   const [isAgentResponding, setIsAgentResponding] = useState<boolean>(false);
+  const [fileUploads, setFileUploads] = useState<FileUploadStatus[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
 
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
@@ -56,6 +69,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setMessages([]);
         setInternalSessionId(null);
         setSessionCreated(false);
+        setFileUploads([]);
         return;
       }
       
@@ -63,6 +77,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       setIsLoading(true);
       setIsInitializing(true);
       setError(null);
+      setFileUploads([]);
       
       try {
         const sessionDetails = await getChatSession(ssid);
@@ -94,7 +109,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
-        // abortControllerRef.current = null; // Not strictly necessary, new one created on submit
       }
       if (debugMessageTimeoutRef.current) {
         clearTimeout(debugMessageTimeoutRef.current);
@@ -102,39 +116,90 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     };
   }, [ssid]);
 
-  const handleSubmit = useCallback(async (value?: string) => {
-    if (!value?.trim() || (isLoading && !isInitializing)) return;
+  const handleSubmit = useCallback(async (value?: string, filesToUpload?: File[]) => {
+    if ((!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) || (isLoading && !isInitializing)) return;
     
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     
     setError(null);
+    setFileUploads([]); // Reset file uploads for this submission
     if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     setCurrentDebugMessage(null);
 
     let tempSessionId = internalSessionId;
-    let isNewSessionManuallyCreated = false;
 
     if (!sessionCreated || !tempSessionId) {
       setIsLoading(true); 
       try {
         setCurrentChatTitle("New Chat"); 
-        const session = await createChatSession({
-          agent_id: agentId,
-        });
-
+        const session = await createChatSession({ agent_id: agentId });
         tempSessionId = session.session_id;
         setInternalSessionId(tempSessionId);
         setSessionCreated(true);
-        isNewSessionManuallyCreated = true;
         isNewConversationRef.current = true; 
-      } catch (error) {
-        console.error('Failed to create chat session:', error);
+      } catch (sessionError) {
+        console.error('Failed to create chat session:', sessionError);
         setError('Failed to create chat session. Please check your connection and try again.');
         setIsLoading(false);
         return;
       }
     }
+
+    // Handle file uploads first if files are provided
+    if (filesToUpload && filesToUpload.length > 0 && tempSessionId) {
+      setIsUploadingFiles(true);
+      const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
+        file,
+        status: 'pending',
+      }));
+      setFileUploads(initialFileUploadStates);
+
+      try {
+        const uploadPromises = filesToUpload.map(async (file, index) => {
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
+          try {
+            await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
+            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
+            return { success: true, file };
+          } catch (uploadError) {
+            console.error(`Failed to upload file ${file.name}:`, uploadError);
+            const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
+            return { success: false, file, error: errorMessage };
+          }
+        });
+
+        const uploadResults = await Promise.all(uploadPromises);
+        const failedUploads = uploadResults.filter(result => !result.success);
+
+        if (failedUploads.length > 0) {
+          setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
+          setIsUploadingFiles(false);
+          setIsLoading(false); // Also set overall loading to false
+          return; // Stop if any file upload fails
+        }
+      } catch (e) {
+          // This catch is for errors in the Promise.all orchestration itself, though individual errors are handled above.
+          console.error('Error during file upload orchestration:', e);
+          setError('A general error occurred during file uploads.');
+          setIsUploadingFiles(false);
+          setIsLoading(false);
+          return;
+      } finally {
+        setIsUploadingFiles(false);
+      }
+    }
+
+    // Proceed with sending the message if there's text input or if files were uploaded successfully (even if text is empty)
+    if (!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) {
+      // This case should ideally be caught by the initial guard, but as a safety net.
+      // If no text and no files, and somehow passed the initial guard (e.g. files were present but all failed to upload and error was cleared),
+      // we might not want to proceed. However, current logic proceeds if files were successfully uploaded.
+      // If only files were "sent" and no text, the backend will receive an empty message.
+      // This behavior might need refinement based on product requirements.
+    }
+
 
     const userMessageContent = value ?? "";
     const userMessage: Message = {
@@ -143,8 +208,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       role: 'user'
     };
     
-    const isEffectivelyFirstUIMessage = messages.filter(m => m.role === 'user').length === 0;
-
     if (isNewConversationRef.current && messages.length === 0) {
       setMessages([userMessage]);
     } else {
@@ -155,8 +218,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         isNewConversationRef.current = false;
     }
     
-    setIsLoading(true);
-    setIsAgentResponding(true); // Agent starts "responding" phase
+    setIsLoading(true); // General loading state for agent response
+    setIsAgentResponding(true);
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
@@ -164,7 +227,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
       const payload = {
         agent_id: agentId,
-        message: userMessageContent, // Use the sanitized userMessageContent
+        message: userMessageContent,
         session_id: tempSessionId,
       };
 
@@ -185,7 +248,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       readerRef.current = reader;
 
       const decoder = new TextDecoder();
-      let dataContentForDoneCheck = ''; // Used to check for the [DONE] signal
+      let dataContentForDoneCheck = '';
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -205,17 +268,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
               const parsedData = JSON.parse(dataContentForDoneCheck);
               
               if (parsedData.debug) {
-                console.debug('Debug message:', parsedData.debug);
                 setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2)); 
                 if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
-                debugMessageTimeoutRef.current = setTimeout(() => {
-                  setCurrentDebugMessage(null);
-                  debugMessageTimeoutRef.current = null;
-                }, 5000); 
-                continue; // Skip further processing for this debug line
+                debugMessageTimeoutRef.current = setTimeout(() => setCurrentDebugMessage(null), 5000);
+                continue;
               }
               
-              // Clear any existing debug message if this is not a debug message itself
               if (currentDebugMessage) { 
                  if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
                  setCurrentDebugMessage(null);
@@ -223,38 +281,25 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
               if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
                 setCurrentChatTitle(parsedData.title);
-                // Do not continue to content processing for ChatTitle event
-              } else if (parsedData.event === "RunResponse") {
-                const tokenPart = parsedData.token ?? parsedData.content;
-                if (typeof tokenPart === 'string' && tokenPart.length > 0) {
-                  if (isAgentResponding) {
-                    setIsAgentResponding(false); // First content chunk received, stop "responding" indicator
+              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
+                const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                if (isAgentResponding) setIsAgentResponding(false);
+                setMessages(prevMessages => {
+                  const newMessages = [...prevMessages];
+                  const lastMessageIndex = newMessages.length - 1;
+                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                    newMessages[lastMessageIndex] = {
+                      ...newMessages[lastMessageIndex],
+                      content: newMessages[lastMessageIndex].content + tokenPart,
+                      id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
+                    };
                   }
-                  setMessages(prevMessages => {
-                    const newMessages = [...prevMessages];
-                    const lastMessageIndex = newMessages.length - 1;
-
-                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
-                      newMessages[lastMessageIndex] = {
-                        ...newMessages[lastMessageIndex],
-                        content: newMessages[lastMessageIndex].content + tokenPart, // Append to content from prev state
-                        // Update ID if current parsedData has a run_id, otherwise keep existing.
-                        // This handles the transition from temp ID to run_id for the message.
-                        id: parsedData.run_id || newMessages[lastMessageIndex].id, 
-                      };
-                    }
-                    return newMessages;
-                  });
-                }
+                  return newMessages;
+                });
               } else if (parsedData.event) {
-                // Log other known event types or unknown ones for diagnostics
-                console.log("Received unhandled event type with data:", parsedData.event, parsedData);
+                console.log("Received unhandled event type:", parsedData.event, parsedData);
               } else {
-                // Data received without a specific event type
-                // Depending on backend contract, might need to process content here too
-                // For now, logging it. If content from such lines is expected,
-                // the condition `else if (parsedData.event === "RunResponse")` might need adjustment.
-                console.log("Received data without a recognized event type:", parsedData);
+                console.log("Received data without recognized event type:", parsedData);
               }
             } catch (e) {
               console.error("Failed to parse SSE data:", dataContentForDoneCheck, e);
@@ -263,16 +308,16 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         }
         if (dataContentForDoneCheck === "[DONE]") break; 
       }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+    } catch (streamError) {
+      if (streamError instanceof DOMException && streamError.name === 'AbortError') {
         console.log('Request was aborted.');
       } else {
-        console.error('Stream error:', error);
-        setError(error instanceof Error ? error.message : 'An unknown error occurred');
+        console.error('Stream error:', streamError);
+        setError(streamError instanceof Error ? streamError.message : 'An unknown error occurred during streaming.');
         setMessages(prev => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
+          if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
             newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
           } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
             newMessages.push({ id: crypto.randomUUID(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
@@ -283,32 +328,26 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
       setCurrentDebugMessage(null);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // General loading state for agent response
+      setIsAgentResponding(false); // Ensure this is false at the end
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
         catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
-      // Ensure isAgentResponding is false when stream ends or on error
-      if (isAgentResponding) {
-        setIsAgentResponding(false);
-      }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
   }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding]);
-  // Added currentChatTitle and isAgentResponding to dependencies of handleSubmit
-
-
-  // Main unmount cleanup is implicitly handled by the return function in the useEffect([ssid])
-  // for abortController and debugMessageTimeoutRef. ReaderRef is cleaned in finally.
   
   return {
     messages,
     handleSubmit,
-    isLoading: isLoading || isInitializing,
+    isLoading: isLoading || isInitializing || isUploadingFiles, // Combined loading state
     error,
     currentDebugMessage,
     currentChatTitle,
-    isAgentResponding, // Expose the new state
+    isAgentResponding,
+    fileUploads,
+    isUploadingFiles,
   };
 }
