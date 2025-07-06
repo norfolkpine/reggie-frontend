@@ -59,7 +59,7 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
     if (droppedFiles.length > 0) {
       // Filter out files that might already be in the list by name and size (basic check)
       const newFiles = droppedFiles.filter(
-        df => !files.some(f => f.name === df.name && f.size === df.size)
+        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
       );
       if (newFiles.length > 0) {
         setFiles((prev) => [...prev, ...newFiles]);
