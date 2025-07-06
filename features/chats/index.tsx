@@ -8,7 +8,7 @@ import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
 
 // Default agent ID to use for new conversations
-const DEFAULT_AGENT_ID = "o-ea5b30abd-reggie";
+const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
 
 export default function ChatsComponent() {
   const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 

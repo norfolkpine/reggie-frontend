@@ -19,20 +19,25 @@ import { MarkdownComponents } from "./markdown-component";
 interface CustomChatProps {
   agentId: string;
   sessionId?: string;
+  onTitleUpdate?: (title: string | null) => void;
 }
 
-export function CustomChat({ agentId, sessionId }: CustomChatProps) {
+export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProps) {
   const {
     messages,
     handleSubmit,
     isLoading,
     error,
     currentDebugMessage,
-    currentChatTitle,
+    currentChatTitle: _currentChatTitle,
     isAgentResponding,
     fileUploads, // Destructure new state
     isUploadingFiles, // Destructure new state
-  } = useAgentChat({ agentId, sessionId });
+  } = useAgentChat({ 
+    agentId, 
+    sessionId,
+    onTitleChange: onTitleUpdate
+  });
 
   const [input, setInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
