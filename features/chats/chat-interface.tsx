@@ -23,11 +23,15 @@ import { useSearchParams } from "next/navigation";
 import { createChatSession } from "@/api/chat-sessions";
 import MessageActions from "./components/message-actions";
 import { sendUserFeedback } from "./api/user-feedback";
-import { MarkdownComponents } from "./components/markdown-component";
-import TypingIndicator from "./components/typing-indicator";
+// MarkdownComponents might still be useful if ChatMessage's MarkdownRenderer needs them, or for user messages.
+// import { MarkdownComponents } from "./components/markdown-component";
+// TypingIndicator is likely handled by MessageList or ChatMessage now, or a prop to them.
+// import TypingIndicator from "./components/typing-indicator";
 import AgentChatDock from "./components/agent-chat-dock";
-import { ChatSessionProvider } from "./ChatSessionContext"; // Import the provider
+// ChatSessionProvider might still be relevant depending on its usage.
+// import { ChatSessionProvider } from "./ChatSessionContext";
 import { useAgentChat } from "@/hooks/use-agent-chat";
+import { ChatMessage, Message } from "@/components/ui/chat-message"; // Import ChatMessage and Message type
 import { createGoogleDoc } from "@/api/integration-google-drive";
 import { truncateText } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -90,7 +94,10 @@ export default function ChatInterface() {
     isLoading,
     error,
     currentDebugMessage,
-    currentChatTitle
+    currentChatTitle,
+    finalAnswer, // Destructure new state
+    buildTime,   // Destructure new state
+    isAgentResponding, // Destructure new state
   } = useAgentChat({
     agentId: agentId!,
     sessionId: sessionId,
@@ -398,95 +405,67 @@ export default function ChatInterface() {
                       style={{ willChange: "transform" }}
                     >
                       {messages.map((message, index) => (
-                        <div
-                          key={message.id + '-' + index}
-                          style={{
-                            transform: "translate3d(0, 0, 0)",
-                            willChange: "transform",
-                            contain: "content",
-                          }}
-                          className={`flex ${
-                            message.role === "user"
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
-                        >
-                          <div
-                            className={`rounded-lg px-4 py-2 ${
-                              message.role === "user"
-                                ? "max-w-[80%] bg-primary text-primary-foreground"
-                                : ""
-                            }`}
-                          >
-                            {message.role === "user" ? (
-                              <p className="whitespace-pre-wrap">
-                                {message.content}
-                              </p>
-                            ) : (
-                              <>
-                                {isCryptoData(message.content as string) ? (
-                                  <div className="my-4">
-                                    <CryptoChart
-                                      data={JSON.parse(message.content as string)}
-                                      title="Cryptocurrency Data"
-                                      description="Price, Market Cap, and Volume"
-                                    />
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="markdown">
-                                      <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        rehypePlugins={[rehypeHighlight]}
-                                        components={MarkdownComponents}
-                                      >
-                                        {message.content as string}
-                                      </ReactMarkdown>
-                                    </div>
-                                    {isLoading && index === messages.length - 1 && message.role === "assistant" && (!message.content || (message.content as string).length === 0) && (
-                                      <div className="flex justify-start">
-                                        <TypingIndicator />
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                                {(() => {
-                                  const isNewestAssistant = index === messages.length - 1 && message.role === "assistant";
-                                  const showActions = !(isNewestAssistant && isLoading);
-                                  return showActions;
-                                })() && (
-                                  <div className="flex items-center gap-2 mt-2 -mb-1">
-                                    <MessageActions
-                                      messageId={message.id}
-                                      content={message.content as string}
-                                      onCopy={copyToClipboard}
-                                      copiedMessageId={copiedMessageId}
-                                      onSend={handleOnSend}
-                                      onOpenCanvas={setEditingMessageId}
-                                      onGoodResponse={(messageId: string) => {
-                                        setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
-                                        setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
-                                      }}
-                                      onBadResponse={(messageId: string) => {
-                                        setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
-                                        setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
-                                      }}
-                                      isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
-                                      isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
-                                    />
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        {messages.map((message, index) => {
+                          // Determine if actions should be shown for this message
+                          const isLastMessage = index === messages.length - 1;
+                          const showActions = message.role === 'assistant' && !(isLastMessage && isLoading);
+
+                          return (
+                            <div
+                              key={message.id + '-' + index} // Ensure unique key
+                              className={`flex w-full ${
+                                message.role === "user"
+                                  ? "justify-end"
+                                  : "justify-start"
+                              }`}
+                            >
+                              <ChatMessage
+                                {...message} // Spread all message properties
+                                animation="slide" // Example animation
+                                actions={showActions ? (
+                                  <MessageActions
+                                    messageId={message.id}
+                                    content={message.content as string} // Assuming content is still relevant for actions
+                                    onCopy={copyToClipboard}
+                                    copiedMessageId={copiedMessageId}
+                                    onSend={handleOnSend}
+                                    onOpenCanvas={setEditingMessageId}
+                                    onGoodResponse={(messageId: string) => {
+                                      setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'good' }));
+                                      setFeedbackDialog({ open: true, messageId, feedbackType: 'good' });
+                                    }}
+                                    onBadResponse={(messageId: string) => {
+                                      setFeedbackHighlight(prev => ({ ...prev, [messageId]: 'bad' }));
+                                      setFeedbackDialog({ open: true, messageId, feedbackType: 'bad' });
+                                    }}
+                                    isGood={feedbackHighlight[message.id] === 'good' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'good' : false)}
+                                    isBad={feedbackHighlight[message.id] === 'bad' || (message.feedback && message.feedback.length > 0 ? message.feedback[message.feedback.length - 1].feedback_type === 'bad' : false)}
+                                  />
+                                ) : undefined}
+                                // Pass other necessary props to ChatMessage if any
+                                // e.g., showTimestamp, custom renderers for parts if needed
+                              />
+                            </div>
+                          );
+                        })}
 
                       <div ref={messagesEndRef} />
                     </div>
                   </div>
 
-                  {/* Feedback Dialog */}
+                  {/* Final Answer Display */}
+                  {finalAnswer && (
+                    <div className="max-w-3xl mx-auto w-full p-4">
+                      <Card className="p-4 bg-sky-50 border-sky-200">
+                        <h3 className="text-lg font-semibold text-sky-700 mb-2">Summary</h3>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {finalAnswer.summary}
+                        </ReactMarkdown>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Feedback Dialog (remains unchanged) */}
                   <Dialog open={feedbackDialog.open} onOpenChange={(open) => setFeedbackDialog((prev) => ({ ...prev, open }))}>
                     <DialogContent>
                       <DialogHeader>
@@ -525,10 +504,11 @@ export default function ChatInterface() {
                   {/* Fixed input at bottom when chatting */}
                   <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
                     <div className="max-w-3xl mx-auto">
-                      <InputMessage loading={isLoading} onSubmit={handleSubmit} />
-                      <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
+                      {/* Pass isAgentResponding to InputMessage if it supports a typing/loading indicator */}
+                      <InputMessage loading={isLoading || isAgentResponding} onSubmit={handleSubmit} />
+                      <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground px-1">
                         <span>
-                          Reggie can make mistakes. Check important info.
+                          {buildTime ? `Agent Build: ${buildTime} | ` : ""} Reggie can make mistakes. Check important info.
                         </span>
                         <span>?</span>
                       </div>
