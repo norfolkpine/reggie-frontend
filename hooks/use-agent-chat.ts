@@ -281,23 +281,21 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
               if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
                 setCurrentChatTitle(parsedData.title);
-              } else if (parsedData.event === "RunResponse") {
-                const tokenPart = parsedData.token ?? parsedData.content;
-                if (typeof tokenPart === 'string' && tokenPart.length > 0) {
-                  if (isAgentResponding) setIsAgentResponding(false);
-                  setMessages(prevMessages => {
-                    const newMessages = [...prevMessages];
-                    const lastMessageIndex = newMessages.length - 1;
-                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
-                      newMessages[lastMessageIndex] = {
-                        ...newMessages[lastMessageIndex],
-                        content: newMessages[lastMessageIndex].content + tokenPart,
-                        id: parsedData.run_id || newMessages[lastMessageIndex].id, 
-                      };
-                    }
-                    return newMessages;
-                  });
-                }
+              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
+                const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                if (isAgentResponding) setIsAgentResponding(false);
+                setMessages(prevMessages => {
+                  const newMessages = [...prevMessages];
+                  const lastMessageIndex = newMessages.length - 1;
+                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                    newMessages[lastMessageIndex] = {
+                      ...newMessages[lastMessageIndex],
+                      content: newMessages[lastMessageIndex].content + tokenPart,
+                      id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
+                    };
+                  }
+                  return newMessages;
+                });
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               } else {
