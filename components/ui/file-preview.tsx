@@ -2,11 +2,12 @@
 
 import React, { useEffect } from "react"
 import { motion } from "framer-motion"
-import { FileIcon, X } from "lucide-react"
+import { FileIcon, Loader2, X } from "lucide-react" // Added Loader2
 
 interface FilePreviewProps {
   file: File
   onRemove?: () => void
+  isUploading?: boolean // Added isUploading prop
 }
 
 export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
@@ -29,7 +30,7 @@ export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 FilePreview.displayName = "FilePreview"
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => { // Added isUploading
     return (
       <motion.div
         ref={ref}
@@ -46,12 +47,17 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
             className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
             src={URL.createObjectURL(file)}
           />
+          {isUploading && (
+            <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-black/50">
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            </div>
+          )}
           <span className="w-full truncate text-muted-foreground">
             {file.name}
           </span>
         </div>
 
-        {onRemove ? (
+        {onRemove && !isUploading ? ( // Hide remove button during upload
           <button
             className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"
@@ -68,7 +74,7 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 ImageFilePreview.displayName = "ImageFilePreview"
 
 const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => { // Added isUploading
     const [preview, setPreview] = React.useState<string>("")
 
     useEffect(() => {
@@ -90,17 +96,22 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
         exit={{ opacity: 0, y: "100%" }}
       >
         <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted p-0.5">
+          <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted p-0.5"> {/* Added relative positioning */}
             <div className="h-full w-full overflow-hidden text-[6px] leading-none text-muted-foreground">
               {preview || "Loading..."}
             </div>
+            {isUploading && (
+              <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-sm bg-black/50">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              </div>
+            )}
           </div>
           <span className="w-full truncate text-muted-foreground">
             {file.name}
           </span>
         </div>
 
-        {onRemove ? (
+        {onRemove && !isUploading ? ( // Hide remove button during upload
           <button
             className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"
@@ -117,7 +128,7 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 TextFilePreview.displayName = "TextFilePreview"
 
 const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => { // Added isUploading
     return (
       <motion.div
         ref={ref}
@@ -128,15 +139,20 @@ const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
         exit={{ opacity: 0, y: "100%" }}
       >
         <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted">
+          <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted"> {/* Added relative positioning */}
             <FileIcon className="h-6 w-6 text-foreground" />
+            {isUploading && (
+              <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-sm bg-black/50">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              </div>
+            )}
           </div>
           <span className="w-full truncate text-muted-foreground">
             {file.name}
           </span>
         </div>
 
-        {onRemove ? (
+        {onRemove && !isUploading ? ( // Hide remove button during upload
           <button
             className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"

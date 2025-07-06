@@ -30,6 +30,8 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
     currentDebugMessage,
     currentChatTitle,
     isAgentResponding,
+    fileUploads, // Destructure new state
+    isUploadingFiles, // Destructure new state
   } = useAgentChat({ agentId, sessionId });
 
   const [input, setInput] = useState("");
@@ -55,19 +57,27 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...droppedFiles]);
+      // Filter out files that might already be in the list by name and size (basic check)
+      const newFiles = droppedFiles.filter(
+        df => !files.some(f => f.name === df.name && f.size === df.size)
+      );
+      if (newFiles.length > 0) {
+        setFiles((prev) => [...prev, ...newFiles]);
+      }
     }
-  }, []);
+  }, [files]); // Added files to dependency array
 
-  // Properly handle form submission with the correct signature
   const onSubmit = () => {
+    // Ensure that input or files are present before submitting
     if (!input.trim() && files.length === 0) return;
     
-    // Pass only the input as handleSubmit expects 0-1 arguments
-    handleSubmit(input);
+    handleSubmit(input, files); // Pass files to handleSubmit
     
-    setInput("");
-    setFiles([]); // Clear files after sending
+    setInput(""); // Clear input after sending
+    // Files are cleared by MessageInput after successful upload or handled by useAgentChat
+    // For now, let's clear them here too, assuming successful submission implies files were handled.
+    // This might need adjustment based on how useAgentChat handles file state after submission.
+    setFiles([]);
   };
 
   const isEmpty = messages.length === 0;
@@ -206,8 +216,12 @@ export function CustomChat({ agentId, sessionId }: CustomChatProps) {
                     setFiles(newFiles);
                     setFormFiles?.(newFiles);
                   }}
-                  stop={() => {}}
-                  isGenerating={isLoading}
+                  stop={() => {
+                    // Add logic to stop/abort uploads if needed, via useAgentChat's abortController
+                  }}
+                  isGenerating={isLoading} // isLoading now includes isUploadingFiles
+                  fileUploads={fileUploads} // Pass down fileUploads
+                  isUploadingFiles={isUploadingFiles} // Pass down isUploadingFiles
                 />
               )}
             </ChatForm>

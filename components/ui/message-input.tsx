@@ -23,14 +23,18 @@ interface MessageInputBaseProps
   transcribeAudio?: (blob: Blob) => Promise<string>
 }
 
+import { FileUploadStatus } from "@/hooks/use-agent-chat"; // Import FileUploadStatus
+
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
   allowAttachments?: false
 }
 
 interface MessageInputWithAttachmentsProps extends MessageInputBaseProps {
   allowAttachments: true
-  files: File[] | null
+  files: File[] | null // These are the File objects selected by the user
   setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
+  fileUploads?: FileUploadStatus[] // Status from useAgentChat
+  isUploadingFiles?: boolean // General flag from useAgentChat
 }
 
 type MessageInputProps =
@@ -220,23 +224,36 @@ export function MessageInput({
               <div className="flex space-x-3">
                 <AnimatePresence mode="popLayout">
                   {props.files?.map((file) => {
+                    // Find the upload status for this specific file by matching name, size, and lastModified
+                    const uploadStatus = props.allowAttachments && props.fileUploads?.find(
+                      fu => fu.file.name === file.name &&
+                            fu.file.size === file.size &&
+                            fu.file.lastModified === file.lastModified
+                    );
+                    const isCurrentlyUploading = uploadStatus?.status === 'uploading';
+                    // Disable removal if overall generating (agent responding OR any file uploading)
+                    // OR if this specific file is uploading.
+                    const isRemovalDisabled = props.isGenerating || isCurrentlyUploading;
+
                     return (
                       <FilePreview
                         key={file.name + String(file.lastModified)}
                         file={file}
+                        isUploading={isCurrentlyUploading} // Pass specific uploading status
                         onRemove={() => {
-                          props.setFiles((files) => {
-                            if (!files) return null
+                          if (isRemovalDisabled) return;
+                          props.setFiles((currentFiles) => {
+                            if (!currentFiles) return null;
 
-                            const filtered = Array.from(files).filter(
+                            const filtered = Array.from(currentFiles).filter(
                               (f) => f !== file
-                            )
-                            if (filtered.length === 0) return null
-                            return filtered
-                          })
+                            );
+                            if (filtered.length === 0) return null;
+                            return filtered;
+                          });
                         }}
                       />
-                    )
+                    );
                   })}
                 </AnimatePresence>
               </div>
