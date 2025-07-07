@@ -239,12 +239,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
           </div>
         </div>
       </div>
-      <DragDropOverlay
-        isVisible={isDragOverlayVisible}
-        onFilesDrop={handleFilesDrop}
-        onVisibilityChange={setIsDragOverlayVisible}
-        acceptedTypes={['document']}
-      />
+    
     </ChatContainer>
   );
 }
