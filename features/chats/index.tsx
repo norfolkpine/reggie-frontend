@@ -6,14 +6,18 @@ import { Plus } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
-
+import { useParams, useSearchParams } from "next/navigation";
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
 
 export default function ChatsComponent() {
+  const searchParams = useSearchParams();
+  const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
+  const params = useParams();
+  const sessionId = params.sessionId as string | null;
   const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 
-    id: "", 
-    agentCode: DEFAULT_AGENT_ID 
+    id: sessionId || "", 
+    agentCode: agentId || DEFAULT_AGENT_ID 
   });
 
   // Get chat title from useAgentChat if a session is selected

@@ -4,6 +4,7 @@ import { uploadFiles as apiUploadFiles } from '@/api/files'; // Renamed to avoid
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   id: string;
@@ -85,7 +86,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         
         const messageResponse = await getChatSessionMessage(ssid);
         const formattedMessages = messageResponse.results.map(msg => ({
-          id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
+          id: msg.id || msg.timestamp?.toString() || uuidv4(),
           content: msg.content,
           role: msg.role as 'user' | 'assistant',
           feedback: msg.feedback
@@ -203,7 +204,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
     const userMessageContent = value ?? "";
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       content: userMessageContent,
       role: 'user'
     };
@@ -231,7 +232,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         session_id: tempSessionId,
       };
 
-      const assistantMessageId = `assistant-${crypto.randomUUID()}`;
+      const assistantMessageId = `assistant-${uuidv4()}`;
       setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
@@ -320,7 +321,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
           if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
             newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
           } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
-            newMessages.push({ id: crypto.randomUUID(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
+            newMessages.push({ id: uuidv4(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
           }
           return newMessages;
         });

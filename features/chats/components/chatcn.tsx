@@ -15,6 +15,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { MarkdownComponents } from "./markdown-component";
+import { DragDropOverlay } from "./File/DragDropOverlayVisible";
 
 interface CustomChatProps {
   agentId: string;
@@ -42,6 +43,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
   const [input, setInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -71,6 +73,10 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
       }
     }
   }, [files]); // Added files to dependency array
+
+  const handleFilesDrop = (files: File[]): void => {
+    setFiles(prev => [...prev, ...files]);
+  };
 
   const onSubmit = () => {
     // Ensure that input or files are present before submitting
@@ -233,6 +239,12 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
           </div>
         </div>
       </div>
+      <DragDropOverlay
+        isVisible={isDragOverlayVisible}
+        onFilesDrop={handleFilesDrop}
+        onVisibilityChange={setIsDragOverlayVisible}
+        acceptedTypes={['document']}
+      />
     </ChatContainer>
   );
 }
