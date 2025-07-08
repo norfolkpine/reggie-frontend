@@ -3,7 +3,7 @@
 import { useState, useMemo, memo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2 } from "lucide-react"
+import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatSessionContext } from "../ChatSessionContext"
 
@@ -181,8 +181,16 @@ const AgentChatDock = memo(function AgentChatDock({
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* New Chat Button & Search Bar */}
           <div className="p-4 border-b border-gray-100">
+            <Button
+              onClick={onNewChat}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-black justify-start mb-2"
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              New Chat
+            </Button>
             <Input
               placeholder="Type to search..."
               value={searchQuery}
