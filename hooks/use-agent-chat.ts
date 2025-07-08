@@ -47,6 +47,8 @@ interface UseAgentChatProps {
   agentId: string;
   sessionId?: string | null;
   onNewSessionCreated?: (newSessionId: string) => void;
+  onTitleUpdate?: (title: string | null) => void; // Add title update callback
+  onMessageComplete?: () => void; // Add message complete callback
   reasoning?: boolean; // Add reasoning parameter
 }
 
@@ -65,7 +67,7 @@ interface UseAgentChatReturn {
   currentReasoningSteps: ReasoningStep[]; // Current reasoning steps
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -219,6 +221,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     setCurrentDebugMessage(null);
 
     let tempSessionId = internalSessionId;
+    let shouldCallOnNewSessionCreated = false;
 
     // Create session first if it doesn't exist
     if (!sessionCreated || !tempSessionId) {
@@ -230,9 +233,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         setInternalSessionId(tempSessionId);
         setSessionCreated(true);
         isNewConversationRef.current = true; 
-        if (onNewSessionCreated && tempSessionId) {
-          onNewSessionCreated(tempSessionId);
-        }
+        shouldCallOnNewSessionCreated = true;
+        // Don't call onNewSessionCreated here - we'll call it after message processing is complete
       } catch (sessionError) {
         console.error('Failed to create chat session:', sessionError);
         setError('Failed to create chat session. Please check your connection and try again.');
@@ -330,6 +332,9 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
               if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
                 setCurrentChatTitle(parsedData.title);
+                if (onTitleUpdate) {
+                  onTitleUpdate(parsedData.title);
+                }
               } else if (parsedData.event === "ToolCallStarted") {
                 // Handle tool call started
                 const toolCall: ToolCall = {
@@ -433,14 +438,23 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       setCurrentToolCalls(new Map());
       setCurrentReasoningSteps([]);
       
+      // Call onNewSessionCreated after message processing is complete
+      // This ensures the URL update happens after the message is fully displayed
+      if (onNewSessionCreated && tempSessionId && shouldCallOnNewSessionCreated) {
+        onNewSessionCreated(tempSessionId);
+      }
+      
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
         catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+      if (onMessageComplete) {
+        onMessageComplete();
+      }
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration]);
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
   
   return {
     messages,

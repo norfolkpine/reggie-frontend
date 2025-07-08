@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -30,9 +30,10 @@ interface CustomChatProps {
   sessionId?: string;
   onTitleUpdate?: (title: string | null) => void;
   onNewSessionCreated?: (newSessionId: string) => void;
+  onMessageComplete?: () => void;
 }
 
-export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated }: CustomChatProps) {
+export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: CustomChatProps) {
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -42,6 +43,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   const {
     messages,
@@ -60,7 +62,9 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     agentId,
     sessionId,
     onNewSessionCreated,
+    onTitleUpdate,
     reasoning: reasoningEnabled, // Pass reasoning state to hook
+    onMessageComplete, // Pass onMessageComplete to hook
   });
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -266,6 +270,46 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     }
   }, [isAgentResponding, lastMessage]);
 
+  // Manual scroll trigger for streaming responses
+  useEffect(() => {
+    if (isAgentResponding && messages.length > 0) {
+      const timer = setTimeout(() => {
+        // Find the ChatMessages container and scroll it
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAgentResponding, messages]);
+
+  // Additional scroll trigger for message updates
+  useEffect(() => {
+    if (messages.length > 0) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [messages]);
+
+  // Scroll trigger for tool calls and reasoning steps
+  useEffect(() => {
+    if (currentToolCalls.size > 0 || (currentReasoningSteps && currentReasoningSteps.length > 0)) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentToolCalls, currentReasoningSteps]);
+
   return (
     <ChatContainer className="max-w-full h-full">
       <div
@@ -301,7 +345,11 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         )}
 
         {!isEmpty && (
-          <ChatMessages messages={messages}>
+          <ChatMessages 
+            messages={messages}
+            toolCalls={currentToolCalls}
+            reasoningSteps={currentReasoningSteps}
+          >
             <div className="max-w-3xl mx-auto w-full py-4">
               <MessageList 
                 messages={messages} 

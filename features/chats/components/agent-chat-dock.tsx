@@ -3,6 +3,7 @@
 import { useState, useMemo, memo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatSessionContext } from "../ChatSessionContext"
@@ -31,7 +32,6 @@ const AgentChatDock = memo(function AgentChatDock({
   onSelectChat?: (chatId: string, agentCode?: string | null) => void
   onNewChat?: () => void
 }) {
-  const [activeTab, setActiveTab] = useState<DockTab | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
 
@@ -39,6 +39,29 @@ const AgentChatDock = memo(function AgentChatDock({
 
   const router = useRouter()
   const { chatSessions, isLoading, page, hasMore,setPage } = useChatSessionContext()
+
+  // Load dock state from localStorage on mount
+  const [activeTab, setActiveTab] = useState<DockTab | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chat-dock-state')
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          return parsed.activeTab || null
+        } catch (e) {
+          console.error('Error parsing saved dock state:', e)
+        }
+      }
+    }
+    return null
+  })
+
+  // Save dock state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chat-dock-state', JSON.stringify({ activeTab }))
+    }
+  }, [activeTab])
 
   // Handler for infinite scroll
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -135,25 +158,28 @@ const AgentChatDock = memo(function AgentChatDock({
 
           return (
             <div key={`button ${item.id}`} className="relative group">
-              <Button
-                onClick={() => handleTabClick(item.id)}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "w-10 h-10 mx-1 mb-1 rounded-lg flex items-center justify-center",
-                  isActive
-                    ? "bg-blue-100 text-blue-600 border border-blue-200"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
-                )}
-              >
-                <Icon className="w-5 h-5" />
-              </Button>
-
-              {/* Tooltip */}
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 pointer-events-none whitespace-nowrap z-50">
-                {item.label}
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => handleTabClick(item.id)}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "w-10 h-10 mx-1 mb-1 rounded-lg flex items-center justify-center",
+                        isActive
+                          ? "bg-blue-100 text-blue-600 border border-blue-200"
+                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-gray-50 border-gray-200 text-gray-700 text-xs px-2 py-1 shadow-sm">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )
         })}
@@ -184,11 +210,18 @@ const AgentChatDock = memo(function AgentChatDock({
           {/* New Chat Button & Search Bar */}
           <div className="p-4 border-b border-gray-100">
             <Button
-              onClick={onNewChat}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-black justify-start mb-2"
+              onClick={() => {
+                console.log("New Chat button clicked");
+                if (onNewChat) {
+                  onNewChat();
+                } else {
+                  console.log("onNewChat function not provided");
+                }
+              }}
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 justify-start mb-4 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 rounded-lg"
               size="sm"
             >
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="w-4 h-4 mr-2 text-gray-500" />
               New Chat
             </Button>
             <Input

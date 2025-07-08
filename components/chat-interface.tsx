@@ -181,8 +181,11 @@ export default function ChatInterface() {
 
   // Improved auto-scroll functionality
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior
+      })
     }
   }
 
@@ -214,6 +217,16 @@ export default function ChatInterface() {
       scrollToBottom("instant")
     }
   }, [showWelcome])
+
+  // Additional scroll trigger for content updates
+  useEffect(() => {
+    if (messages.length > 0 && !showWelcome) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+    }
+  }, [messages, showWelcome])
 
   const copyToClipboard = async (text: string, messageId: string) => {
     const copyToClipboard = async (text: string) => {

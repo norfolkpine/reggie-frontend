@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 
 // How many pixels from the bottom of the container to enable auto-scroll
 const ACTIVATION_THRESHOLD = 50
@@ -9,6 +9,28 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const previousScrollTop = useRef<number | null>(null)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+
+  // Create a more comprehensive dependency tracking
+  const dependencyHash = useMemo(() => {
+    return dependencies.map(dep => {
+      if (Array.isArray(dep)) {
+        // For arrays (like messages), create a hash based on content
+        return dep.map(item => {
+          if (typeof item === 'object' && item !== null) {
+            return `${item.id}-${item.content?.length || 0}-${item.role || ''}`
+          }
+          return String(item)
+        }).join('|')
+      } else if (dep instanceof Map) {
+        // For Map objects (like toolCalls), create a hash based on size and keys
+        return `map-${dep.size}-${Array.from(dep.keys()).join('|')}`
+      } else if (typeof dep === 'object' && dep !== null) {
+        // For other objects, create a hash based on keys and values
+        return Object.entries(dep).map(([key, value]) => `${key}-${String(value)}`).join('|')
+      }
+      return String(dep)
+    }).join('||')
+  }, dependencies)
 
   const scrollToBottom = () => {
     if (containerRef.current) {
@@ -58,10 +80,12 @@ export function useAutoScroll(dependencies: React.DependencyList) {
 
   useEffect(() => {
     if (shouldAutoScroll) {
-      scrollToBottom()
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, dependencies)
+  }, [dependencyHash, shouldAutoScroll])
 
   return {
     containerRef,

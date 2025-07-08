@@ -10,6 +10,9 @@ interface ChatSessionContextType {
   refresh: () => void;
   setPage: (page: number) => void;
   hasMore: boolean;
+  addSession: (session: ChatSession) => void; // Add method to add sessions optimistically
+  updateSessionTitle: (sessionId: string, title: string) => void; // Add method to update session titles
+  updateSessionTitleWithTyping: (sessionId: string, title: string, speed?: number) => void; // Add typing animation method
 }
 
 const ChatSessionContext = createContext<ChatSessionContextType>({
@@ -19,6 +22,9 @@ const ChatSessionContext = createContext<ChatSessionContextType>({
   page: 1,
   setPage: () => {},
   hasMore: false,
+  addSession: () => {},
+  updateSessionTitle: () => {},
+  updateSessionTitleWithTyping: () => {},
 });
 
 export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
@@ -55,6 +61,55 @@ export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
     fetchChats(1, false);
   }, [fetchChats]);
 
+  // Add session optimistically to the beginning of the list
+  const addSession = useCallback((session: ChatSession) => {
+    setChatSessions(prev => {
+      // Check if session already exists
+      if (prev.some(existing => existing.session_id === session.session_id)) {
+        return prev;
+      }
+      // Add to the beginning of the list
+      return [session, ...prev];
+    });
+  }, []);
+
+  // Update session title in the list
+  const updateSessionTitle = useCallback((sessionId: string, title: string) => {
+    setChatSessions(prev => 
+      prev.map(session => 
+        session.session_id === sessionId 
+          ? { ...session, title } 
+          : session
+      )
+    );
+  }, []);
+
+  // Update session title with typing animation
+  const updateSessionTitleWithTyping = useCallback((sessionId: string, title: string, speed: number = 50) => {
+    let currentIndex = 0;
+    const currentTitle = chatSessions.find(s => s.session_id === sessionId)?.title || "";
+    
+    // If the title is already the same, don't animate
+    if (currentTitle === title) return;
+    
+    const typeNextChar = () => {
+      if (currentIndex <= title.length) {
+        const partialTitle = title.slice(0, currentIndex);
+        setChatSessions(prev => 
+          prev.map(session => 
+            session.session_id === sessionId 
+              ? { ...session, title: partialTitle } 
+              : session
+          )
+        );
+        currentIndex++;
+        setTimeout(typeNextChar, speed);
+      }
+    };
+    
+    typeNextChar();
+  }, [chatSessions]);
+
   useEffect(() => {
     if (!user) {
       setChatSessions([]);
@@ -72,7 +127,7 @@ export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
   }, [user, page, fetchChats]);
 
   return (
-    <ChatSessionContext.Provider value={{ chatSessions, isLoading, refresh, setPage, page, hasMore }}>
+    <ChatSessionContext.Provider value={{ chatSessions, isLoading, refresh, setPage, page, hasMore, addSession, updateSessionTitle, updateSessionTitleWithTyping }}>
       {children}
     </ChatSessionContext.Provider>
   );
