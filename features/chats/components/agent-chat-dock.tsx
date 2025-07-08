@@ -4,9 +4,17 @@ import { useState, useMemo, memo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2, Plus } from "lucide-react"
+import { Bot, Users, Workflow, X, ChevronDown, ChevronRight, Clock, Loader2, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatSessionContext } from "../ChatSessionContext"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useRouter } from "next/navigation"
 
 type DockTab = "current" | "all" | "workflow"
 
@@ -23,8 +31,6 @@ interface ChatSection {
   expanded: boolean
 }
 
-import { useRouter } from "next/navigation"
-
 const AgentChatDock = memo(function AgentChatDock({
   onSelectChat,
   onNewChat,
@@ -34,11 +40,13 @@ const AgentChatDock = memo(function AgentChatDock({
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
 
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const router = useRouter()
-  const { chatSessions, isLoading, page, hasMore,setPage } = useChatSessionContext()
+  const { chatSessions, isLoading, page, hasMore, setPage, deleteSession, renameSession } = useChatSessionContext()
 
   // Load dock state from localStorage on mount
   const [activeTab, setActiveTab] = useState<DockTab | null>(() => {
@@ -148,6 +156,28 @@ const AgentChatDock = memo(function AgentChatDock({
     }
   }
 
+  const handleRename = (sessionId: string, currentTitle: string) => {
+    setEditingSessionId(sessionId)
+    setEditingTitle(currentTitle)
+  }
+
+  const handleRenameSave = async () => {
+    if (editingSessionId && editingTitle.trim()) {
+      await renameSession(editingSessionId, editingTitle.trim())
+      setEditingSessionId(null)
+      setEditingTitle("")
+    }
+  }
+
+  const handleRenameCancel = () => {
+    setEditingSessionId(null)
+    setEditingTitle("")
+  }
+
+  const handleDelete = async (sessionId: string) => {
+    await deleteSession(sessionId)
+  }
+
   return (
     <div className="flex bg-gray-50 sticky top-16 self-start h-[calc(100vh_-_64px)]">
       {/* Left Sidebar with Icons */}
@@ -249,33 +279,95 @@ const AgentChatDock = memo(function AgentChatDock({
                     {(isLoading && page == 1 ? [] : section.items).map((item, itemIndex) => (
                         <div
                           key={`chat ${item.id} ${itemIndex}`}
-                          className="bg-gray-100 rounded-lg p-2 hover:bg-gray-200 cursor-pointer transition-colors duration-150"
-                          onClick={() => {
-                            if (onSelectChat) {
-                              onSelectChat(item.id, item.agent)
-                            } else {
-                              let url = `/chat/${item.id}`
-                              if (item.agent) {
-                                const params = new URLSearchParams({ agentId: item.agent })
-                                url += `?${params.toString()}`
-                              }
-                              router.push(url)
-                            }
-                          }}
+                          className="bg-gray-100 rounded-lg p-2 hover:bg-gray-200 transition-colors duration-150 group relative"
                         >
-                          <h4 className="font-medium text-sm text-gray-900 mb-1">
-                          {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                          </h4>
+                          {/* Main content area */}
+                          <div
+                            className="cursor-pointer"
+                            onClick={() => {
+                              if (onSelectChat) {
+                                onSelectChat(item.id, item.agent)
+                              } else {
+                                let url = `/chat/${item.id}`
+                                if (item.agent) {
+                                  const params = new URLSearchParams({ agentId: item.agent })
+                                  url += `?${params.toString()}`
+                                }
+                                router.push(url)
+                              }
+                            }}
+                          >
+                            {editingSessionId === item.id ? (
+                              <div className="mb-1">
+                                <Input
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleRenameSave()
+                                    } else if (e.key === 'Escape') {
+                                      handleRenameCancel()
+                                    }
+                                  }}
+                                  onBlur={handleRenameSave}
+                                  className="text-sm font-medium text-gray-900 mb-1"
+                                  autoFocus
+                                />
+                              </div>
+                            ) : (
+                              <h4 className="font-medium text-sm text-gray-900 mb-1">
+                                {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </h4>
+                            )}
 
-                          <div className="mb-1">
-                            <span className="inline-block bg-white text-gray-800 text-xs font-medium px-1.5 py-0.5 rounded-full border">
-                              {item.agent && item.agent.split('-').pop()?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                            </span>
+                            <div className="mb-1">
+                              <span className="inline-block bg-white text-gray-800 text-xs font-medium px-1.5 py-0.5 rounded-full border">
+                                {item.agent && item.agent.split('-').pop()?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Clock className="w-3 h-3" />
+                              {item.timestamp}
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Clock className="w-3 h-3" />
-                            {item.timestamp}
+                          {/* Three dots menu */}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-gray-300"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRename(item.id, item.title)
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(item.id)
+                                  }}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       ))}

@@ -1,7 +1,8 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { getChatSessions, ChatSession } from "@/api/chat-sessions";
+import { getChatSessions, ChatSession, patchChatSession, deleteChatSession } from "@/api/chat-sessions";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ChatSessionContextType {
   chatSessions: ChatSession[];
@@ -13,6 +14,8 @@ interface ChatSessionContextType {
   addSession: (session: ChatSession) => void; // Add method to add sessions optimistically
   updateSessionTitle: (sessionId: string, title: string) => void; // Add method to update session titles
   updateSessionTitleWithTyping: (sessionId: string, title: string, speed?: number) => void; // Add typing animation method
+  deleteSession: (sessionId: string) => Promise<void>; // Add method to delete sessions
+  renameSession: (sessionId: string, newTitle: string) => Promise<void>; // Add method to rename sessions
 }
 
 const ChatSessionContext = createContext<ChatSessionContextType>({
@@ -25,6 +28,8 @@ const ChatSessionContext = createContext<ChatSessionContextType>({
   addSession: () => {},
   updateSessionTitle: () => {},
   updateSessionTitleWithTyping: () => {},
+  deleteSession: async () => {},
+  renameSession: async () => {},
 });
 
 export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
@@ -33,6 +38,7 @@ export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const fetchChats = useCallback(async (currentPage: number = 1, append: boolean = false) => {
     setIsLoading(true);
@@ -110,6 +116,52 @@ export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
     typeNextChar();
   }, [chatSessions]);
 
+  // Delete session from the list and API
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      await deleteChatSession(sessionId);
+      setChatSessions(prev => 
+        prev.filter(session => session.session_id !== sessionId)
+      );
+      toast({
+        title: "Success",
+        description: "Chat session deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting chat session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat session. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Rename session in the list and API
+  const renameSession = useCallback(async (sessionId: string, newTitle: string) => {
+    try {
+      await patchChatSession(sessionId, { title: newTitle });
+      setChatSessions(prev => 
+        prev.map(session => 
+          session.session_id === sessionId 
+            ? { ...session, title: newTitle } 
+            : session
+        )
+      );
+      toast({
+        title: "Success",
+        description: "Chat session renamed successfully",
+      });
+    } catch (error) {
+      console.error("Error renaming chat session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to rename chat session. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (!user) {
       setChatSessions([]);
@@ -127,7 +179,19 @@ export const ChatSessionProvider = ({ children }: { children: ReactNode }) => {
   }, [user, page, fetchChats]);
 
   return (
-    <ChatSessionContext.Provider value={{ chatSessions, isLoading, refresh, setPage, page, hasMore, addSession, updateSessionTitle, updateSessionTitleWithTyping }}>
+    <ChatSessionContext.Provider value={{ 
+      chatSessions, 
+      isLoading, 
+      refresh, 
+      setPage, 
+      page, 
+      hasMore, 
+      addSession, 
+      updateSessionTitle, 
+      updateSessionTitleWithTyping,
+      deleteSession,
+      renameSession
+    }}>
       {children}
     </ChatSessionContext.Provider>
   );
