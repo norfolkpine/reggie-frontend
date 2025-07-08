@@ -21,9 +21,10 @@ interface CustomChatProps {
   agentId: string;
   sessionId?: string;
   onTitleUpdate?: (title: string | null) => void;
+  onNewSessionCreated?: (newSessionId: string) => void;
 }
 
-export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProps) {
+export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated }: CustomChatProps) {
   const {
     messages,
     handleSubmit,
@@ -34,10 +35,11 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
     isAgentResponding,
     fileUploads, // Destructure new state
     isUploadingFiles, // Destructure new state
-  } = useAgentChat({ 
-    agentId, 
+  } = useAgentChat({
+    agentId,
     sessionId,
-    onTitleChange: onTitleUpdate
+    onTitleChange: onTitleUpdate,
+    onNewSessionCreated
   });
 
   const [input, setInput] = useState("");

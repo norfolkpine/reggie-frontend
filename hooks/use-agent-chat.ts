@@ -23,6 +23,7 @@ export interface FileUploadStatus {
 interface UseAgentChatProps {
   agentId: string;
   sessionId?: string | null;
+  onNewSessionCreated?: (newSessionId: string) => void;
 }
 
 interface UseAgentChatReturn {
@@ -37,7 +38,7 @@ interface UseAgentChatReturn {
   isUploadingFiles: boolean; // True if any file is currently uploading
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,6 +140,9 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setInternalSessionId(tempSessionId);
         setSessionCreated(true);
         isNewConversationRef.current = true; 
+        if (onNewSessionCreated && tempSessionId) {
+          onNewSessionCreated(tempSessionId);
+        }
       } catch (sessionError) {
         console.error('Failed to create chat session:', sessionError);
         setError('Failed to create chat session. Please check your connection and try again.');
