@@ -8,6 +8,7 @@ import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { chatStorage } from "@/lib/utils/chat-storage";
+import { useChatSessionContext } from "./ChatSessionContext";
 
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
@@ -19,24 +20,32 @@ export default function ChatsComponent() {
   const params = useParams();
   const sessionId = params.sessionId as string | null; // This is the sessionId from the URL
   
-  // Initialize state with localStorage or URL params, following the same pattern as other components
+  // Get the refresh function from ChatSessionContext to update chat history
+  const { refresh } = useChatSessionContext();
+  
+  // Initialize state with URL params
   const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 
       id: sessionId || "", 
       agentCode: agentId || DEFAULT_AGENT_ID 
     });
 
   // Get chat title from useAgentChat if a session is selected
-  // Note: This instance of useAgentChat is primarily for the title.
-  // The actual chat interaction and session creation is handled within CustomChat's own useAgentChat.
   const { currentChatTitle } = useAgentChat({
     agentId: selectedChat.agentCode || DEFAULT_AGENT_ID,
     sessionId: selectedChat.id || undefined,
-    // No onNewSessionCreated needed here as this instance isn't for active chat session management
   });
 
-  // Persist selectedChat in localStorage whenever it changes
+  // Update selectedChat when URL params change
   useEffect(() => {
-    if (selectedChat.id || selectedChat.agentCode && selectedChat.id !== "" && selectedChat.agentCode !== DEFAULT_AGENT_ID) {
+    setSelectedChat({ 
+      id: sessionId || "", 
+      agentCode: agentId || DEFAULT_AGENT_ID 
+    });
+  }, [sessionId, agentId]);
+
+  // Persist selectedChat in localStorage whenever it changes (only for existing sessions)
+  useEffect(() => {
+    if (selectedChat.id && selectedChat.agentCode && selectedChat.id !== "" && selectedChat.agentCode !== DEFAULT_AGENT_ID) {
       chatStorage.setSelectedChat(selectedChat);
     }
   }, [selectedChat]);
@@ -55,13 +64,17 @@ export default function ChatsComponent() {
   };
 
   const handleNewSessionCreated = (newSessionId: string) => {
-    // Only update URL if we started from a generic /chat page (no sessionId in params)
-    // and if the newSessionId is actually new and different from current selectedChat.id
-    if (!params.sessionId && newSessionId && newSessionId !== selectedChat.id) {
+    // Update URL immediately when a new session is created
+    // Since we now create the session before sending the message, we can update the URL right away
+    if (newSessionId && newSessionId !== selectedChat.id) {
       const newPath = `/chat/${newSessionId}${agentId ? `?agentId=${agentId}` : ''}`;
       router.replace(newPath);
-      // Update selectedChat state to reflect the new session ID so the UI is consistent
+      
+      // Update selectedChat state to reflect the new session ID
       setSelectedChat({ id: newSessionId, agentCode: agentId || DEFAULT_AGENT_ID });
+      
+      // Refresh the chat history to include the new session
+      refresh();
     }
   };
 

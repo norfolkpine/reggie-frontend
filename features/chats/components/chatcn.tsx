@@ -29,6 +29,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const {
     messages,
     handleSubmit,
+    uploadFiles, // Destructure the new uploadFiles function
     isLoading,
     error,
     currentDebugMessage,
@@ -75,25 +76,26 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
       );
       if (newFiles.length > 0) {
         setFiles((prev) => [...prev, ...newFiles]);
+        // Trigger immediate upload of new files
+        uploadFiles(newFiles);
       }
     }
-  }, [files]); // Added files to dependency array
+  }, [files, uploadFiles]); // Added uploadFiles to dependency array
 
   const handleFilesDrop = (files: File[]): void => {
     setFiles(prev => [...prev, ...files]);
+    // Trigger immediate upload of new files
+    uploadFiles(files);
   };
 
   const onSubmit = () => {
-    // Ensure that input or files are present before submitting
-    if (!input.trim() && files.length === 0) return;
+    // Ensure that input is present before submitting
+    if (!input.trim()) return;
     
-    handleSubmit(input, files); // Pass files to handleSubmit
+    handleSubmit(input); // Don't pass files since they're already uploaded
     
     setInput(""); // Clear input after sending
-    // Files are cleared by MessageInput after successful upload or handled by useAgentChat
-    // For now, let's clear them here too, assuming successful submission implies files were handled.
-    // This might need adjustment based on how useAgentChat handles file state after submission.
-    setFiles([]);
+    setFiles([]); // Clear files after sending
   };
 
   const handleCopy = async (text: string, messageId: string) => {
@@ -249,7 +251,18 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                   files={files}
                   setFiles={(newFiles) => {
                     if (Array.isArray(newFiles)) {
+                      const currentFiles = files || [];
+                      const addedFiles = newFiles.filter(newFile => 
+                        !currentFiles.some(existingFile => 
+                          existingFile.name === newFile.name && 
+                          existingFile.size === newFile.size
+                        )
+                      );
                       setFiles([...newFiles]);
+                      // Trigger immediate upload of newly added files
+                      if (addedFiles.length > 0) {
+                        uploadFiles(addedFiles);
+                      }
                     } else {
                       setFiles([]);
                     }

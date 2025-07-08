@@ -29,6 +29,7 @@ interface UseAgentChatProps {
 interface UseAgentChatReturn {
   messages: Message[];
   handleSubmit: (value?: string, files?: File[]) => void; // Added files parameter
+  uploadFiles: (files: File[]) => Promise<void>; // New function for immediate file uploads
   isLoading: boolean;
   error: string | null;
   currentDebugMessage: string | null;
@@ -118,19 +119,78 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     };
   }, [ssid]);
 
+  const uploadFiles = useCallback(async (filesToUpload: File[]) => {
+    if (!filesToUpload || filesToUpload.length === 0) return;
+    
+    // Create session first if it doesn't exist
+    let tempSessionId = internalSessionId;
+    if (!sessionCreated || !tempSessionId) {
+      try {
+        setCurrentChatTitle("New Chat"); 
+        const session = await createChatSession({ agent_id: agentId });
+        tempSessionId = session.session_id;
+        setInternalSessionId(tempSessionId);
+        setSessionCreated(true);
+        isNewConversationRef.current = true; 
+        if (onNewSessionCreated && tempSessionId) {
+          onNewSessionCreated(tempSessionId);
+        }
+      } catch (sessionError) {
+        console.error('Failed to create chat session:', sessionError);
+        setError('Failed to create chat session. Please check your connection and try again.');
+        return;
+      }
+    }
+
+    setIsUploadingFiles(true);
+    const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
+      file,
+      status: 'pending',
+    }));
+    setFileUploads(initialFileUploadStates);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file, index) => {
+        setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
+        try {
+          await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
+          return { success: true, file };
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${file.name}:`, uploadError);
+          const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
+          return { success: false, file, error: errorMessage };
+        }
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const failedUploads = uploadResults.filter(result => !result.success);
+
+      if (failedUploads.length > 0) {
+        setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
+      }
+    } catch (e) {
+      console.error('Error during file upload orchestration:', e);
+      setError('A general error occurred during file uploads.');
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  }, [agentId, sessionCreated, internalSessionId, onNewSessionCreated]);
+
   const handleSubmit = useCallback(async (value?: string, filesToUpload?: File[]) => {
-    if ((!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) || (isLoading && !isInitializing)) return;
+    if (!value?.trim() || (isLoading && !isInitializing)) return;
     
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     
     setError(null);
-    setFileUploads([]); // Reset file uploads for this submission
     if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     setCurrentDebugMessage(null);
 
     let tempSessionId = internalSessionId;
 
+    // Create session first if it doesn't exist
     if (!sessionCreated || !tempSessionId) {
       setIsLoading(true); 
       try {
@@ -151,61 +211,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       }
     }
 
-    // Handle file uploads first if files are provided
-    if (filesToUpload && filesToUpload.length > 0 && tempSessionId) {
-      setIsUploadingFiles(true);
-      const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
-        file,
-        status: 'pending',
-      }));
-      setFileUploads(initialFileUploadStates);
-
-      try {
-        const uploadPromises = filesToUpload.map(async (file, index) => {
-          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
-          try {
-            await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
-            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
-            return { success: true, file };
-          } catch (uploadError) {
-            console.error(`Failed to upload file ${file.name}:`, uploadError);
-            const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
-            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
-            return { success: false, file, error: errorMessage };
-          }
-        });
-
-        const uploadResults = await Promise.all(uploadPromises);
-        const failedUploads = uploadResults.filter(result => !result.success);
-
-        if (failedUploads.length > 0) {
-          setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
-          setIsUploadingFiles(false);
-          setIsLoading(false); // Also set overall loading to false
-          return; // Stop if any file upload fails
-        }
-      } catch (e) {
-          // This catch is for errors in the Promise.all orchestration itself, though individual errors are handled above.
-          console.error('Error during file upload orchestration:', e);
-          setError('A general error occurred during file uploads.');
-          setIsUploadingFiles(false);
-          setIsLoading(false);
-          return;
-      } finally {
-        setIsUploadingFiles(false);
-      }
-    }
-
-    // Proceed with sending the message if there's text input or if files were uploaded successfully (even if text is empty)
-    if (!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) {
-      // This case should ideally be caught by the initial guard, but as a safety net.
-      // If no text and no files, and somehow passed the initial guard (e.g. files were present but all failed to upload and error was cleared),
-      // we might not want to proceed. However, current logic proceeds if files were successfully uploaded.
-      // If only files were "sent" and no text, the backend will receive an empty message.
-      // This behavior might need refinement based on product requirements.
-    }
-
-
+    // Now that we have a session, add the user message to the UI
     const userMessageContent = value ?? "";
     const userMessage: Message = {
       id: uuidv4(),
@@ -351,6 +357,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     } finally {
       setIsLoading(false); // General loading state for agent response
       setIsAgentResponding(false); // Ensure this is false at the end
+      
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
         catch (e) { console.error('Error releasing reader lock:', e); }
@@ -358,11 +365,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding]);
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated]);
   
   return {
     messages,
     handleSubmit,
+    uploadFiles,
     isLoading: isLoading || isInitializing || isUploadingFiles, // Combined loading state
     error,
     currentDebugMessage,

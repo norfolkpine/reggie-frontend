@@ -65,6 +65,8 @@ interface FileUploadOptions {
   auto_ingest?: boolean;
   is_global?: boolean;
   knowledgebase_id?: string;
+  is_ephemeral?: boolean;
+  session_id?: string;
 }
 
 export const uploadFiles = async (files: globalThis.File[], options?: FileUploadOptions) => {

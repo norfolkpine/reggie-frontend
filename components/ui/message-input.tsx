@@ -176,7 +176,7 @@ export function MessageInput({
     props.allowAttachments && props.files && props.files.length > 0
 
   useAutosizeTextArea({
-    ref: textAreaRef,
+    ref: textAreaRef as React.RefObject<HTMLTextAreaElement>,
     maxHeight: 240,
     borderWidth: 1,
     dependencies: [props.value, showFileList],
@@ -233,7 +233,7 @@ export function MessageInput({
                     const isCurrentlyUploading = uploadStatus?.status === 'uploading';
                     // Disable removal if overall generating (agent responding OR any file uploading)
                     // OR if this specific file is uploading.
-                    const isRemovalDisabled = props.isGenerating || isCurrentlyUploading;
+                    const isRemovalDisabled = isGenerating || isCurrentlyUploading;
 
                     return (
                       <FilePreview
