@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 
 import { useCunninghamTheme } from '@/cunningham';
 import { useResponsiveStore } from '@/stores/';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '@/contexts/auth-context';
 
 
 /**
@@ -48,10 +49,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             'status' in error &&
             error.status === 401
           ) {
+            // Clear auth state and redirect to sign-in
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            
             void queryClient.resetQueries({
               queryKey: [],
             });
-            void replace(`/401`);
+            void replace('/sign-in');
           }
         },
       },

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/collapsible"
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
+import { AgentThinking } from "@/components/ui/agent-thinking"
 
 const chatBubbleVariants = cva(
   "group/message relative break-words rounded-lg p-3 text-sm sm:max-w-[70%]",
@@ -67,7 +68,7 @@ interface PartialToolCall {
   toolName: string
 }
 
-interface ToolCall {
+interface LegacyToolCall {
   state: "call"
   toolName: string
 }
@@ -81,7 +82,7 @@ interface ToolResult {
   }
 }
 
-type ToolInvocation = PartialToolCall | ToolCall | ToolResult
+type ToolInvocation = PartialToolCall | LegacyToolCall | ToolResult
 
 interface ReasoningPart {
   type: "reasoning"
@@ -130,6 +131,28 @@ export interface Message {
   experimental_attachments?: Attachment[]
   toolInvocations?: ToolInvocation[]
   parts?: MessagePart[]
+  toolCalls?: ToolCall[]
+  reasoningSteps?: ReasoningStep[]
+}
+
+interface ToolCall {
+  id: string;
+  toolName: string;
+  toolArgs: any;
+  status: 'started' | 'completed' | 'error';
+  result?: any;
+  error?: string;
+  startTime?: number;
+  endTime?: number;
+}
+
+interface ReasoningStep {
+  title: string;
+  reasoning: string;
+  action?: string;
+  result?: string;
+  nextAction?: string;
+  confidence?: number;
 }
 
 export interface ChatMessageProps extends Message {
@@ -148,6 +171,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   experimental_attachments,
   toolInvocations,
   parts,
+  toolCalls,
+  reasoningSteps,
 }) => {
   const files = useMemo(() => {
     return experimental_attachments?.map((attachment) => {
@@ -198,79 +223,94 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     )
   }
 
-  if (parts && parts.length > 0) {
-    return parts.map((part, index) => {
-      if (part.type === "text") {
-        return (
-          <div
-            className={cn(
-              "flex flex-col",
-              isUser ? "items-end" : "items-start"
-            )}
-            key={`text-${index}`}
-          >
-            <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-              <MarkdownRenderer>{part.text}</MarkdownRenderer>
-              {actions ? (
-                <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm">
-                  {actions}
-                </div>
-              ) : null}
-            </div>
+  // For assistant messages, show the thinking process and tool calls
+  return (
+    <div className="flex flex-col items-start space-y-3">
+      {/* Agent Thinking Process - Moved above content */}
+      {((toolCalls && toolCalls.length > 0) || (reasoningSteps && reasoningSteps.length > 0)) && (
+        <AgentThinking 
+          toolCalls={toolCalls} 
+          reasoningSteps={reasoningSteps}
+          isActive={false}
+        />
+      )}
 
-            {showTimeStamp && createdAt ? (
-              <time
-                dateTime={createdAt.toISOString()}
+      {/* Legacy parts support */}
+      {parts && parts.length > 0 ? (
+        parts.map((part, index) => {
+          if (part.type === "text") {
+            return (
+              <div
                 className={cn(
-                  "mt-1 block px-1 text-xs opacity-50",
-                  animation !== "none" && "duration-500 animate-in fade-in-0"
+                  "flex flex-col",
+                  isUser ? "items-end" : "items-start"
                 )}
+                key={`text-${index}`}
               >
-                {formattedTime}
-              </time>
+                <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+                  <MarkdownRenderer>{part.text}</MarkdownRenderer>
+                  {actions ? (
+                    <div className="absolute -bottom-8 left-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
+                      {actions}
+                    </div>
+                  ) : null}
+                </div>
+
+                {showTimeStamp && createdAt ? (
+                  <time
+                    dateTime={createdAt.toISOString()}
+                    className={cn(
+                      "mt-1 block px-1 text-xs opacity-50",
+                      animation !== "none" && "duration-500 animate-in fade-in-0"
+                    )}
+                  >
+                    {formattedTime}
+                  </time>
+                ) : null}
+              </div>
+            )
+          } else if (part.type === "reasoning") {
+            return <ReasoningBlock key={`reasoning-${index}`} part={part} />
+          } else if (part.type === "tool-invocation") {
+            return (
+              <ToolCall
+                key={`tool-${index}`}
+                toolInvocations={[part.toolInvocation]}
+              />
+            )
+          }
+          return null
+        })
+      ) : (
+        // Main content message
+        <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+          <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+            <MarkdownRenderer>{content}</MarkdownRenderer>
+            {actions ? (
+              <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
+                {actions}
+              </div>
             ) : null}
           </div>
-        )
-      } else if (part.type === "reasoning") {
-        return <ReasoningBlock key={`reasoning-${index}`} part={part} />
-      } else if (part.type === "tool-invocation") {
-        return (
-          <ToolCall
-            key={`tool-${index}`}
-            toolInvocations={[part.toolInvocation]}
-          />
-        )
-      }
-      return null
-    })
-  }
 
-  if (toolInvocations && toolInvocations.length > 0) {
-    return <ToolCall toolInvocations={toolInvocations} />
-  }
+          {showTimeStamp && createdAt ? (
+            <time
+              dateTime={createdAt.toISOString()}
+              className={cn(
+                "mt-1 block px-1 text-xs opacity-50",
+                animation !== "none" && "duration-500 animate-in fade-in-0"
+              )}
+            >
+              {formattedTime}
+            </time>
+          ) : null}
+        </div>
+      )}
 
-  return (
-    <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-      <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-        <MarkdownRenderer>{content}</MarkdownRenderer>
-        {actions ? (
-          <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm">
-            {actions}
-          </div>
-        ) : null}
-      </div>
-
-      {showTimeStamp && createdAt ? (
-        <time
-          dateTime={createdAt.toISOString()}
-          className={cn(
-            "mt-1 block px-1 text-xs opacity-50",
-            animation !== "none" && "duration-500 animate-in fade-in-0"
-          )}
-        >
-          {formattedTime}
-        </time>
-      ) : null}
+      {/* Legacy tool invocations support */}
+      {toolInvocations && toolInvocations.length > 0 && (
+        <ToolCall toolInvocations={toolInvocations} />
+      )}
     </div>
   )
 }

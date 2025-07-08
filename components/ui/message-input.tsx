@@ -119,24 +119,50 @@ export function MessageInput({
     if (!items) return
 
     const text = event.clipboardData.getData("text")
-    if (text && text.length > 500 && props.allowAttachments) {
-      event.preventDefault()
-      const blob = new Blob([text], { type: "text/plain" })
-      const file = new File([blob], "Pasted text", {
-        type: "text/plain",
-        lastModified: Date.now(),
-      })
-      addFiles([file])
-      return
-    }
-
+    
+    // Check if there are files in the clipboard
     const files = Array.from(items)
       .map((item) => item.getAsFile())
       .filter((file) => file !== null)
 
+    // If there are files and attachments are allowed, handle them
     if (props.allowAttachments && files.length > 0) {
       addFiles(files)
+      return
     }
+
+    // Only treat text as a file attachment if it looks like file content
+    // (e.g., contains code, has specific formatting, etc.)
+    if (text && text.length > 500 && props.allowAttachments) {
+      // Check if the text looks like it should be a file attachment
+      const looksLikeFile = 
+        text.includes('```') || // Code blocks
+        text.includes('function') || // Code
+        text.includes('import ') || // Code imports
+        text.includes('export ') || // Code exports
+        text.includes('class ') || // Code classes
+        text.includes('const ') || // Code constants
+        text.includes('let ') || // Code variables
+        text.includes('var ') || // Code variables
+        text.includes('<?xml') || // XML content
+        text.includes('<!DOCTYPE') || // HTML content
+        text.includes('<html') || // HTML content
+        text.includes('{') && text.includes('}') && text.length > 1000; // JSON-like content
+
+      if (looksLikeFile) {
+        event.preventDefault()
+        const blob = new Blob([text], { type: "text/plain" })
+        const file = new File([blob], "Pasted text", {
+          type: "text/plain",
+          lastModified: Date.now(),
+        })
+        addFiles([file])
+        return
+      }
+    }
+
+    // For normal text pasting (including long messages), let the default behavior happen
+    // Don't call event.preventDefault() so the text gets pasted normally
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {

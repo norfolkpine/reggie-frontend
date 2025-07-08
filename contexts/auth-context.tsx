@@ -5,6 +5,7 @@ import { User, Login } from "@/types/api";
 import * as authApi from "@/api/auth";
 import { flushSync } from "react-dom";
 import { useEffect } from "react";
+import { setAuthContext } from "@/lib/api-client";
 
 export interface AuthContext {
   isAuthenticated: boolean;
@@ -12,6 +13,7 @@ export interface AuthContext {
   logout: () => Promise<void>;
   user: User | null;
   loading: boolean;
+  handleTokenExpiration: () => void;
 }
 
 const AuthContext = React.createContext<AuthContext | null>(null);
@@ -58,6 +60,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(USER_KEY);
     }
   }
+
+  const handleTokenExpiration = React.useCallback(() => {
+    console.log("Token expired, clearing auth state");
+    setStoredAuth({ access: null, refresh: null }, null);
+    flushSync(() => {
+      setUser(null);
+    });
+    // Redirect to sign-in page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/sign-in';
+    }
+  }, []);
+
+  // Set the auth context reference in the API client
+  React.useEffect(() => {
+    setAuthContext({ handleTokenExpiration });
+  }, [handleTokenExpiration]);
 
   const logout = React.useCallback(async () => {
     try {
@@ -118,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, login, logout, loading }}
+      value={{ isAuthenticated, user, login, logout, loading, handleTokenExpiration }}
     >
       {children}
     </AuthContext.Provider>

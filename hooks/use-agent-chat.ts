@@ -5,12 +5,35 @@ import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from "@/contexts/auth-context";
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant' | 'system';
   feedback?: Feedback[];
+  toolCalls?: ToolCall[];
+  reasoningSteps?: ReasoningStep[];
+}
+
+interface ToolCall {
+  id: string;
+  toolName: string;
+  toolArgs: any;
+  status: 'started' | 'completed' | 'error';
+  result?: any;
+  error?: string;
+  startTime?: number;
+  endTime?: number;
+}
+
+interface ReasoningStep {
+  title: string;
+  reasoning: string;
+  action?: string;
+  result?: string;
+  nextAction?: string;
+  confidence?: number;
 }
 
 export interface FileUploadStatus {
@@ -24,6 +47,7 @@ interface UseAgentChatProps {
   agentId: string;
   sessionId?: string | null;
   onNewSessionCreated?: (newSessionId: string) => void;
+  reasoning?: boolean; // Add reasoning parameter
 }
 
 interface UseAgentChatReturn {
@@ -37,9 +61,11 @@ interface UseAgentChatReturn {
   isAgentResponding: boolean;
   fileUploads: FileUploadStatus[]; // To track file upload status
   isUploadingFiles: boolean; // True if any file is currently uploading
+  currentToolCalls: Map<string, ToolCall>; // Current active tool calls
+  currentReasoningSteps: ReasoningStep[]; // Current reasoning steps
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +81,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
   const [isAgentResponding, setIsAgentResponding] = useState<boolean>(false);
   const [fileUploads, setFileUploads] = useState<FileUploadStatus[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
+  const [currentToolCalls, setCurrentToolCalls] = useState<Map<string, ToolCall>>(new Map());
+  const [currentReasoningSteps, setCurrentReasoningSteps] = useState<ReasoningStep[]>([]);
+
+  const { handleTokenExpiration } = useAuth();
 
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
@@ -240,6 +270,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         agent_id: agentId,
         message: userMessageContent,
         session_id: tempSessionId,
+        reasoning: reasoning, // Add reasoning parameter to payload
       };
 
       const assistantMessageId = `assistant-${uuidv4()}`;
@@ -252,7 +283,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleTokenExpiration();
+          return;
+        }
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");
@@ -293,15 +330,47 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
               if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
                 setCurrentChatTitle(parsedData.title);
+              } else if (parsedData.event === "ToolCallStarted") {
+                // Handle tool call started
+                const toolCall: ToolCall = {
+                  id: parsedData.tool.tool_call_id,
+                  toolName: parsedData.tool.tool_name,
+                  toolArgs: parsedData.tool.tool_args,
+                  status: 'started',
+                  startTime: parsedData.created_at,
+                };
+                setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
+              } else if (parsedData.event === "ToolCallCompleted") {
+                // Handle tool call completed
+                setCurrentToolCalls(prev => {
+                  const newMap = new Map(prev);
+                  const existing = newMap.get(parsedData.tool.tool_call_id);
+                  if (existing) {
+                    newMap.set(parsedData.tool.tool_call_id, {
+                      ...existing,
+                      status: 'completed',
+                      result: parsedData.tool.result,
+                      endTime: parsedData.created_at,
+                    });
+                  }
+                  return newMap;
+                });
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                
+                // Update reasoning steps if available
+                if (parsedData.extra_data?.reasoning_steps) {
+                  setCurrentReasoningSteps(parsedData.extra_data.reasoning_steps);
+                }
                 
                 // Create assistant message only when we start receiving content
                 if (!assistantMessageCreated && tokenPart.trim()) {
                   setMessages(prev => [...prev, { 
                     id: assistantMessageId, 
                     content: tokenPart, 
-                    role: 'assistant' 
+                    role: 'assistant',
+                    toolCalls: Array.from(currentToolCalls.values()),
+                    reasoningSteps: currentReasoningSteps,
                   }]);
                   assistantMessageCreated = true;
                 } else if (assistantMessageCreated) {
@@ -313,7 +382,9 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                       newMessages[lastMessageIndex] = {
                         ...newMessages[lastMessageIndex],
                         content: newMessages[lastMessageIndex].content + tokenPart,
-                        id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
+                        id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id,
+                        toolCalls: Array.from(currentToolCalls.values()),
+                        reasoningSteps: currentReasoningSteps,
                       };
                     }
                     return newMessages;
@@ -358,6 +429,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       setIsLoading(false); // General loading state for agent response
       setIsAgentResponding(false); // Ensure this is false at the end
       
+      // Clear current tool calls and reasoning steps after completion
+      setCurrentToolCalls(new Map());
+      setCurrentReasoningSteps([]);
+      
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
         catch (e) { console.error('Error releasing reader lock:', e); }
@@ -365,7 +440,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated]);
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration]);
   
   return {
     messages,
@@ -378,5 +453,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     isAgentResponding,
     fileUploads,
     isUploadingFiles,
+    currentToolCalls,
+    currentReasoningSteps,
   };
 }

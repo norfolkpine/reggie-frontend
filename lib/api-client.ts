@@ -19,6 +19,25 @@ interface RequestConfig extends RequestInit {
   // method is already inherited from RequestInit
 }
 
+// Global auth context reference - will be set by the auth provider
+let authContext: { handleTokenExpiration: () => void } | null = null;
+
+// Function to set the auth context reference
+export function setAuthContext(context: { handleTokenExpiration: () => void }) {
+  authContext = context;
+}
+
+// Utility function to manually trigger token expiration (for testing)
+export function triggerTokenExpiration() {
+  if (authContext) {
+    authContext.handleTokenExpiration();
+  } else {
+    // Fallback if auth context is not available
+    localStorage.clear();
+    window.location.href = "/sign-in";
+  }
+}
+
 async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
@@ -34,8 +53,14 @@ async function handleResponse(response: Response, httpMethod?: string) {
           });
 
           if (!refreshResponse.ok) {
-            localStorage.clear();
-            window.location.href = "/sign-in";
+            // Use auth context to handle token expiration
+            if (authContext) {
+              authContext.handleTokenExpiration();
+            } else {
+              // Fallback if auth context is not available
+              localStorage.clear();
+              window.location.href = "/sign-in";
+            }
             throw new Error("Refresh token failed");
           }
 
@@ -54,9 +79,23 @@ async function handleResponse(response: Response, httpMethod?: string) {
 
           return handleResponse(retryResponse, httpMethod);
         } catch (error) {
+          // Use auth context to handle token expiration
+          if (authContext) {
+            authContext.handleTokenExpiration();
+          } else {
+            // Fallback if auth context is not available
+            localStorage.clear();
+            window.location.href = "/sign-in";
+          }
+          throw error;
+        }
+      } else {
+        // No refresh token available, redirect to sign-in
+        if (authContext) {
+          authContext.handleTokenExpiration();
+        } else {
           localStorage.clear();
           window.location.href = "/sign-in";
-          throw error;
         }
       }
     }

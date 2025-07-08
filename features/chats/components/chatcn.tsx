@@ -20,6 +20,10 @@ import MessageActions from "./message-actions";
 import { sendUserFeedback } from "../api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
+import { AgentThinking } from "@/components/ui/agent-thinking";
+import { Button } from "@/components/ui/button";
+import { Brain, Lightbulb } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface CustomChatProps {
   agentId: string;
@@ -29,6 +33,16 @@ interface CustomChatProps {
 }
 
 export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated }: CustomChatProps) {
+  const { toast } = useToast();
+  const [input, setInput] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
+  const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
+
   const {
     messages,
     handleSubmit,
@@ -40,20 +54,14 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     isAgentResponding,
     fileUploads, // Destructure new state
     isUploadingFiles, // Destructure new state
+    currentToolCalls, // Add this from useAgentChat
+    currentReasoningSteps, // Add this from useAgentChat
   } = useAgentChat({
     agentId,
     sessionId,
-    onNewSessionCreated
+    onNewSessionCreated,
+    reasoning: reasoningEnabled, // Pass reasoning state to hook
   });
-
-  const { toast } = useToast();
-  const [input, setInput] = useState("");
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
-  const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -96,19 +104,70 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     // Ensure that input is present before submitting
     if (!input.trim()) return;
     
-    handleSubmit(input); // Don't pass files since they're already uploaded
+    handleSubmit(input); // Remove manual reasoning text addition
     
     setInput(""); // Clear input after sending
     setFiles([]); // Clear files after sending
   };
 
   const handleCopy = async (text: string, messageId: string) => {
+    const copyToClipboard = async (text: string) => {
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text)
+          return true
+        } catch (err) {
+          console.warn('Clipboard API failed, trying fallback method:', err)
+        }
+      }
+
+      // Fallback method using a temporary textarea
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          return true
+        } else {
+          throw new Error('execCommand copy failed')
+        }
+      } catch (err) {
+        console.error('Fallback copy method failed:', err)
+        return false
+      }
+    }
+
     try {
-      await navigator.clipboard.writeText(text);
-      setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
+      const success = await copyToClipboard(text)
+      
+      if (success) {
+        setCopiedMessageId(messageId);
+        toast({
+          title: "Copied to clipboard!",
+          duration: 2000,
+        });
+        setTimeout(() => setCopiedMessageId(null), 2000);
+      } else {
+        throw new Error('Copy failed')
+      }
     } catch (err) {
       console.error('Failed to copy text: ', err);
+      toast({
+        title: "Failed to copy to clipboard",
+        description: "Please try selecting and copying the text manually",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   };
 
@@ -270,6 +329,21 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                   return {};
                 }}
               />
+              
+              {/* Live Thinking Indicator */}
+              {isAgentResponding && (currentToolCalls.size > 0 || currentReasoningSteps.length > 0) && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4"
+                >
+                  <AgentThinking 
+                    toolCalls={Array.from(currentToolCalls.values())}
+                    reasoningSteps={currentReasoningSteps}
+                    isActive={true}
+                  />
+                </motion.div>
+              )}
             </div>
           </ChatMessages>
         )}
@@ -294,6 +368,32 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
           )}
           
           <div className="max-w-3xl mx-auto w-full p-4">
+            {/* Reasoning Toggle */}
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                type="button"
+                variant={reasoningEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setReasoningEnabled(!reasoningEnabled)}
+                className="flex items-center gap-2"
+                disabled={isLoading || isTyping}
+              >
+                {reasoningEnabled ? <Brain className="h-4 w-4" /> : <Lightbulb className="h-4 w-4" />}
+                {reasoningEnabled ? "Reasoning Enabled" : "Enable Reasoning"}
+              </Button>
+              {reasoningEnabled && (
+                <span className="text-xs text-muted-foreground">
+                  Agent will show its thinking process and tool usage
+                </span>
+              )}
+              {isAgentResponding && reasoningEnabled && (
+                <div className="flex items-center gap-1 text-xs text-blue-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span>Showing reasoning...</span>
+                </div>
+              )}
+            </div>
+
             <ChatForm
               isPending={isLoading || isTyping}
               handleSubmit={(event) => {

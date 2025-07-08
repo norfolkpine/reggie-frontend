@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, BookOpen, Pencil, MoreHorizontal, Send } from "lucide-react";
+import { Check, Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, BookOpen, Pencil, MoreHorizontal, Send, Square } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { IconBrandGoogleDrive } from "@tabler/icons-react";
 import { FeedbackForm } from "./feedback-form";
+import { ActionButton } from "./action-button";
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 
 export interface MessageActionsProps {
     messageId: string;
@@ -34,6 +36,7 @@ export default function MessageActions({
     const [localBad, setLocalBad] = useState<boolean>(false);
     const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
     const [feedbackType, setFeedbackType] = useState<'good' | 'bad'>('bad');
+    const { isPlaying, play, stop } = useSpeechSynthesis({});
 
     useEffect(() => {
         if (isGood !== localGood) setLocalGood(isGood);
@@ -62,69 +65,58 @@ export default function MessageActions({
         }
     };
 
+    const handleReadAloud = () => {
+        if (isPlaying) {
+            stop();
+        } else {
+            play(content);
+        }
+    };
+
     const showGood = localGood || isGood;
     const showBad = localBad || isBad;
 
     return (
       <>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+        <div className="flex items-center gap-2 relative z-10">
+          <ActionButton
+            icon={Copy}
+            activeIcon={Check}
+            isActive={copiedMessageId === messageId}
             onClick={() => onCopy(content, messageId)}
             title="Copy to clipboard"
-          >
-            {copiedMessageId === messageId ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
-            title="Good response"
+          />
+          <ActionButton
+            icon={ThumbsUp}
+            isActive={showGood}
             onClick={handleGood}
-          >
-            <ThumbsUp className="h-4 w-4" style={{ fill: showGood ? '#eab308' : 'none' }} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
-            title="Bad response"
+            title="Good response"
+            className={showGood ? "text-yellow-500 hover:text-yellow-600" : ""}
+          />
+          <ActionButton
+            icon={ThumbsDown}
+            isActive={showBad}
             onClick={handleBad}
-          >
-            <ThumbsDown className="h-4 w-4" style={{ fill: showBad ? '#eab308' : 'none' }} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            title="Read aloud"
-          >
-            <Volume2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            title="Bad response"
+            className={showBad ? "text-yellow-500 hover:text-yellow-600" : ""}
+          />
+          <ActionButton
+            icon={Volume2}
+            activeIcon={Square}
+            isActive={isPlaying}
+            onClick={handleReadAloud}
+            title={isPlaying ? "Stop reading" : "Read aloud"}
+          />
+          <ActionButton
+            icon={RefreshCw}
             title="Regenerate response"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          />
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              <ActionButton
+                icon={Send}
                 title="Send to..."
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+              />
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2">
               <div className="flex flex-col gap-2">
@@ -147,33 +139,27 @@ export default function MessageActions({
               </div>
             </PopoverContent>
           </Popover>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          <ActionButton
+            icon={Pencil}
             onClick={() => onOpenCanvas(messageId)}
             title="Open canvas"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          />
+          <ActionButton
+            icon={MoreHorizontal}
             title="More actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          />
         </div>
-        
-        <FeedbackForm
-          isOpen={showFeedbackForm}
-          onClose={() => setShowFeedbackForm(false)}
-          onSubmit={handleFeedbackSubmit}
-          messageId={messageId}
-          feedbackType={feedbackType}
-        />
+
+        {showFeedbackForm && (
+          <FeedbackForm
+            isOpen={showFeedbackForm}
+            onClose={() => setShowFeedbackForm(false)}
+            onSubmit={handleFeedbackSubmit}
+            messageId={messageId}
+            feedbackType={feedbackType}
+          />
+        )}
       </>
     );
-  }
+}
   

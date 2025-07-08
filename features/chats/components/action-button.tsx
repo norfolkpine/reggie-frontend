@@ -33,7 +33,7 @@ export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProp
       size="icon"
       onClick={onClick}
       className={cn(
-        "h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+        "h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 relative z-10",
         isActive && "text-primary hover:text-primary hover:bg-primary/10",
         className
       )}
