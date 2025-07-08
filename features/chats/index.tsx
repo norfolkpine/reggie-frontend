@@ -6,11 +6,12 @@ import { Plus } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
 
 export default function ChatsComponent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
   const params = useParams();
@@ -31,8 +32,8 @@ export default function ChatsComponent() {
   };
 
   const handleNewChat = () => {
-    // Reset to default agent with no session ID for a new conversation
-    setSelectedChat({ id: "", agentCode: DEFAULT_AGENT_ID });
+    // Navigate to agent selection page
+    router.push("/agent");
   };
 
   return (
@@ -42,8 +43,8 @@ export default function ChatsComponent() {
         <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
           {currentChatTitle || "Chat"}
         </div>
-        <Button size="icon" variant="outline" onClick={handleNewChat}>
-          <Plus className="h-4 w-4" />
+        <Button size="sm" variant="outline" onClick={handleNewChat}>
+          Change Agent
         </Button>
       </div>
       {/* Content Row */}
