@@ -40,13 +40,15 @@ import {
 
 // Import the TeamSwitcher component at the top of the file
 import { TeamSwitcher } from "@/components/team/team-switcher";
-import { CreateProjectDialog } from "@/features/project/components/create-project-dialog";
+import { CreateProjectDialog } from "@/features/vault/components/create-project-dialog";
 import { usePathname, useRouter } from "next/navigation";
 import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
+import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
+import { Input } from "@/components/ui/input";
 
 
 const FolderShieldIcon = () => (
@@ -110,6 +112,11 @@ export default function Sidebar() {
     null
   );
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  // Use ChatSessionContext instead of manual fetching
+  const { chatSessions, deleteSession, renameSession } = useChatSessionContext();
 
   // Define navigationItems inside the component so it has access to setCreateProjectOpen
   // Update the navigationItems definition inside the component
@@ -129,6 +136,28 @@ export default function Sidebar() {
 
   const handleHistoryItemClick = (sessionId: string) => {
     router.push(`/chat/${sessionId}`);
+  };
+
+  const handleRename = (sessionId: string, currentTitle: string) => {
+    setEditingSessionId(sessionId);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleRenameSave = async () => {
+    if (editingSessionId && editingTitle.trim()) {
+      await renameSession(editingSessionId, editingTitle.trim());
+      setEditingSessionId(null);
+      setEditingTitle("");
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setEditingSessionId(null);
+    setEditingTitle("");
+  };
+
+  const handleDelete = async (sessionId: string) => {
+    await deleteSession(sessionId);
   };
 
   const renderIcon = (icon: ChatItem["icon"]) => {
@@ -163,30 +192,6 @@ export default function Sidebar() {
       });
     }
   };
-
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [errorSessions, setErrorSessions] = useState<string | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const { isAuthenticated } = useAuth();
-
-  const fetchChatSessions = async () => {
-    if (!isAuthenticated) return;
-    setIsLoadingSessions(true);
-    setErrorSessions(null);
-    try {
-      const response = await getChatSessions();
-      setChatSessions(response.results);
-    } catch (err) {
-      console.error("Failed to fetch chat sessions:", err);
-      setErrorSessions("Failed to load chat sessions");
-    } finally {
-      setIsLoadingSessions(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChatSessions();
-  }, []);
 
   return (
     <div
@@ -285,7 +290,25 @@ export default function Sidebar() {
                   onMouseEnter={() => setHoveredHistoryItem(item.session_id)}
                   onMouseLeave={() => setHoveredHistoryItem(null)}
                 >
-                  <span className="text-sm truncate flex-1">{item.title}</span>
+                  {editingSessionId === item.session_id ? (
+                    <Input
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleRenameSave();
+                        } else if (e.key === 'Escape') {
+                          handleRenameCancel();
+                        }
+                      }}
+                      onBlur={handleRenameSave}
+                      className="text-sm flex-1 mr-2"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="text-sm truncate flex-1">{item.title}</span>
+                  )}
 
                   {hoveredHistoryItem === item.session_id && (
                     <DropdownMenu>
@@ -294,29 +317,40 @@ export default function Sidebar() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 rounded-full"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem className="cursor-pointer">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHistoryItemClick(item.session_id);
+                          }}
+                        >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           <span>Continue Chat</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Star className="h-4 w-4 mr-2" />
-                          <span>Add to Favorites</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(item.session_id, item.title);
+                          }}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           <span>Rename</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Share2 className="h-4 w-4 mr-2" />
-                          <span>Share</span>
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer text-red-600">
+                        <DropdownMenuItem 
+                          className="cursor-pointer text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.session_id);
+                          }}
+                        >
                           <Trash className="h-4 w-4 mr-2" />
                           <span>Delete from History</span>
                         </DropdownMenuItem>
