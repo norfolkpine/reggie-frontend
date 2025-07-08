@@ -31,7 +31,7 @@ const AgentChatDock = memo(function AgentChatDock({
   onSelectChat?: (chatId: string, agentCode?: string | null) => void
   onNewChat?: () => void
 }) {
-  const [activeTab, setActiveTab] = useState<DockTab | null>("current")
+  const [activeTab, setActiveTab] = useState<DockTab | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
 

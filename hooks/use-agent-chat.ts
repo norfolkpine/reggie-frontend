@@ -237,7 +237,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       };
 
       const assistantMessageId = `assistant-${uuidv4()}`;
-      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
+      // Don't create empty assistant message here - wait for actual content
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
@@ -254,6 +254,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
       const decoder = new TextDecoder();
       let dataContentForDoneCheck = '';
+      let assistantMessageCreated = false;
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -288,19 +289,32 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 setCurrentChatTitle(parsedData.title);
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                
+                // Create assistant message only when we start receiving content
+                if (!assistantMessageCreated && tokenPart.trim()) {
+                  setMessages(prev => [...prev, { 
+                    id: assistantMessageId, 
+                    content: tokenPart, 
+                    role: 'assistant' 
+                  }]);
+                  assistantMessageCreated = true;
+                } else if (assistantMessageCreated) {
+                  // Update existing assistant message
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        content: newMessages[lastMessageIndex].content + tokenPart,
+                        id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
+                
                 if (isAgentResponding) setIsAgentResponding(false);
-                setMessages(prevMessages => {
-                  const newMessages = [...prevMessages];
-                  const lastMessageIndex = newMessages.length - 1;
-                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
-                    newMessages[lastMessageIndex] = {
-                      ...newMessages[lastMessageIndex],
-                      content: newMessages[lastMessageIndex].content + tokenPart,
-                      id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
-                    };
-                  }
-                  return newMessages;
-                });
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               } else {
@@ -322,10 +336,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         setMessages(prev => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
-            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
-          } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
+          // If no assistant message was created yet, or if the last message is a user message, add an error message
+          if (lastIndex < 0 || newMessages[lastIndex].role === 'user') {
             newMessages.push({ id: uuidv4(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
+          } else if (newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
+            // If we have an empty assistant message, update it with the error
+            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
           }
           return newMessages;
         });

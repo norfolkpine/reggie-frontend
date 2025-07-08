@@ -51,7 +51,7 @@ export default function MessageActions({
     const showBad = localBad || isBad;
 
     return (
-      <div className="flex items-center gap-2 mt-2 -mb-1">
+      <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"

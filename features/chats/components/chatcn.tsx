@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -16,6 +16,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { MarkdownComponents } from "./markdown-component";
 import { DragDropOverlay } from "./File/DragDropOverlayVisible";
+import MessageActions from "./message-actions";
 
 interface CustomChatProps {
   agentId: string;
@@ -38,7 +39,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   } = useAgentChat({
     agentId,
     sessionId,
-    onTitleChange: onTitleUpdate,
     onNewSessionCreated
   });
 
@@ -46,6 +46,9 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
+  const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -93,6 +96,42 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     setFiles([]);
   };
 
+  const handleCopy = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleSend = (destination: 'google-drive' | 'journal', text: string, messageId: string) => {
+    // TODO: Implement sending to Google Drive or Journal
+    console.log(`Sending to ${destination}:`, text, messageId);
+  };
+
+  const handleOpenCanvas = (messageId: string) => {
+    // TODO: Implement canvas opening functionality
+    console.log('Opening canvas for message:', messageId);
+  };
+
+  const handleGoodResponse = (messageId: string) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: { isGood: true, isBad: false }
+    }));
+    // TODO: Send feedback to backend
+  };
+
+  const handleBadResponse = (messageId: string) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: { isGood: false, isBad: true }
+    }));
+    // TODO: Send feedback to backend
+  };
+
   const isEmpty = messages.length === 0;
   const lastMessage = messages.at(-1);
   
@@ -100,6 +139,13 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   // there's no content yet (empty assistant message) or no assistant message at all
   const hasAssistantMessageWithContent = lastMessage?.role === 'assistant' && lastMessage.content.trim().length > 0;
   const isTyping = isAgentResponding && !hasAssistantMessageWithContent;
+
+  // Mark the last assistant message as completed when agent stops responding
+  useEffect(() => {
+    if (!isAgentResponding && lastMessage?.role === 'assistant' && lastMessage.content.trim().length > 0) {
+      setCompletedMessages(prev => new Set([...prev, lastMessage.id]));
+    }
+  }, [isAgentResponding, lastMessage]);
 
   return (
     <ChatContainer className="max-w-full h-full">
@@ -125,7 +171,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
           <div className="flex-1 flex items-center justify-center p-8">
             <PromptSuggestions
               label="Try these prompts ✨"
-              className="w-full max-w-2xl mx-auto"
               append={(message) => {
                 setInput(message.content);
                 handleSubmit(message.content);
@@ -137,55 +182,32 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         )}
 
         {!isEmpty && (
-          <ChatMessages className="flex-1 p-4 overflow-y-auto">
+          <ChatMessages messages={messages}>
             <div className="max-w-3xl mx-auto w-full py-4">
               <MessageList 
                 messages={messages} 
                 isTyping={isTyping}
-                customComponents={{
-                  message: ({ message }) => {
-                    if (message.role === 'assistant') {
-                      return (
-                        <div className="prose prose-sm dark:prose-invert max-w-none custom-markdown">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight]}
-                            components={{
-                              ...MarkdownComponents,
-                              // Override heading styles to match BlockNote specs
-                              h1: ({ children, ...props }) => (
-                                <h1 
-                                  className="text-[32px] leading-[1.5] mb-[1rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h1>
-                              ),
-                              h2: ({ children, ...props }) => (
-                                <h2 
-                                  className="text-[24px] leading-[1.5] mb-[0.75rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h2>
-                              ),
-                              h3: ({ children, ...props }) => (
-                                <h3 
-                                  className="text-[18.7px] leading-[1.5] mb-[0.6rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h3>
-                              )
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      );
-                    }
-                    return null; // Default rendering for user messages
+                messageOptions={(message) => {
+                  if (message.role === 'assistant' && completedMessages.has(message.id)) {
+                    const feedback = messageFeedback[message.id] || {};
+                    return {
+                      actions: (
+                        <MessageActions
+                          messageId={message.id}
+                          content={message.content}
+                          onCopy={handleCopy}
+                          copiedMessageId={copiedMessageId}
+                          onSend={handleSend}
+                          onOpenCanvas={handleOpenCanvas}
+                          isGood={feedback.isGood}
+                          isBad={feedback.isBad}
+                          onGoodResponse={handleGoodResponse}
+                          onBadResponse={handleBadResponse}
+                        />
+                      )
+                    };
                   }
+                  return {};
                 }}
               />
             </div>
@@ -226,7 +248,11 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                   allowAttachments
                   files={files}
                   setFiles={(newFiles) => {
-                    setFiles(newFiles);
+                    if (Array.isArray(newFiles)) {
+                      setFiles([...newFiles]);
+                    } else {
+                      setFiles([]);
+                    }
                     setFormFiles?.(newFiles);
                   }}
                   stop={() => {
