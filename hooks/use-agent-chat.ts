@@ -5,12 +5,36 @@ import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from "@/contexts/auth-context";
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant' | 'system';
   feedback?: Feedback[];
+  toolCalls?: ToolCall[];
+  reasoningSteps?: ReasoningStep[];
+  experimental_attachments?: { name: string; contentType: string; url: string }[];
+}
+
+interface ToolCall {
+  id: string;
+  toolName: string;
+  toolArgs: any;
+  status: 'started' | 'completed' | 'error';
+  result?: any;
+  error?: string;
+  startTime?: number;
+  endTime?: number;
+}
+
+interface ReasoningStep {
+  title: string;
+  reasoning: string;
+  action?: string;
+  result?: string;
+  nextAction?: string;
+  confidence?: number;
 }
 
 export interface FileUploadStatus {
@@ -23,11 +47,16 @@ export interface FileUploadStatus {
 interface UseAgentChatProps {
   agentId: string;
   sessionId?: string | null;
+  onNewSessionCreated?: (newSessionId: string) => void;
+  onTitleUpdate?: (title: string | null) => void; // Add title update callback
+  onMessageComplete?: () => void; // Add message complete callback
+  reasoning?: boolean; // Add reasoning parameter
 }
 
 interface UseAgentChatReturn {
   messages: Message[];
   handleSubmit: (value?: string, files?: File[]) => void; // Added files parameter
+  uploadFiles: (files: File[]) => Promise<void>; // New function for immediate file uploads
   isLoading: boolean;
   error: string | null;
   currentDebugMessage: string | null;
@@ -35,9 +64,11 @@ interface UseAgentChatReturn {
   isAgentResponding: boolean;
   fileUploads: FileUploadStatus[]; // To track file upload status
   isUploadingFiles: boolean; // True if any file is currently uploading
+  currentToolCalls: Map<string, ToolCall>; // Current active tool calls
+  currentReasoningSteps: ReasoningStep[]; // Current reasoning steps
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +84,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   const [isAgentResponding, setIsAgentResponding] = useState<boolean>(false);
   const [fileUploads, setFileUploads] = useState<FileUploadStatus[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
+  const [currentToolCalls, setCurrentToolCalls] = useState<Map<string, ToolCall>>(new Map());
+  const [currentReasoningSteps, setCurrentReasoningSteps] = useState<ReasoningStep[]>([]);
+
+  const { handleTokenExpiration } = useAuth();
 
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
@@ -85,12 +120,22 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setCurrentChatTitle(sessionDetails.title);
         
         const messageResponse = await getChatSessionMessage(ssid);
-        const formattedMessages = messageResponse.results.map(msg => ({
-          id: msg.id || msg.timestamp?.toString() || uuidv4(),
-          content: msg.content,
-          role: msg.role as 'user' | 'assistant',
-          feedback: msg.feedback
-        }));
+        console.log('🔍 Debug: Raw message response from API:', messageResponse);
+        console.log('🔍 Debug: Message results:', messageResponse.results);
+        
+        const formattedMessages = messageResponse.results.map(msg => {
+          console.log('🔍 Debug: Processing message:', msg);
+          return {
+            id: msg.id || msg.timestamp?.toString() || uuidv4(),
+            content: msg.content,
+            role: msg.role as 'user' | 'assistant',
+            feedback: msg.feedback
+          };
+        });
+        
+        console.log('🔍 Debug: Formatted messages:', formattedMessages);
+        console.log('🔍 Debug: User messages count:', formattedMessages.filter(m => m.role === 'user').length);
+        console.log('🔍 Debug: Assistant messages count:', formattedMessages.filter(m => m.role === 'assistant').length);
         
         setMessages(formattedMessages);
         setInternalSessionId(ssid);
@@ -117,19 +162,79 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     };
   }, [ssid]);
 
+  const uploadFiles = useCallback(async (filesToUpload: File[]) => {
+    if (!filesToUpload || filesToUpload.length === 0) return;
+    
+    // Create session first if it doesn't exist
+    let tempSessionId = internalSessionId;
+    if (!sessionCreated || !tempSessionId) {
+      try {
+        setCurrentChatTitle("New Chat"); 
+        const session = await createChatSession({ agent_id: agentId });
+        tempSessionId = session.session_id;
+        setInternalSessionId(tempSessionId);
+        setSessionCreated(true);
+        isNewConversationRef.current = true; 
+        if (onNewSessionCreated && tempSessionId) {
+          onNewSessionCreated(tempSessionId);
+        }
+      } catch (sessionError) {
+        console.error('Failed to create chat session:', sessionError);
+        setError('Failed to create chat session. Please check your connection and try again.');
+        return;
+      }
+    }
+
+    setIsUploadingFiles(true);
+    const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
+      file,
+      status: 'pending',
+    }));
+    setFileUploads(initialFileUploadStates);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file, index) => {
+        setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
+        try {
+          await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
+          return { success: true, file };
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${file.name}:`, uploadError);
+          const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
+          return { success: false, file, error: errorMessage };
+        }
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const failedUploads = uploadResults.filter(result => !result.success);
+
+      if (failedUploads.length > 0) {
+        setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
+      }
+    } catch (e) {
+      console.error('Error during file upload orchestration:', e);
+      setError('A general error occurred during file uploads.');
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  }, [agentId, sessionCreated, internalSessionId, onNewSessionCreated]);
+
   const handleSubmit = useCallback(async (value?: string, filesToUpload?: File[]) => {
-    if ((!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) || (isLoading && !isInitializing)) return;
+    if (!value?.trim() || (isLoading && !isInitializing)) return;
     
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     
     setError(null);
-    setFileUploads([]); // Reset file uploads for this submission
     if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     setCurrentDebugMessage(null);
 
     let tempSessionId = internalSessionId;
+    let shouldCallOnNewSessionCreated = false;
 
+    // Create session first if it doesn't exist
     if (!sessionCreated || !tempSessionId) {
       setIsLoading(true); 
       try {
@@ -139,6 +244,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setInternalSessionId(tempSessionId);
         setSessionCreated(true);
         isNewConversationRef.current = true; 
+        shouldCallOnNewSessionCreated = true;
+        // Don't call onNewSessionCreated here - we'll call it after message processing is complete
       } catch (sessionError) {
         console.error('Failed to create chat session:', sessionError);
         setError('Failed to create chat session. Please check your connection and try again.');
@@ -147,66 +254,29 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
       }
     }
 
-    // Handle file uploads first if files are provided
-    if (filesToUpload && filesToUpload.length > 0 && tempSessionId) {
-      setIsUploadingFiles(true);
-      const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
-        file,
-        status: 'pending',
-      }));
-      setFileUploads(initialFileUploadStates);
-
-      try {
-        const uploadPromises = filesToUpload.map(async (file, index) => {
-          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
-          try {
-            await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
-            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
-            return { success: true, file };
-          } catch (uploadError) {
-            console.error(`Failed to upload file ${file.name}:`, uploadError);
-            const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
-            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
-            return { success: false, file, error: errorMessage };
-          }
-        });
-
-        const uploadResults = await Promise.all(uploadPromises);
-        const failedUploads = uploadResults.filter(result => !result.success);
-
-        if (failedUploads.length > 0) {
-          setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
-          setIsUploadingFiles(false);
-          setIsLoading(false); // Also set overall loading to false
-          return; // Stop if any file upload fails
-        }
-      } catch (e) {
-          // This catch is for errors in the Promise.all orchestration itself, though individual errors are handled above.
-          console.error('Error during file upload orchestration:', e);
-          setError('A general error occurred during file uploads.');
-          setIsUploadingFiles(false);
-          setIsLoading(false);
-          return;
-      } finally {
-        setIsUploadingFiles(false);
-      }
-    }
-
-    // Proceed with sending the message if there's text input or if files were uploaded successfully (even if text is empty)
-    if (!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) {
-      // This case should ideally be caught by the initial guard, but as a safety net.
-      // If no text and no files, and somehow passed the initial guard (e.g. files were present but all failed to upload and error was cleared),
-      // we might not want to proceed. However, current logic proceeds if files were successfully uploaded.
-      // If only files were "sent" and no text, the backend will receive an empty message.
-      // This behavior might need refinement based on product requirements.
-    }
-
-
+    // Now that we have a session, add the user message to the UI
     const userMessageContent = value ?? "";
+    
+    // Convert files to data URLs for attachments
+    const attachments = filesToUpload && filesToUpload.length > 0 
+      ? await Promise.all(filesToUpload.map(async (file) => {
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const dataUrl = `data:${file.type};base64,${base64}`;
+          return {
+            name: file.name,
+            contentType: file.type,
+            url: dataUrl
+          };
+        }))
+      : undefined;
+    
     const userMessage: Message = {
       id: uuidv4(),
       content: userMessageContent,
-      role: 'user'
+      role: 'user',
+      // Add file attachments if files are provided
+      ...(attachments && { experimental_attachments: attachments })
     };
     
     if (isNewConversationRef.current && messages.length === 0) {
@@ -230,10 +300,11 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         agent_id: agentId,
         message: userMessageContent,
         session_id: tempSessionId,
+        reasoning: reasoning, // Add reasoning parameter to payload
       };
 
       const assistantMessageId = `assistant-${uuidv4()}`;
-      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
+      // Don't create empty assistant message here - wait for actual content
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
@@ -242,7 +313,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleTokenExpiration();
+          return;
+        }
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");
@@ -250,6 +327,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
       const decoder = new TextDecoder();
       let dataContentForDoneCheck = '';
+      let assistantMessageCreated = false;
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -282,21 +360,71 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
 
               if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
                 setCurrentChatTitle(parsedData.title);
+                if (onTitleUpdate) {
+                  onTitleUpdate(parsedData.title);
+                }
+              } else if (parsedData.event === "ToolCallStarted") {
+                // Handle tool call started
+                const toolCall: ToolCall = {
+                  id: parsedData.tool.tool_call_id,
+                  toolName: parsedData.tool.tool_name,
+                  toolArgs: parsedData.tool.tool_args,
+                  status: 'started',
+                  startTime: parsedData.created_at,
+                };
+                setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
+              } else if (parsedData.event === "ToolCallCompleted") {
+                // Handle tool call completed
+                setCurrentToolCalls(prev => {
+                  const newMap = new Map(prev);
+                  const existing = newMap.get(parsedData.tool.tool_call_id);
+                  if (existing) {
+                    newMap.set(parsedData.tool.tool_call_id, {
+                      ...existing,
+                      status: 'completed',
+                      result: parsedData.tool.result,
+                      endTime: parsedData.created_at,
+                    });
+                  }
+                  return newMap;
+                });
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                
+                // Update reasoning steps if available
+                if (parsedData.extra_data?.reasoning_steps) {
+                  setCurrentReasoningSteps(parsedData.extra_data.reasoning_steps);
+                }
+                
+                // Create assistant message only when we start receiving content
+                if (!assistantMessageCreated && tokenPart.trim()) {
+                  setMessages(prev => [...prev, { 
+                    id: assistantMessageId, 
+                    content: tokenPart, 
+                    role: 'assistant',
+                    toolCalls: Array.from(currentToolCalls.values()),
+                    reasoningSteps: currentReasoningSteps,
+                  }]);
+                  assistantMessageCreated = true;
+                } else if (assistantMessageCreated) {
+                  // Update existing assistant message
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        content: newMessages[lastMessageIndex].content + tokenPart,
+                        id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id,
+                        toolCalls: Array.from(currentToolCalls.values()),
+                        reasoningSteps: currentReasoningSteps,
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
+                
                 if (isAgentResponding) setIsAgentResponding(false);
-                setMessages(prevMessages => {
-                  const newMessages = [...prevMessages];
-                  const lastMessageIndex = newMessages.length - 1;
-                  if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
-                    newMessages[lastMessageIndex] = {
-                      ...newMessages[lastMessageIndex],
-                      content: newMessages[lastMessageIndex].content + tokenPart,
-                      id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
-                    };
-                  }
-                  return newMessages;
-                });
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               } else {
@@ -318,10 +446,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
         setMessages(prev => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
-            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
-          } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
+          // If no assistant message was created yet, or if the last message is a user message, add an error message
+          if (lastIndex < 0 || newMessages[lastIndex].role === 'user') {
             newMessages.push({ id: uuidv4(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
+          } else if (newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
+            // If we have an empty assistant message, update it with the error
+            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
           }
           return newMessages;
         });
@@ -331,18 +461,33 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     } finally {
       setIsLoading(false); // General loading state for agent response
       setIsAgentResponding(false); // Ensure this is false at the end
+      
+      // Clear current tool calls and reasoning steps after completion
+      setCurrentToolCalls(new Map());
+      setCurrentReasoningSteps([]);
+      
+      // Call onNewSessionCreated after message processing is complete
+      // This ensures the URL update happens after the message is fully displayed
+      if (onNewSessionCreated && tempSessionId && shouldCallOnNewSessionCreated) {
+        onNewSessionCreated(tempSessionId);
+      }
+      
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
         catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+      if (onMessageComplete) {
+        onMessageComplete();
+      }
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding]);
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
   
   return {
     messages,
     handleSubmit,
+    uploadFiles,
     isLoading: isLoading || isInitializing || isUploadingFiles, // Combined loading state
     error,
     currentDebugMessage,
@@ -350,5 +495,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
     isAgentResponding,
     fileUploads,
     isUploadingFiles,
+    currentToolCalls,
+    currentReasoningSteps,
   };
 }

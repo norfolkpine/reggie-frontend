@@ -17,6 +17,7 @@ import {
   RefreshCw,
   MoreHorizontal,
   BookOpen,
+  Square,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -33,6 +34,9 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { toast } from "@/components/ui/use-toast"
 import CryptoChart from "@/features/chats/components/crypto-chart"
+import { ActionButton } from "@/features/chats/components/action-button"
+import { CopyButton } from "@/components/ui/copy-button"
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis"
 
 // Define markdown components for better styling
 const MarkdownComponents = {
@@ -58,7 +62,7 @@ const MarkdownComponents = {
     return (
       <pre className="code-block relative" {...props}>
         <div className="absolute right-4 top-4">
-          <CopyButton className="copy-btn" value={codeText} />
+          <CopyButton content={codeText} copyMessage="Code copied to clipboard!" />
         </div>
         {props.children}
       </pre>
@@ -96,66 +100,53 @@ interface MessageActionsProps {
 }
 
 function MessageActions({ messageId, content, onCopy, copiedMessageId, onSendToJournal }: MessageActionsProps) {
+  const { isPlaying, play, stop } = useSpeechSynthesis({});
+
+  const handleReadAloud = () => {
+    if (isPlaying) {
+      stop();
+    } else {
+      play(content);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2 mt-2 -mb-1">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+    <div className="flex items-center gap-2 mt-2 -mb-1 relative z-10">
+      <ActionButton
+        icon={Copy}
+        activeIcon={Check}
+        isActive={copiedMessageId === messageId}
         onClick={() => onCopy(content, messageId)}
         title="Copy to clipboard"
-      >
-        {copiedMessageId === messageId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      />
+      <ActionButton
+        icon={ThumbsUp}
         title="Good response"
-      >
-        <ThumbsUp className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      />
+      <ActionButton
+        icon={ThumbsDown}
         title="Bad response"
-      >
-        <ThumbsDown className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-        title="Read aloud"
-      >
-        <Volume2 className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      />
+      <ActionButton
+        icon={Volume2}
+        activeIcon={Square}
+        isActive={isPlaying}
+        onClick={handleReadAloud}
+        title={isPlaying ? "Stop reading" : "Read aloud"}
+      />
+      <ActionButton
+        icon={RefreshCw}
         title="Regenerate response"
-      >
-        <RefreshCw className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      />
+      <ActionButton
+        icon={BookOpen}
         onClick={() => onSendToJournal(content, messageId)}
         title="Send to journal"
-      >
-        <BookOpen className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      />
+      <ActionButton
+        icon={MoreHorizontal}
         title="More actions"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </Button>
+      />
     </div>
   )
 }
@@ -184,24 +175,117 @@ function isCryptoData(content: string): boolean {
 export default function ChatInterface() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [showWelcome, setShowWelcome] = useState(true)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
+  // Improved auto-scroll functionality
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior
+      })
+    }
+  }
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setShowWelcome(false)
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      // Use a small delay to ensure content is rendered
+      const timer = setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [messages])
 
+  // Scroll to bottom when loading state changes (for streaming responses)
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        scrollToBottom()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading])
+
+  // Scroll to bottom immediately when component mounts with messages
+  useEffect(() => {
+    if (messages.length > 0 && !showWelcome) {
+      scrollToBottom("instant")
+    }
+  }, [showWelcome])
+
+  // Additional scroll trigger for content updates
+  useEffect(() => {
+    if (messages.length > 0 && !showWelcome) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+    }
+  }, [messages, showWelcome])
+
   const copyToClipboard = async (text: string, messageId: string) => {
+    const copyToClipboard = async (text: string) => {
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text)
+          return true
+        } catch (err) {
+          console.warn('Clipboard API failed, trying fallback method:', err)
+        }
+      }
+
+      // Fallback method using a temporary textarea
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          return true
+        } else {
+          throw new Error('execCommand copy failed')
+        }
+      } catch (err) {
+        console.error('Fallback copy method failed:', err)
+        return false
+      }
+    }
+
     try {
-      // The text parameter already contains the original markdown content
-      await navigator.clipboard.writeText(text)
-      setCopiedMessageId(messageId)
-      setTimeout(() => setCopiedMessageId(null), 2000)
+      const success = await copyToClipboard(text)
+      
+      if (success) {
+        setCopiedMessageId(messageId)
+        toast({
+          title: "Copied to clipboard!",
+          duration: 2000,
+        })
+        setTimeout(() => setCopiedMessageId(null), 2000)
+      } else {
+        throw new Error('Copy failed')
+      }
     } catch (err) {
       console.error("Failed to copy text: ", err)
+      toast({
+        title: "Failed to copy to clipboard",
+        description: "Please try selecting and copying the text manually",
+        variant: "destructive",
+        duration: 3000,
+      })
     }
   }
 
@@ -264,12 +348,12 @@ export default function ChatInterface() {
       ) : (
         // Chat screen with messages
         <>
-          <div className="flex-1 overflow-y-auto pt-16 pb-32">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-16 pb-32 scroll-smooth">
             <div className="max-w-3xl mx-auto w-full space-y-6 p-4">
               {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} relative z-10`}>
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    className={`max-w-[80%] rounded-lg px-4 py-2 relative z-10 ${
                       message.role === "user"
                         ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                         : "bg-muted"

@@ -65,6 +65,8 @@ interface FileUploadOptions {
   auto_ingest?: boolean;
   is_global?: boolean;
   knowledgebase_id?: string;
+  is_ephemeral?: boolean;
+  session_id?: string;
 }
 
 export const uploadFiles = async (files: globalThis.File[], options?: FileUploadOptions) => {
@@ -97,6 +99,14 @@ export const uploadFiles = async (files: globalThis.File[], options?: FileUpload
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      // Clear auth state and redirect to sign-in
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('reggie.auth.refresh.token');
+      localStorage.removeItem('reggie.auth.user');
+      window.location.href = '/sign-in';
+      throw new Error('Authentication failed');
+    }
     throw new Error(`Upload failed: ${response.statusText}`);
   }
 

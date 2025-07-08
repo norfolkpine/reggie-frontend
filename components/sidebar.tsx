@@ -154,15 +154,10 @@ export default function Sidebar() {
   };
 
   const handleNavItemClick = (url: string) => {
-    // Check if this is the Agents navigation item
+    // Always navigate to /chat for new sessions when clicking Assistant
     if (url === "/chat") {
-      const storedChat = chatStorage.getSelectedChat();
-      if (storedChat && storedChat.id && storedChat.agentCode) {
-        // Redirect to the stored chat session with agent code
-        const params = new URLSearchParams({ agentId: storedChat.agentCode });
-        router.push(`/chat/${storedChat.id}?${params.toString()}`);
-        return;
-      }
+      router.push("/chat");
+      return;
     }
     router.push(url);
   };

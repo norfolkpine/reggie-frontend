@@ -22,6 +22,7 @@ import { DocEditor } from '@/features/docs';
 import { TextErrors } from '@/components/text-errors';
 import { ConfigProvider } from '@/config';
 import { CunninghamProvider } from '@openfun/cunningham-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export function DocLayout() {
   const { id } = useParams();
@@ -64,6 +65,7 @@ const DocPage = ({ id }: DocProps) => {
   const { addTask } = useBroadcastStore();
   const queryClient = useQueryClient();
   const { replace } = useRouter();
+  const { handleTokenExpiration } = useAuth();
   useCollaboration(doc?.id, doc?.content);
   const { t } = useTranslation();
   const { provider } = useProviderStore();
@@ -113,12 +115,8 @@ const DocPage = ({ id }: DocProps) => {
     }
 
     if (error.status === 401) {
-      // void queryClient.resetQueries({
-      //   queryKey: [KEY_AUTH],
-      // });
-      // setAuthUrl();
-      // void replace(`/401`);
-      // return null;
+      handleTokenExpiration();
+      return null;
     }
 
     return (

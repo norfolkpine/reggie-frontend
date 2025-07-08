@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactElement,
+  useEffect,
 } from "react"
 import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
 
@@ -237,8 +238,12 @@ Chat.displayName = "Chat"
 export function ChatMessages({
   messages,
   children,
+  toolCalls,
+  reasoningSteps,
 }: React.PropsWithChildren<{
   messages: Message[]
+  toolCalls?: Map<string, any> | any[]
+  reasoningSteps?: any[]
 }>) {
   const {
     containerRef,
@@ -246,7 +251,36 @@ export function ChatMessages({
     handleScroll,
     shouldAutoScroll,
     handleTouchStart,
-  } = useAutoScroll([messages])
+  } = useAutoScroll([messages, toolCalls, reasoningSteps])
+
+  // Additional scroll trigger for streaming responses
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.role === 'assistant') {
+        // Use a small delay to ensure content is rendered
+        const timer = setTimeout(() => {
+          if (shouldAutoScroll) {
+            scrollToBottom()
+          }
+        }, 50)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [messages, shouldAutoScroll, scrollToBottom])
+
+  // Additional scroll trigger for tool calls and reasoning steps
+  useEffect(() => {
+    if ((toolCalls && (Array.isArray(toolCalls) ? toolCalls.length > 0 : toolCalls.size > 0)) || 
+        (reasoningSteps && reasoningSteps.length > 0)) {
+      const timer = setTimeout(() => {
+        if (shouldAutoScroll) {
+          scrollToBottom()
+        }
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [toolCalls, reasoningSteps, shouldAutoScroll, scrollToBottom])
 
   return (
     <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -16,17 +16,39 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { MarkdownComponents } from "./markdown-component";
 import { DragDropOverlay } from "./File/DragDropOverlayVisible";
+import MessageActions from "./message-actions";
+import { sendUserFeedback } from "../api/user-feedback";
+import { UserFeedbackType } from "@/api/chat-sessions";
+import { useToast } from "@/components/ui/use-toast";
+import { AgentThinking } from "@/components/ui/agent-thinking";
+import { Button } from "@/components/ui/button";
+import { Brain, Lightbulb } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface CustomChatProps {
   agentId: string;
   sessionId?: string;
   onTitleUpdate?: (title: string | null) => void;
+  onNewSessionCreated?: (newSessionId: string) => void;
+  onMessageComplete?: () => void;
 }
 
-export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProps) {
+export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: CustomChatProps) {
+  const { toast } = useToast();
+  const [input, setInput] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
+  const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+
   const {
     messages,
     handleSubmit,
+    uploadFiles, // Destructure the new uploadFiles function
     isLoading,
     error,
     currentDebugMessage,
@@ -34,16 +56,16 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
     isAgentResponding,
     fileUploads, // Destructure new state
     isUploadingFiles, // Destructure new state
-  } = useAgentChat({ 
-    agentId, 
+    currentToolCalls, // Add this from useAgentChat
+    currentReasoningSteps, // Add this from useAgentChat
+  } = useAgentChat({
+    agentId,
     sessionId,
-    onTitleChange: onTitleUpdate
+    onNewSessionCreated,
+    onTitleUpdate,
+    reasoning: reasoningEnabled, // Pass reasoning state to hook
+    onMessageComplete, // Pass onMessageComplete to hook
   });
-
-  const [input, setInput] = useState("");
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -70,25 +92,167 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
       );
       if (newFiles.length > 0) {
         setFiles((prev) => [...prev, ...newFiles]);
+        // Trigger immediate upload of new files
+        uploadFiles(newFiles);
       }
     }
-  }, [files]); // Added files to dependency array
+  }, [files, uploadFiles]); // Added uploadFiles to dependency array
 
   const handleFilesDrop = (files: File[]): void => {
     setFiles(prev => [...prev, ...files]);
+    // Trigger immediate upload of new files
+    uploadFiles(files);
   };
 
   const onSubmit = () => {
-    // Ensure that input or files are present before submitting
-    if (!input.trim() && files.length === 0) return;
+    // Ensure that input is present before submitting
+    if (!input.trim()) return;
     
     handleSubmit(input, files); // Pass files to handleSubmit
     
     setInput(""); // Clear input after sending
-    // Files are cleared by MessageInput after successful upload or handled by useAgentChat
-    // For now, let's clear them here too, assuming successful submission implies files were handled.
-    // This might need adjustment based on how useAgentChat handles file state after submission.
-    setFiles([]);
+    setFiles([]); // Clear files after sending
+  };
+
+  const handleCopy = async (text: string, messageId: string) => {
+    const copyToClipboard = async (text: string) => {
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text)
+          return true
+        } catch (err) {
+          console.warn('Clipboard API failed, trying fallback method:', err)
+        }
+      }
+
+      // Fallback method using a temporary textarea
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          return true
+        } else {
+          throw new Error('execCommand copy failed')
+        }
+      } catch (err) {
+        console.error('Fallback copy method failed:', err)
+        return false
+      }
+    }
+
+    try {
+      const success = await copyToClipboard(text)
+      
+      if (success) {
+        setCopiedMessageId(messageId);
+        toast({
+          title: "Copied to clipboard!",
+          duration: 2000,
+        });
+        setTimeout(() => setCopiedMessageId(null), 2000);
+      } else {
+        throw new Error('Copy failed')
+      }
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      toast({
+        title: "Failed to copy to clipboard",
+        description: "Please try selecting and copying the text manually",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleSend = (destination: 'google-drive' | 'journal', text: string, messageId: string) => {
+    // TODO: Implement sending to Google Drive or Journal
+    console.log(`Sending to ${destination}:`, text, messageId);
+  };
+
+  const handleOpenCanvas = (messageId: string) => {
+    // TODO: Implement canvas opening functionality
+    console.log('Opening canvas for message:', messageId);
+  };
+
+  const handleGoodResponse = async (messageId: string, feedback?: { type: string; text: string }) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: { isGood: true, isBad: false }
+    }));
+    
+    try {
+      await sendUserFeedback({
+        chat_id: messageId,
+        feedback_type: 'good' as UserFeedbackType,
+        feedback_text: feedback ? `${feedback.type}: ${feedback.text}` : undefined,
+        session: sessionId
+      });
+      
+      if (feedback) {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your detailed feedback!",
+        });
+      } else {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your feedback!",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBadResponse = async (messageId: string, feedback?: { type: string; text: string }) => {
+    setMessageFeedback(prev => ({
+      ...prev,
+      [messageId]: { isGood: false, isBad: true }
+    }));
+    
+    try {
+      await sendUserFeedback({
+        chat_id: messageId,
+        feedback_type: 'bad' as UserFeedbackType,
+        feedback_text: feedback ? `${feedback.type}: ${feedback.text}` : undefined,
+        session: sessionId
+      });
+      
+      if (feedback) {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your detailed feedback!",
+        });
+      } else {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your feedback!",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isEmpty = messages.length === 0;
@@ -98,6 +262,53 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
   // there's no content yet (empty assistant message) or no assistant message at all
   const hasAssistantMessageWithContent = lastMessage?.role === 'assistant' && lastMessage.content.trim().length > 0;
   const isTyping = isAgentResponding && !hasAssistantMessageWithContent;
+
+  // Mark the last assistant message as completed when agent stops responding
+  useEffect(() => {
+    if (!isAgentResponding && lastMessage?.role === 'assistant' && lastMessage.content.trim().length > 0) {
+      setCompletedMessages(prev => new Set([...prev, lastMessage.id]));
+    }
+  }, [isAgentResponding, lastMessage]);
+
+  // Manual scroll trigger for streaming responses
+  useEffect(() => {
+    if (isAgentResponding && messages.length > 0) {
+      const timer = setTimeout(() => {
+        // Find the ChatMessages container and scroll it
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAgentResponding, messages]);
+
+  // Additional scroll trigger for message updates
+  useEffect(() => {
+    if (messages.length > 0) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [messages]);
+
+  // Scroll trigger for tool calls and reasoning steps
+  useEffect(() => {
+    if (currentToolCalls.size > 0 || (currentReasoningSteps && currentReasoningSteps.length > 0)) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentToolCalls, currentReasoningSteps]);
 
   return (
     <ChatContainer className="max-w-full h-full">
@@ -123,7 +334,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
           <div className="flex-1 flex items-center justify-center p-8">
             <PromptSuggestions
               label="Try these prompts ✨"
-              className="w-full max-w-2xl mx-auto"
               append={(message) => {
                 setInput(message.content);
                 handleSubmit(message.content);
@@ -135,57 +345,53 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
         )}
 
         {!isEmpty && (
-          <ChatMessages className="flex-1 p-4 overflow-y-auto">
+          <ChatMessages 
+            messages={messages}
+            toolCalls={currentToolCalls}
+            reasoningSteps={currentReasoningSteps}
+          >
             <div className="max-w-3xl mx-auto w-full py-4">
               <MessageList 
                 messages={messages} 
                 isTyping={isTyping}
-                customComponents={{
-                  message: ({ message }) => {
-                    if (message.role === 'assistant') {
-                      return (
-                        <div className="prose prose-sm dark:prose-invert max-w-none custom-markdown">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight]}
-                            components={{
-                              ...MarkdownComponents,
-                              // Override heading styles to match BlockNote specs
-                              h1: ({ children, ...props }) => (
-                                <h1 
-                                  className="text-[32px] leading-[1.5] mb-[1rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h1>
-                              ),
-                              h2: ({ children, ...props }) => (
-                                <h2 
-                                  className="text-[24px] leading-[1.5] mb-[0.75rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h2>
-                              ),
-                              h3: ({ children, ...props }) => (
-                                <h3 
-                                  className="text-[18.7px] leading-[1.5] mb-[0.6rem]"
-                                  {...props}
-                                >
-                                  {children}
-                                </h3>
-                              )
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      );
-                    }
-                    return null; // Default rendering for user messages
+                messageOptions={(message) => {
+                  if (message.role === 'assistant' && completedMessages.has(message.id)) {
+                    const feedback = messageFeedback[message.id] || {};
+                    return {
+                      actions: (
+                        <MessageActions
+                          messageId={message.id}
+                          content={message.content}
+                          onCopy={handleCopy}
+                          copiedMessageId={copiedMessageId}
+                          onSend={handleSend}
+                          onOpenCanvas={handleOpenCanvas}
+                          isGood={feedback.isGood}
+                          isBad={feedback.isBad}
+                          onGoodResponse={handleGoodResponse}
+                          onBadResponse={handleBadResponse}
+                        />
+                      )
+                    };
                   }
+                  return {};
                 }}
               />
+              
+              {/* Live Thinking Indicator */}
+              {isAgentResponding && (currentToolCalls.size > 0 || currentReasoningSteps.length > 0) && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4"
+                >
+                  <AgentThinking 
+                    toolCalls={Array.from(currentToolCalls.values())}
+                    reasoningSteps={currentReasoningSteps}
+                    isActive={true}
+                  />
+                </motion.div>
+              )}
             </div>
           </ChatMessages>
         )}
@@ -210,6 +416,32 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
           )}
           
           <div className="max-w-3xl mx-auto w-full p-4">
+            {/* Reasoning Toggle */}
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                type="button"
+                variant={reasoningEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setReasoningEnabled(!reasoningEnabled)}
+                className="flex items-center gap-2"
+                disabled={isLoading || isTyping}
+              >
+                {reasoningEnabled ? <Brain className="h-4 w-4" /> : <Lightbulb className="h-4 w-4" />}
+                {reasoningEnabled ? "Reasoning Enabled" : "Enable Reasoning"}
+              </Button>
+              {reasoningEnabled && (
+                <span className="text-xs text-muted-foreground">
+                  Agent will show its thinking process and tool usage
+                </span>
+              )}
+              {isAgentResponding && reasoningEnabled && (
+                <div className="flex items-center gap-1 text-xs text-blue-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span>Showing reasoning...</span>
+                </div>
+              )}
+            </div>
+
             <ChatForm
               isPending={isLoading || isTyping}
               handleSubmit={(event) => {
@@ -224,7 +456,22 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate }: CustomChatProp
                   allowAttachments
                   files={files}
                   setFiles={(newFiles) => {
-                    setFiles(newFiles);
+                    if (Array.isArray(newFiles)) {
+                      const currentFiles = files || [];
+                      const addedFiles = newFiles.filter(newFile => 
+                        !currentFiles.some(existingFile => 
+                          existingFile.name === newFile.name && 
+                          existingFile.size === newFile.size
+                        )
+                      );
+                      setFiles([...newFiles]);
+                      // Trigger immediate upload of newly added files
+                      if (addedFiles.length > 0) {
+                        uploadFiles(addedFiles);
+                      }
+                    } else {
+                      setFiles([]);
+                    }
                     setFormFiles?.(newFiles);
                   }}
                   stop={() => {

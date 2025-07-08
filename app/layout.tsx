@@ -18,6 +18,7 @@ const allowedRoutes = [
   "/sign-in", 
   "/sign-up",
   "/forgot-password",
+  "/test-token-expiration",
 ]
 
 export default function RootLayout({
