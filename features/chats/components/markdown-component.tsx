@@ -234,11 +234,22 @@ export const MarkdownComponents: Components = {
   li: ListItem as any,
   
   // Code blocks
-  pre: ({ children, ...props }: MarkdownProps) => children,
+  pre: ({ children, ...props }: MarkdownProps) => {
+    // Check if the pre contains a code element
+    if (children && typeof children === 'object' && 'type' in children && children.type === 'code') {
+      // If it's a code block, render it with our CodeBlock component
+      const codeElement = children as any;
+      const codeProps = codeElement.props || {};
+      return <CodeBlock className={codeProps.className}>{codeProps.children}</CodeBlock>;
+    }
+    // For other pre content, wrap in a pre element
+    return <pre className="my-4 p-4 bg-muted rounded-lg overflow-x-auto" {...props}>{children}</pre>;
+  },
   code: ({ node, inline, className, children, ...props }: MarkdownProps & { inline?: boolean }) => {
     if (inline) {
       return <InlineCode {...props}>{children}</InlineCode>;
     }
+    // For block code that's not inside a pre tag, render as CodeBlock
     return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
   },
   

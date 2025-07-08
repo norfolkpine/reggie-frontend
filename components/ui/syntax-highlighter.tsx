@@ -25,7 +25,7 @@ const FallbackCodeBlock = ({ children, language, className, showCopyButton = tru
   };
 
   return (
-    <div className="group relative my-4 rounded-lg border bg-muted/50 overflow-hidden">
+    <div className="group relative my-2 rounded-lg border bg-muted/50 overflow-hidden">
       {/* Language header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/80 border-b">
         <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ const SyntaxHighlighterWithShiki: React.FC<SyntaxHighlighterProps> = ({
   }
 
   return (
-    <div className="group relative my-4 rounded-lg border bg-muted/50 overflow-hidden">
+    <div className="group relative my-2 rounded-lg border bg-muted/50 overflow-hidden">
       {/* Language header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/80 border-b">
         <div className="flex items-center gap-2">
