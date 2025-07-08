@@ -175,15 +175,45 @@ function isCryptoData(content: string): boolean {
 export default function ChatInterface() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [showWelcome, setShowWelcome] = useState(true)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
+  // Improved auto-scroll functionality
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior })
+    }
+  }
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setShowWelcome(false)
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      // Use a small delay to ensure content is rendered
+      const timer = setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [messages])
+
+  // Scroll to bottom when loading state changes (for streaming responses)
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        scrollToBottom()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading])
+
+  // Scroll to bottom immediately when component mounts with messages
+  useEffect(() => {
+    if (messages.length > 0 && !showWelcome) {
+      scrollToBottom("instant")
+    }
+  }, [showWelcome])
 
   const copyToClipboard = async (text: string, messageId: string) => {
     const copyToClipboard = async (text: string) => {
@@ -305,7 +335,7 @@ export default function ChatInterface() {
       ) : (
         // Chat screen with messages
         <>
-          <div className="flex-1 overflow-y-auto pt-16 pb-32">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-16 pb-32 scroll-smooth">
             <div className="max-w-3xl mx-auto w-full space-y-6 p-4">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} relative z-10`}>
