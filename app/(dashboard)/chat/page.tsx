@@ -1,7 +1,5 @@
 
-import ChatInterface from "@/features/chats/chat-interface"
-
-
+import ChatsComponent from "@/features/chats"
 export default function ChatPage() {
-  return <ChatInterface />
+  return <ChatsComponent />
 }

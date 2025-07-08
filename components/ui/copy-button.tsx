@@ -1,44 +1,44 @@
-import * as React from "react";
-import { Check, Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+"use client"
 
-interface CopyButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
-  value: string;
+import { Check, Copy } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { Button } from "@/components/ui/button"
+
+type CopyButtonProps = {
+  content: string
+  copyMessage?: string
 }
 
-export function CopyButton({ value, className, ...props }: CopyButtonProps) {
-  const [hasCopied, setHasCopied] = React.useState(false);
-
-  React.useEffect(() => {
-    if (hasCopied) {
-      const timeout = setTimeout(() => setHasCopied(false), 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [hasCopied]);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setHasCopied(true);
-    } catch (error) {
-      console.error("Failed to copy text:", error);
-    }
-  };
+export function CopyButton({ content, copyMessage }: CopyButtonProps) {
+  const { isCopied, handleCopy } = useCopyToClipboard({
+    text: content,
+    copyMessage,
+  })
 
   return (
     <Button
-      size="icon"
       variant="ghost"
-      className="h-8 w-8 hover:bg-muted"
+      size="icon"
+      className="relative h-6 w-6"
+      aria-label="Copy to clipboard"
       onClick={handleCopy}
-      {...props}
     >
-      {hasCopied ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : (
-        <Copy className="h-4 w-4" />
-      )}
-      <span className="sr-only">Copy code</span>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Check
+          className={cn(
+            "h-4 w-4 transition-transform ease-in-out",
+            isCopied ? "scale-100" : "scale-0"
+          )}
+        />
+      </div>
+      <Copy
+        className={cn(
+          "h-4 w-4 transition-transform ease-in-out",
+          isCopied ? "scale-0" : "scale-100"
+        )}
+      />
     </Button>
-  );
+  )
 }

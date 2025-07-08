@@ -5,8 +5,7 @@ console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PU
 
 // Robust BASE_URL logic
 export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // Debug: Log BASE_URL at runtime (both server and client)
 if (typeof window === 'undefined') {

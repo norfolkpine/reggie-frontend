@@ -49,24 +49,41 @@ export const MarkdownComponents: Components = {
       {children}
     </li>
   ),
-  pre: ({ children, ...props }: MarkdownProps) => (
-    <pre className="relative mb-4 mt-6 overflow-x-auto rounded-lg border bg-black p-4">
-      <div className="absolute right-4 top-4">
-        <CopyButton value={children as string} />
-      </div>
-      {children}
-    </pre>
-  ),
+  pre: ({ children, ...props }: MarkdownProps) => {
+    // Attempt to extract plain text from the code element
+    let codeText = "";
+    if (Array.isArray(children) && children.length > 0) {
+      const codeEl: any = children[0];
+      if (codeEl && codeEl.props && codeEl.props.children) {
+        if (Array.isArray(codeEl.props.children)) {
+          codeText = codeEl.props.children.join("");
+        } else {
+          codeText = codeEl.props.children as string;
+        }
+      }
+    } else if (typeof children === "string") {
+      codeText = children;
+    }
+
+    return (
+      <pre className="code-block relative" {...props}>
+        <div className="absolute right-4 top-4">
+          <CopyButton className="copy-btn" value={codeText} />
+        </div>
+        {children}
+      </pre>
+    );
+  },
   code: ({ node, inline, className, children, ...props }: MarkdownProps & { inline?: boolean }) => {
     if (inline) {
       return (
-        <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm" {...props}>
+        <code className={`${className ?? ''} relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm`} {...props}>
           {children}
         </code>
       );
     }
     return (
-      <code className="relative font-mono text-sm" {...props}>
+      <code className={`${className ?? ''} relative font-mono text-sm`} {...props}>
         {children}
       </code>
     );

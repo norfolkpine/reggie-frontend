@@ -78,7 +78,6 @@ const chats: ChatItem[] = [
 ];
 
 const navigationItems: (ChatItem | { type: "divider" })[] = [
-  { name: "Assistant", icon: Bot, url: "/chat" },
   {
     name: "Vault",
     icon: FolderShieldIcon,

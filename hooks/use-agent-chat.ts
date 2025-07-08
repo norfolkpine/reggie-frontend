@@ -1,15 +1,23 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createChatSession, getChatSessionMessage } from '@/api/chat-sessions';
+import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
+import { uploadFiles as apiUploadFiles } from '@/api/files'; // Renamed to avoid conflict
 import { TOKEN_KEY } from "@/contexts/auth-context";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant' | 'system';
   feedback?: Feedback[];
-  isDone?: boolean; // indicates if assistant stream finished
+}
+
+export interface FileUploadStatus {
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
+  progress?: number; // Optional: for future progress tracking
 }
 
 interface UseAgentChatProps {
@@ -19,22 +27,33 @@ interface UseAgentChatProps {
 
 interface UseAgentChatReturn {
   messages: Message[];
-  handleSubmit: (value?: string) => void;
+  handleSubmit: (value?: string, files?: File[]) => void; // Added files parameter
   isLoading: boolean;
   error: string | null;
+  currentDebugMessage: string | null;
+  currentChatTitle: string | null;
+  isAgentResponding: boolean;
+  fileUploads: FileUploadStatus[]; // To track file upload status
+  isUploadingFiles: boolean; // True if any file is currently uploading
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatProps): UseAgentChatReturn {
+  const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(!!ssid); // Track initial loading
+  const [isInitializing, setIsInitializing] = useState(!!ssid);
   const [sessionCreated, setSessionCreated] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(ssid);
+  const [internalSessionId, setInternalSessionId] = useState<string | null>(ssid);
   const [error, setError] = useState<string | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [currentDebugMessage, setCurrentDebugMessage] = useState<string | null>(null);
+  const debugMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentChatTitle, setCurrentChatTitle] = useState<string | null>(null);
+  const [isAgentResponding, setIsAgentResponding] = useState<boolean>(false);
+  const [fileUploads, setFileUploads] = useState<FileUploadStatus[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
 
-  // Validate API base URL on component mount
   useEffect(() => {
     if (!BASE_URL || BASE_URL === "undefined") {
       console.error("API Base URL is not defined. Check your environment variables.");
@@ -43,237 +62,293 @@ export function useAgentChat({ agentId, sessionId: ssid = null }: UseAgentChatPr
   }, []);
 
   useEffect(() => {
-    const loadExistingMessages = async () => {
+    const loadExistingSessionDetails = async () => {
       if (!ssid) {
         setIsInitializing(false);
+        isNewConversationRef.current = true;
+        setCurrentChatTitle("New Chat");
+        setMessages([]);
+        setInternalSessionId(null);
+        setSessionCreated(false);
+        setFileUploads([]);
         return;
       }
       
+      isNewConversationRef.current = false;
+      setIsLoading(true);
+      setIsInitializing(true);
+      setError(null);
+      setFileUploads([]);
+      
       try {
-        setIsLoading(true);
-        setIsInitializing(true);
-        setError(null);
+        const sessionDetails = await getChatSession(ssid);
+        setCurrentChatTitle(sessionDetails.title);
         
-        const response = await getChatSessionMessage(ssid);
-        const formattedMessages = response.results.map(msg => ({
-          id: msg.id || msg.timestamp?.toString() || crypto.randomUUID(),
+        const messageResponse = await getChatSessionMessage(ssid);
+        const formattedMessages = messageResponse.results.map(msg => ({
+          id: msg.id || msg.timestamp?.toString() || uuidv4(),
           content: msg.content,
           role: msg.role as 'user' | 'assistant',
           feedback: msg.feedback
         }));
         
         setMessages(formattedMessages);
+        setInternalSessionId(ssid);
         setSessionCreated(true);
       } catch (error) {
-        console.error('Error loading messages:', error);
-        setError('Failed to load messages. Please try refreshing the page.');
+        console.error('Error loading session details or messages:', error);
+        setError('Failed to load chat. Please try refreshing.');
+        setCurrentChatTitle("Chat");
       } finally {
         setIsLoading(false);
         setIsInitializing(false);
       }
     };
 
-    loadExistingMessages();
+    loadExistingSessionDetails();
     
-    // Cleanup any existing requests when component unmounts or sessionId changes
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
-        abortControllerRef.current = null;
+      }
+      if (debugMessageTimeoutRef.current) {
+        clearTimeout(debugMessageTimeoutRef.current);
       }
     };
   }, [ssid]);
 
-  const handleSubmit = useCallback(async (value?: string) => {
-    if (!value?.trim() || isLoading) return;
+  const handleSubmit = useCallback(async (value?: string, filesToUpload?: File[]) => {
+    if ((!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) || (isLoading && !isInitializing)) return;
     
-    // Abort any existing request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create a new abort controller
+    if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     
-    // Reset any previous errors
     setError(null);
-    setIsLoading(true);
+    setFileUploads([]); // Reset file uploads for this submission
+    if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+    setCurrentDebugMessage(null);
 
-    let tempSessionId = sessionId;
+    let tempSessionId = internalSessionId;
 
-    if (!sessionCreated) {
+    if (!sessionCreated || !tempSessionId) {
+      setIsLoading(true); 
       try {
-        const result = await createChatSession({
-          title: "New Chat",
-          agent_id: agentId,
-        });
-
-        tempSessionId = result.session_id;
-        setSessionId(result.session_id);
+        setCurrentChatTitle("New Chat"); 
+        const session = await createChatSession({ agent_id: agentId });
+        tempSessionId = session.session_id;
+        setInternalSessionId(tempSessionId);
         setSessionCreated(true);
-      } catch (error) {
-        console.error('Failed to create chat session:', error);
+        isNewConversationRef.current = true; 
+      } catch (sessionError) {
+        console.error('Failed to create chat session:', sessionError);
         setError('Failed to create chat session. Please check your connection and try again.');
         setIsLoading(false);
         return;
       }
     }
 
+    // Handle file uploads first if files are provided
+    if (filesToUpload && filesToUpload.length > 0 && tempSessionId) {
+      setIsUploadingFiles(true);
+      const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
+        file,
+        status: 'pending',
+      }));
+      setFileUploads(initialFileUploadStates);
+
+      try {
+        const uploadPromises = filesToUpload.map(async (file, index) => {
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
+          try {
+            await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
+            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
+            return { success: true, file };
+          } catch (uploadError) {
+            console.error(`Failed to upload file ${file.name}:`, uploadError);
+            const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+            setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
+            return { success: false, file, error: errorMessage };
+          }
+        });
+
+        const uploadResults = await Promise.all(uploadPromises);
+        const failedUploads = uploadResults.filter(result => !result.success);
+
+        if (failedUploads.length > 0) {
+          setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
+          setIsUploadingFiles(false);
+          setIsLoading(false); // Also set overall loading to false
+          return; // Stop if any file upload fails
+        }
+      } catch (e) {
+          // This catch is for errors in the Promise.all orchestration itself, though individual errors are handled above.
+          console.error('Error during file upload orchestration:', e);
+          setError('A general error occurred during file uploads.');
+          setIsUploadingFiles(false);
+          setIsLoading(false);
+          return;
+      } finally {
+        setIsUploadingFiles(false);
+      }
+    }
+
+    // Proceed with sending the message if there's text input or if files were uploaded successfully (even if text is empty)
+    if (!value?.trim() && (!filesToUpload || filesToUpload.length === 0)) {
+      // This case should ideally be caught by the initial guard, but as a safety net.
+      // If no text and no files, and somehow passed the initial guard (e.g. files were present but all failed to upload and error was cleared),
+      // we might not want to proceed. However, current logic proceeds if files were successfully uploaded.
+      // If only files were "sent" and no text, the backend will receive an empty message.
+      // This behavior might need refinement based on product requirements.
+    }
+
+
+    const userMessageContent = value ?? "";
     const userMessage: Message = {
-      id: Date.now().toString(),
-      content: value ?? "",
+      id: uuidv4(),
+      content: userMessageContent,
       role: 'user'
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    if (isNewConversationRef.current && messages.length === 0) {
+      setMessages([userMessage]);
+    } else {
+      setMessages(prev => [...prev, userMessage]);
+    }
+
+    if (isNewConversationRef.current) {
+        isNewConversationRef.current = false;
+    }
+    
+    setIsLoading(true); // General loading state for agent response
+    setIsAgentResponding(true);
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        throw new Error("Authentication token is missing");
-      }
+      if (!token) throw new Error("Authentication token is missing");
 
       const payload = {
         agent_id: agentId,
-        message: value ?? "",
+        message: userMessageContent,
         session_id: tempSessionId,
       };
 
-      // Add empty assistant message to show typing indicator
-      const assistantMessageId = Date.now().toString();
-      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant', isDone: false }]);
+      const assistantMessageId = `assistant-${uuidv4()}`;
+      setMessages(prev => [...prev, { id: assistantMessageId, content: '', role: 'assistant' }]);
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Failed to get reader from response");
       readerRef.current = reader;
 
       const decoder = new TextDecoder();
-      let responseContent = '';
+      let dataContentForDoneCheck = '';
 
-      let streamDone = false;
       while (true) {
-        // Check if request was aborted
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
+        if (abortControllerRef.current?.signal.aborted) break;
         
-        const { value, done } = await reader.read();
+        const { value: chunkValue, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
+        const chunk = decoder.decode(chunkValue);
         const lines = chunk.split("\n").filter(line => line.trim() !== "");
 
         for (const line of lines) {
           if (line.startsWith("data:")) {
-            const dataContent = line.slice(5).trim();
-            if (dataContent === "[DONE]") { streamDone = true; break; }
+            dataContentForDoneCheck = line.slice(5).trim();
+            if (dataContentForDoneCheck === "[DONE]") break;
 
             try {
-              const parsedData = JSON.parse(dataContent);
-              let textChunk: string | undefined;
+              const parsedData = JSON.parse(dataContentForDoneCheck);
+              
               if (parsedData.debug) {
-                textChunk = `\n_${parsedData.debug}_\n\n`;
-              } else if (parsedData.tool) {
-                textChunk = `\n_${parsedData.tool}_\n\n`;
-              } else {
-                textChunk = parsedData.token ?? parsedData.content;
+                setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2)); 
+                if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+                debugMessageTimeoutRef.current = setTimeout(() => setCurrentDebugMessage(null), 5000);
+                continue;
               }
-              if (typeof textChunk === "string" && textChunk.length > 0) {
-                responseContent += textChunk;
-                setMessages(prev => {
-                  const newMessages = [...prev];
+              
+              if (currentDebugMessage) { 
+                 if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+                 setCurrentDebugMessage(null);
+              }
+
+              if (parsedData.event === "ChatTitle" && typeof parsedData.title === 'string') {
+                setCurrentChatTitle(parsedData.title);
+              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
+                const tokenPart = parsedData.token ?? parsedData.content ?? '';
+                if (isAgentResponding) setIsAgentResponding(false);
+                setMessages(prevMessages => {
+                  const newMessages = [...prevMessages];
                   const lastMessageIndex = newMessages.length - 1;
                   if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
                     newMessages[lastMessageIndex] = {
                       ...newMessages[lastMessageIndex],
-                      content: responseContent,
+                      content: newMessages[lastMessageIndex].content + tokenPart,
+                      id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id, 
                     };
                   }
                   return newMessages;
                 });
+              } else if (parsedData.event) {
+                console.log("Received unhandled event type:", parsedData.event, parsedData);
+              } else {
+                console.log("Received data without recognized event type:", parsedData);
               }
             } catch (e) {
-              console.error("Failed to parse SSE data:", dataContent);
+              console.error("Failed to parse SSE data:", dataContentForDoneCheck, e);
             }
           }
         }
+        if (dataContentForDoneCheck === "[DONE]") break; 
       }
-      // mark assistant message done
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastIndex = newMessages.length - 1;
-        if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
-          newMessages[lastIndex] = { ...newMessages[lastIndex], isDone: true };
-        }
-        return newMessages;
-      });
-    } catch (error) {
-      // Don't set error if it was due to an abort
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.log('Request was aborted');
+    } catch (streamError) {
+      if (streamError instanceof DOMException && streamError.name === 'AbortError') {
+        console.log('Request was aborted.');
       } else {
-        console.error('Stream error:', error);
-        setError(error instanceof Error ? error.message : 'An unknown error occurred');
+        console.error('Stream error:', streamError);
+        setError(streamError instanceof Error ? streamError.message : 'An unknown error occurred during streaming.');
         setMessages(prev => {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
           if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
-            newMessages[lastIndex] = {
-              ...newMessages[lastIndex],
-              content: 'Sorry, there was an error processing your request.',
-            };
+            newMessages[lastIndex].content = 'Sorry, there was an error processing your request.';
+          } else if (lastIndex < 0 || newMessages[lastIndex].role === 'user' ) {
+            newMessages.push({ id: uuidv4(), role: 'assistant', content: 'Sorry, there was an error processing your request.'});
           }
           return newMessages;
         });
       }
+      if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
+      setCurrentDebugMessage(null);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // General loading state for agent response
+      setIsAgentResponding(false); // Ensure this is false at the end
       if (readerRef.current) {
-        try {
-          readerRef.current.releaseLock();
-        } catch (e) {
-          console.error('Error releasing reader lock:', e);
-        }
+        try { readerRef.current.releaseLock(); } 
+        catch (e) { console.error('Error releasing reader lock:', e); }
         readerRef.current = null;
       }
+      if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
     }
-  }, [agentId, sessionCreated, sessionId]); // Remove isLoading from dependencies to avoid re-render issues
-
-  // Cleanup reader and abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (readerRef.current) {
-        try {
-          readerRef.current.releaseLock();
-        } catch (e) {
-          console.error('Error releasing reader lock on unmount:', e);
-        }
-      }
-      
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding]);
+  
   return {
     messages,
     handleSubmit,
-    isLoading: isLoading || isInitializing,
-    error
+    isLoading: isLoading || isInitializing || isUploadingFiles, // Combined loading state
+    error,
+    currentDebugMessage,
+    currentChatTitle,
+    isAgentResponding,
+    fileUploads,
+    isUploadingFiles,
   };
 }

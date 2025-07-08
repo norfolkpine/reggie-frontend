@@ -16,6 +16,7 @@ import { Agent } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createChatSession } from "@/api/chat-sessions";
+import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
 
 interface AgentCardProps {
   agent: Agent;
@@ -23,6 +24,8 @@ interface AgentCardProps {
 
 export function AgentCard({ agent }: AgentCardProps) {
   const router = useRouter();
+
+  const { refresh } = useChatSessionContext();
   return (
     <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50">
       <CardHeader className="p-4 pb-2">
@@ -68,10 +71,11 @@ export function AgentCard({ agent }: AgentCardProps) {
               // You can customize the agent_code if needed, fallback to 'gpt-4o' if not present
               const agent_code = (agent.model ? agent.model.toString() : "gpt-4o");
               const session = await createChatSession({
-                title: `Chat with ${agent.name}`,
+                title: `New chat with ${agent.name}`,
                 agent_id: agent.agent_id,
                 agent_code,
               });
+              refresh();
               router.push(`/chat/${session.session_id}?agentId=${agent.agent_id}`);
             } catch (e) {
               // Optionally handle error, e.g., toast

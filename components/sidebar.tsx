@@ -48,6 +48,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
+import { chatStorage } from "@/lib/utils/chat-storage";
 
 
 const FolderShieldIcon = () => (
@@ -88,8 +89,7 @@ const chats: ChatItem[] = [
 
 
 const navigationItems: NavigationItem[] = [
-  { name: "Assistant", icon: Bot, url: "/chat" },
-  { name: "Agents", icon: Workflow, url: "/agent" },
+  { name: "Agents", icon: Workflow, url: "/chat" },
   
   {
     name: "Vault",
@@ -154,6 +154,16 @@ export default function Sidebar() {
   };
 
   const handleNavItemClick = (url: string) => {
+    // Check if this is the Agents navigation item
+    if (url === "/chat") {
+      const storedChat = chatStorage.getSelectedChat();
+      if (storedChat && storedChat.id && storedChat.agentCode) {
+        // Redirect to the stored chat session with agent code
+        const params = new URLSearchParams({ agentId: storedChat.agentCode });
+        router.push(`/chat/${storedChat.id}?${params.toString()}`);
+        return;
+      }
+    }
     router.push(url);
   };
 
@@ -241,14 +251,7 @@ export default function Sidebar() {
               </Button>
             </div>
 
-            {/* New Chat button */}
-            <Button
-              variant="outline"
-              className="w-full justify-center font-medium"
-              onClick={() => router.push("/chat")}
-            >
-              New Chat
-            </Button>
+           
 
             {/* Navigation items */}
             <div className="space-y-1">

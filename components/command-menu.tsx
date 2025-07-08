@@ -78,7 +78,7 @@ export function CommandMenu() {
                 })}
               </CommandGroup>
             ) : (
-              <React.Fragment key={crypto.randomUUID()}>
+              <React.Fragment key={uuidv4()}>
                 {group.items.map((navItem, i) => {
                   if (navItem.url)
                     return (

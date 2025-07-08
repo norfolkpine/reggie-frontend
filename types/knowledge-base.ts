@@ -194,7 +194,7 @@ export interface KnowledgeBaseFile {
   title: string
   description: string | null
   file_type: string
-  file_size: number
+  filesize: number
   page_count: number
   created_at: string
   updated_at: string

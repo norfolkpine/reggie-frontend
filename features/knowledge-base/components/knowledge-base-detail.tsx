@@ -414,7 +414,9 @@ export function KnowledgeBaseDetail({
 
   // Apply client-side filters from TanStack (title search + status/type)
   const filteredFiles = table.getRowModel().rows.map((r) => r.original);
-  const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+  const totalPages = Math.ceil(totalFiles / itemsPerPage);
+
+  console.log("filteredFiles", filteredFiles);  
 
   // Ensure current page is valid when filters change
   useEffect(() => {
@@ -728,7 +730,6 @@ export function KnowledgeBaseDetail({
                   </TableRow>
                 ) : (
                   filteredFiles
-                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((file) => (
                     <TableRow key={file.file_id}>
                       <TableCell>
