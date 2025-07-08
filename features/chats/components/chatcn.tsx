@@ -17,6 +17,9 @@ import rehypeHighlight from "rehype-highlight";
 import { MarkdownComponents } from "./markdown-component";
 import { DragDropOverlay } from "./File/DragDropOverlayVisible";
 import MessageActions from "./message-actions";
+import { sendUserFeedback } from "../api/user-feedback";
+import { UserFeedbackType } from "@/api/chat-sessions";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CustomChatProps {
   agentId: string;
@@ -43,6 +46,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     onNewSessionCreated
   });
 
+  const { toast } = useToast();
   const [input, setInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -118,20 +122,74 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     console.log('Opening canvas for message:', messageId);
   };
 
-  const handleGoodResponse = (messageId: string) => {
+  const handleGoodResponse = async (messageId: string, feedback?: { type: string; text: string }) => {
     setMessageFeedback(prev => ({
       ...prev,
       [messageId]: { isGood: true, isBad: false }
     }));
-    // TODO: Send feedback to backend
+    
+    try {
+      await sendUserFeedback({
+        chat_id: messageId,
+        feedback_type: 'good' as UserFeedbackType,
+        feedback_text: feedback ? `${feedback.type}: ${feedback.text}` : undefined,
+        session: sessionId
+      });
+      
+      if (feedback) {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your detailed feedback!",
+        });
+      } else {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your feedback!",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleBadResponse = (messageId: string) => {
+  const handleBadResponse = async (messageId: string, feedback?: { type: string; text: string }) => {
     setMessageFeedback(prev => ({
       ...prev,
       [messageId]: { isGood: false, isBad: true }
     }));
-    // TODO: Send feedback to backend
+    
+    try {
+      await sendUserFeedback({
+        chat_id: messageId,
+        feedback_type: 'bad' as UserFeedbackType,
+        feedback_text: feedback ? `${feedback.type}: ${feedback.text}` : undefined,
+        session: sessionId
+      });
+      
+      if (feedback) {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your detailed feedback!",
+        });
+      } else {
+        toast({
+          title: "Feedback submitted",
+          description: "Thank you for your feedback!",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isEmpty = messages.length === 0;
