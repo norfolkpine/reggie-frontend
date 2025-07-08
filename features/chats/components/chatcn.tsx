@@ -108,7 +108,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     // Ensure that input is present before submitting
     if (!input.trim()) return;
     
-    handleSubmit(input); // Remove manual reasoning text addition
+    handleSubmit(input, files); // Pass files to handleSubmit
     
     setInput(""); // Clear input after sending
     setFiles([]); // Clear files after sending

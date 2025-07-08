@@ -102,7 +102,7 @@ const TableCell = ({ children, ...props }: MarkdownProps) => (
 const Link = ({ children, href, ...props }: MarkdownProps & { href?: string }) => (
   <a
     href={href}
-    className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
+    className="inline-flex items-center gap-1 font-medium text-blue-500 hover:text-blue-700 underline underline-offset-4 transition-colors"
     target="_blank"
     rel="noopener noreferrer"
     {...props}

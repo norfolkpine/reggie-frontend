@@ -205,7 +205,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         ) : null}
 
         <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-          <MarkdownRenderer>{content}</MarkdownRenderer>
+          <div className="[&_a]:text-blue-300 [&_a]:hover:text-blue-100 [&_a]:underline [&_a]:underline-offset-4">
+            <MarkdownRenderer>{content}</MarkdownRenderer>
+          </div>
         </div>
 
         {showTimeStamp && createdAt ? (

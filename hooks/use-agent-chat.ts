@@ -14,6 +14,7 @@ interface Message {
   feedback?: Feedback[];
   toolCalls?: ToolCall[];
   reasoningSteps?: ReasoningStep[];
+  experimental_attachments?: { name: string; contentType: string; url: string }[];
 }
 
 interface ToolCall {
@@ -119,12 +120,22 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         setCurrentChatTitle(sessionDetails.title);
         
         const messageResponse = await getChatSessionMessage(ssid);
-        const formattedMessages = messageResponse.results.map(msg => ({
-          id: msg.id || msg.timestamp?.toString() || uuidv4(),
-          content: msg.content,
-          role: msg.role as 'user' | 'assistant',
-          feedback: msg.feedback
-        }));
+        console.log('🔍 Debug: Raw message response from API:', messageResponse);
+        console.log('🔍 Debug: Message results:', messageResponse.results);
+        
+        const formattedMessages = messageResponse.results.map(msg => {
+          console.log('🔍 Debug: Processing message:', msg);
+          return {
+            id: msg.id || msg.timestamp?.toString() || uuidv4(),
+            content: msg.content,
+            role: msg.role as 'user' | 'assistant',
+            feedback: msg.feedback
+          };
+        });
+        
+        console.log('🔍 Debug: Formatted messages:', formattedMessages);
+        console.log('🔍 Debug: User messages count:', formattedMessages.filter(m => m.role === 'user').length);
+        console.log('🔍 Debug: Assistant messages count:', formattedMessages.filter(m => m.role === 'assistant').length);
         
         setMessages(formattedMessages);
         setInternalSessionId(ssid);
@@ -245,10 +256,27 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
     // Now that we have a session, add the user message to the UI
     const userMessageContent = value ?? "";
+    
+    // Convert files to data URLs for attachments
+    const attachments = filesToUpload && filesToUpload.length > 0 
+      ? await Promise.all(filesToUpload.map(async (file) => {
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const dataUrl = `data:${file.type};base64,${base64}`;
+          return {
+            name: file.name,
+            contentType: file.type,
+            url: dataUrl
+          };
+        }))
+      : undefined;
+    
     const userMessage: Message = {
       id: uuidv4(),
       content: userMessageContent,
-      role: 'user'
+      role: 'user',
+      // Add file attachments if files are provided
+      ...(attachments && { experimental_attachments: attachments })
     };
     
     if (isNewConversationRef.current && messages.length === 0) {
