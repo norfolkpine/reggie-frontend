@@ -328,6 +328,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       const decoder = new TextDecoder();
       let dataContentForDoneCheck = '';
       let assistantMessageCreated = false;
+      let jsonBuffer = '';
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -340,12 +341,15 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
         for (const line of lines) {
           if (line.startsWith("data:")) {
-            dataContentForDoneCheck = line.slice(5).trim();
-            if (dataContentForDoneCheck === "[DONE]") break;
+            const dataLine = line.slice(5).trim();
+            if (dataLine === "[DONE]") break;
+
+            jsonBuffer += dataLine;
 
             try {
-              const parsedData = JSON.parse(dataContentForDoneCheck);
-              
+              const parsedData = JSON.parse(jsonBuffer);
+              jsonBuffer = ''; // Clear buffer on success
+
               if (parsedData.debug) {
                 setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2)); 
                 if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
@@ -431,7 +435,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 console.log("Received data without recognized event type:", parsedData);
               }
             } catch (e) {
-              console.error("Failed to parse SSE data:", dataContentForDoneCheck, e);
+              // If parsing fails, the buffer may be incomplete, so wait for more data
+              // Only log if the buffer is getting suspiciously large (optional)
+              if (jsonBuffer.length > 10000) {
+                console.error("Large buffer, still can't parse SSE data:", jsonBuffer, e);
+                jsonBuffer = ''; // Optionally clear to avoid memory issues
+              }
+              // Otherwise, just wait for more data
             }
           }
         }
