@@ -112,7 +112,7 @@ function AgentCreationContent() {
         description: "Your agent is now ready to use.",
       });
 
-      router.push("/agent");
+      router.push("/workflow");
     } catch (error) {
       console.error("Error saving agent:", error);
       toast({
