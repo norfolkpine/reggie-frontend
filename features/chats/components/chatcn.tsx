@@ -347,20 +347,15 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
         {!isEmpty && (
           <ChatMessages 
-            messages={messages}
+            messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')}
             toolCalls={currentToolCalls}
             reasoningSteps={currentReasoningSteps}
           >
             <div className="max-w-3xl mx-auto w-full py-4">
               <MessageList 
-                messages={messages} 
+                messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')} 
                 isTyping={isTyping}
                 messageOptions={(message) => {
-                  console.log(message);
-                  console.log(completedMessages);
-                  console.log(message.role === 'assistant');
-                  console.log(completedMessages.has(message.id));
-
                   if (message.role === 'assistant' && completedMessages.has(message.id)) {
                     const feedback = messageFeedback[message.id] || {};
                     return {

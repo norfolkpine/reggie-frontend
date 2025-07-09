@@ -126,15 +126,17 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         console.log('🔍 Debug: Raw message response from API:', messageResponse);
         console.log('🔍 Debug: Message results:', messageResponse.results);
         
-        const formattedMessages = messageResponse.results.map(msg => {
-          console.log('🔍 Debug: Processing message:', msg);
-          return {
-            id: msg.id || msg.timestamp?.toString() || uuidv4(),
-            content: msg.content,
-            role: msg.role as 'user' | 'assistant',
-            feedback: msg.feedback
-          };
-        });
+        const formattedMessages = messageResponse.results
+          .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+          .map(msg => {
+            console.log('🔍 Debug: Processing message:', msg);
+            return {
+              id: msg.id || msg.timestamp?.toString() || uuidv4(),
+              content: msg.content,
+              role: msg.role as 'user' | 'assistant',
+              feedback: msg.feedback
+            };
+          });
         
         console.log('🔍 Debug: Formatted messages:', formattedMessages);
         console.log('🔍 Debug: User messages count:', formattedMessages.filter(m => m.role === 'user').length);
