@@ -66,6 +66,7 @@ interface UseAgentChatReturn {
   isUploadingFiles: boolean; // True if any file is currently uploading
   currentToolCalls: Map<string, ToolCall>; // Current active tool calls
   currentReasoningSteps: ReasoningStep[]; // Current reasoning steps
+  isMemoryUpdating: boolean; // Add memory updating state
 }
 
 export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
@@ -86,6 +87,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
   const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
   const [currentToolCalls, setCurrentToolCalls] = useState<Map<string, ToolCall>>(new Map());
   const [currentReasoningSteps, setCurrentReasoningSteps] = useState<ReasoningStep[]>([]);
+  // Add state for memory updating
+  const [isMemoryUpdating, setIsMemoryUpdating] = useState(false);
 
   const { handleTokenExpiration } = useAuth();
 
@@ -429,6 +432,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 }
                 
                 if (isAgentResponding) setIsAgentResponding(false);
+              } else if (parsedData.event === "MemoryUpdateStarted") {
+                setIsMemoryUpdating(true);
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               } else {
@@ -475,6 +480,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       // Clear current tool calls and reasoning steps after completion
       setCurrentToolCalls(new Map());
       setCurrentReasoningSteps([]);
+      setIsMemoryUpdating(false); // Set memory updating state to false at the end
       
       // Call onNewSessionCreated after message processing is complete
       // This ensures the URL update happens after the message is fully displayed
@@ -507,5 +513,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     isUploadingFiles,
     currentToolCalls,
     currentReasoningSteps,
+    isMemoryUpdating, // Export this state
   };
 }
