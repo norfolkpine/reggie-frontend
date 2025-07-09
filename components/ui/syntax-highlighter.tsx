@@ -1,3 +1,5 @@
+"use client";
+
 import React, { Suspense, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Check, Copy, Code2 } from 'lucide-react';

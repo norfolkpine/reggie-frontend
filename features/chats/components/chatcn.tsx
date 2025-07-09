@@ -355,6 +355,11 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                 messages={messages} 
                 isTyping={isTyping}
                 messageOptions={(message) => {
+                  console.log(message);
+                  console.log(completedMessages);
+                  console.log(message.role === 'assistant');
+                  console.log(completedMessages.has(message.id));
+
                   if (message.role === 'assistant' && completedMessages.has(message.id)) {
                     const feedback = messageFeedback[message.id] || {};
                     return {
