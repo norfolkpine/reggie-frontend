@@ -1,4 +1,4 @@
-import { TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/contexts/auth-context";
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 // Debug: Log env variable at build time
 console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PUBLIC_API_BASE_URL);

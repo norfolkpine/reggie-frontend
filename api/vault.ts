@@ -2,7 +2,7 @@ import { api } from '@/lib/api-client';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';
-import { TOKEN_KEY } from '@/contexts/auth-context';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 export interface UploadFileParams {
   file: File;

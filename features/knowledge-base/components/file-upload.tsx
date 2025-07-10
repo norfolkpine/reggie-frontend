@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import type { File as ApiFile, FileWithUI, Folder } from "@/types/knowledge-base"
 import { uploadFiles } from "@/api/files"
-import { TOKEN_KEY } from "@/contexts/auth-context"
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../../../lib/constants";
 
 interface FileUploadProps {
   onUploadComplete: (files: FileWithUI[]) => void
