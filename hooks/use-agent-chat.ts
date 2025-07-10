@@ -69,6 +69,16 @@ interface UseAgentChatReturn {
   isMemoryUpdating: boolean; // Add memory updating state
 }
 
+// Helper function to safely convert Uint8Array to string in chunks
+function uint8ToString(uint8: Uint8Array) {
+  let CHUNK_SIZE = 0x8000; // 32KB
+  let c = [];
+  for (let i = 0; i < uint8.length; i += CHUNK_SIZE) {
+    c.push(String.fromCharCode.apply(null, uint8.subarray(i, i + CHUNK_SIZE)));
+  }
+  return c.join('');
+}
+
 export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -266,7 +276,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     const attachments = filesToUpload && filesToUpload.length > 0 
       ? await Promise.all(filesToUpload.map(async (file) => {
           const arrayBuffer = await file.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const base64 = btoa(uint8ToString(new Uint8Array(arrayBuffer)));
           const dataUrl = `data:${file.type};base64,${base64}`;
           return {
             name: file.name,

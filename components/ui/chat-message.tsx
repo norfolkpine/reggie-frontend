@@ -12,6 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { FilePreview } from "@/components/ui/file-preview"
+import { ChatFileAttachment } from "@/features/chats/components/File/ChatFileAttachment"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { AgentThinking } from "@/components/ui/agent-thinking"
 
@@ -199,7 +200,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {files ? (
           <div className="mb-1 flex flex-wrap gap-2">
             {files.map((file, index) => {
-              return <FilePreview file={file} key={index} />
+              return <ChatFileAttachment file={file} key={index} />
             })}
           </div>
         ) : null}

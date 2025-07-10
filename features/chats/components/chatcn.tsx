@@ -15,7 +15,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { MarkdownComponents } from "./markdown-component";
-import { DragDropOverlay } from "./File/DragDropOverlayVisible";
 import MessageActions from "./message-actions";
 import { sendUserFeedback } from "../api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
@@ -38,7 +37,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const [input, setInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [isDragOverlayVisible, setIsDragOverlayVisible] = useState<boolean>(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
@@ -496,12 +494,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
           </div>
         </div>
       </div>
-      <DragDropOverlay
-      isVisible={isDragOverlayVisible}
-      onFilesDrop={handleFilesDrop}
-      onVisibilityChange={setIsDragOverlayVisible}
-      acceptedTypes={['document']}
-    />
     </ChatContainer>
    
   );
