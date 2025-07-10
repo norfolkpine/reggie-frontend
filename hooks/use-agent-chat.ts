@@ -373,30 +373,45 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                   onTitleUpdate(parsedData.title);
                 }
               } else if (parsedData.event === "ToolCallStarted") {
+                console.log("ToolCallStarted", parsedData);
+
+
+                for (const tool of parsedData.tools) {
+                  if(tool){
+                    const toolCall: ToolCall = {
+                      id: tool.tool_call_id,
+                      toolName: tool.tool_name,
+                      toolArgs: tool.tool_args,
+                      status: 'started',
+                      startTime: parsedData.created_at,
+                    };
+                    setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
+                  }
+                  
+                }
                 // Handle tool call started
-                const toolCall: ToolCall = {
-                  id: parsedData.tool.tool_call_id,
-                  toolName: parsedData.tool.tool_name,
-                  toolArgs: parsedData.tool.tool_args,
-                  status: 'started',
-                  startTime: parsedData.created_at,
-                };
-                setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
+               
               } else if (parsedData.event === "ToolCallCompleted") {
+                console.log("ToolCallStarted", parsedData);
                 // Handle tool call completed
-                setCurrentToolCalls(prev => {
-                  const newMap = new Map(prev);
-                  const existing = newMap.get(parsedData.tool.tool_call_id);
-                  if (existing) {
-                    newMap.set(parsedData.tool.tool_call_id, {
-                      ...existing,
-                      status: 'completed',
-                      result: parsedData.tool.result,
-                      endTime: parsedData.created_at,
+                for (const tool of parsedData.tools) {
+                  if(tool){
+                    setCurrentToolCalls(prev => {
+                      const newMap = new Map(prev);
+                      const existing = newMap.get(tool.tool_call_id);
+                      if (existing) {
+                        newMap.set(tool.tool_call_id, {
+                          ...existing,
+                          status: 'completed',
+                          result: tool.result,
+                          endTime: parsedData.created_at,
+                        });
+                      }
+                      return newMap;
                     });
                   }
-                  return newMap;
-                });
+                }
+                
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
                 
