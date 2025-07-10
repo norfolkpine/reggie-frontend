@@ -44,6 +44,41 @@ function AppIcon({ iconUrl }: { iconUrl: string }) {
 - Only URLs that pass `isSafeUrl` should be used in any dynamic DOM context.
 - If a URL does not pass, use a default/fallback or show an error.
 
+## Security Notes & Snyk Warnings
+
+### Why Snyk May Still Warn
+Snyk and other security tools may still flag code that uses URLs from localStorage (or other browser storage) in DOM attributes, even if you use `isSafeUrl`. This is because:
+- **localStorage is not a secure source:** Any JavaScript running in the browser (including malicious extensions or injected scripts) can modify localStorage.
+- **Critical config should come from trusted sources:** If an attacker can write to localStorage, they could inject a malicious stylesheet or script.
+
+### Best Practices
+- **Do not trust localStorage for security-sensitive configuration.**
+  - Always prefer config values fetched from your backend API or other trusted sources.
+  - Use localStorage only as a cache, and always validate with `isSafeUrl` before using any value in the DOM.
+- **Restrict allowed hostnames for stylesheets:**
+  - For maximum security, only allow URLs from your own domain or CDN. Example:
+    ```ts
+    function isSafeUrl(url: string | undefined): boolean {
+      if (!url) return false;
+      try {
+        const parsed = new URL(url, window.location.origin);
+        return (
+          parsed.protocol === 'https:' &&
+          parsed.hostname.endsWith('yourdomain.com') // restrict to your domain
+        );
+      } catch {
+        return false;
+      }
+    }
+    ```
+- **Document your validation logic and reasoning.**
+  - If you suppress a Snyk warning, add a comment explaining why your validation is sufficient.
+
+### Summary
+- Snyk is warning because localStorage is not a secure config source.
+- `isSafeUrl` mitigates most XSS risks, but restricting to your own domain is even safer.
+- For critical config, always prefer trusted sources over browser storage.
+
 ---
 
 **See also:** `lib/utils/url.ts` for the implementation and inline documentation. 
