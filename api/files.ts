@@ -1,6 +1,6 @@
 import { api, BASE_URL } from '@/lib/api-client';
 import { File, PaginatedFileList, PatchedFile } from '../types/api';
-import { TOKEN_KEY } from '@/contexts/auth-context';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 const ENDPOINT = '/reggie/api/v1/files/'
 

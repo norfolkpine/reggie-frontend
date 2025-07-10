@@ -6,6 +6,7 @@ import * as authApi from "@/api/auth";
 import { flushSync } from "react-dom";
 import { useEffect } from "react";
 import { setAuthContext } from "@/lib/api-client";
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 export interface AuthContext {
   isAuthenticated: boolean;
@@ -17,10 +18,6 @@ export interface AuthContext {
 }
 
 const AuthContext = React.createContext<AuthContext | null>(null);
-
-export const TOKEN_KEY = "reggie.auth.token";
-export const REFRESH_TOKEN_KEY = "reggie.auth.refresh.token";
-export const USER_KEY = "reggie.auth.user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
