@@ -11,19 +11,28 @@ export const Link = TiptapLink.extend({
       {
         tag: 'a[href]:not([data-type="button"]):not([href *= "javascript:" i])',
         getAttrs: element => {
-          // check if link starts with javascript:
-          if (element.getAttribute('href')?.toLowerCase().startsWith('javascript:')) {
-            return false
+          const href = element.getAttribute('href')?.toLowerCase() || '';
+          if (
+            href.startsWith('javascript:') ||
+            href.startsWith('data:') ||
+            href.startsWith('vbscript:')
+          ) {
+            return false;
           }
 
-          return null
+          return null;
         },
       },
     ]
   },
 
   renderHTML({ HTMLAttributes }) {
-    if (HTMLAttributes.href?.toLowerCase().startsWith('javascript:')) {
+    const href = HTMLAttributes.href?.toLowerCase() || '';
+    if (
+      href.startsWith('javascript:') ||
+      href.startsWith('data:') ||
+      href.startsWith('vbscript:')
+    ) {
       return ['a', mergeAttributes(this.options.HTMLAttributes, { ...HTMLAttributes, href: '' }, { class: 'link' }), 0]
     }
 

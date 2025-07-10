@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft } from "__barrel_optimize__?names=Activity,ArrowLeft,Loader2,Settings!=!lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft } from "lucide-react";
 import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
