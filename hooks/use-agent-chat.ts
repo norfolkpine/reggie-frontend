@@ -331,9 +331,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       readerRef.current = reader;
 
       const decoder = new TextDecoder();
-      let dataContentForDoneCheck = '';
       let assistantMessageCreated = false;
-      let jsonBuffer = '';
+      let buffer = '';
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -342,18 +341,26 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         if (done) break;
 
         const chunk = decoder.decode(chunkValue);
-        const lines = chunk.split("\n").filter(line => line.trim() !== "");
+        buffer += chunk;
+
+        // Process complete lines from the buffer
+        const lines = buffer.split('\n');
+        // Keep the last line in the buffer if it's incomplete
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith("data:")) {
-            const dataLine = line.slice(5).trim();
-            if (dataLine === "[DONE]") break;
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
 
-            jsonBuffer += dataLine;
+          if (trimmedLine.startsWith('data: ')) {
+            const dataContent = trimmedLine.slice(6); // Remove 'data: ' prefix
+            
+            if (dataContent === '[DONE]') {
+              return; // End of stream
+            }
 
             try {
-              const parsedData = JSON.parse(jsonBuffer);
-              jsonBuffer = ''; // Clear buffer on success
+              const parsedData = JSON.parse(dataContent);
 
               if (parsedData.debug) {
                 setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2)); 
@@ -375,7 +382,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
               } else if (parsedData.event === "ToolCallStarted") {
                 console.log("ToolCallStarted", parsedData);
 
-
                 for (const tool of parsedData.tools) {
                   if(tool){
                     const toolCall: ToolCall = {
@@ -387,12 +393,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     };
                     setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
                   }
-                  
                 }
-                // Handle tool call started
                
               } else if (parsedData.event === "ToolCallCompleted") {
-                console.log("ToolCallStarted", parsedData);
+                console.log("ToolCallCompleted", parsedData);
                 // Handle tool call completed
                 for (const tool of parsedData.tools) {
                   if(tool){
@@ -457,17 +461,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 console.log("Received data without recognized event type:", parsedData);
               }
             } catch (e) {
-              // If parsing fails, the buffer may be incomplete, so wait for more data
-              // Only log if the buffer is getting suspiciously large (optional)
-              if (jsonBuffer.length > 10000) {
-                console.error("Large buffer, still can't parse SSE data:", jsonBuffer, e);
-                jsonBuffer = ''; // Optionally clear to avoid memory issues
-              }
-              // Otherwise, just wait for more data
+              // Log parsing errors for debugging, but don't clear the buffer
+              // as this might be an incomplete JSON object
+              console.warn("Failed to parse SSE data:", dataContent, e);
             }
           }
         }
-        if (dataContentForDoneCheck === "[DONE]") break; 
       }
     } catch (streamError) {
       if (streamError instanceof DOMException && streamError.name === 'AbortError') {
