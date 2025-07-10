@@ -8,6 +8,7 @@ import { CrispProvider } from '@/services';
 
 import { useConfig } from './api/useConfig';
 import { Loader2 } from 'lucide-react';
+import { isSafeUrl } from '@/lib/utils/url';
 
 export const ConfigProvider = ({ children }: PropsWithChildren) => {
   const { data: conf } = useConfig();
@@ -37,9 +38,9 @@ export const ConfigProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <>
-      {conf?.FRONTEND_CSS_URL && (
+      {isSafeUrl(conf?.FRONTEND_CSS_URL) && (
         <Head>
-          <link rel="stylesheet" href={conf?.FRONTEND_CSS_URL} />
+          <link rel="stylesheet" href={conf.FRONTEND_CSS_URL} />
         </Head>
       )}
         <CrispProvider websiteId={conf?.CRISP_WEBSITE_ID}>

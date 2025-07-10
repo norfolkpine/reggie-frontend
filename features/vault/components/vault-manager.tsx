@@ -40,6 +40,7 @@ import {
   PaginationItem,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { isSafeUrl } from '@/lib/utils/url';
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -141,7 +142,7 @@ export function VaultManager() {
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
                 // Or extract extension from filename
-        const fileExtension = file.filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
+        const fileExtension = file.original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
         
         return {
           ...file,
@@ -174,20 +175,32 @@ export function VaultManager() {
 
   const handleFileDownload = (file: VaultFile) => {
     // Direct download through URL
-    if (file.file) {
+    if (file.file && isSafeUrl(file.file)) {
       const a = document.createElement('a');
       a.href = file.file;
-      a.download = file.filename || 'download';
+      a.download = file.original_filename || 'download';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid or unsafe file URL.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleFilePreview = (file: VaultFile) => {
     // Open file in new tab for preview
-    if (file.file) {
+    if (file.file && isSafeUrl(file.file)) {
       window.open(file.file, '_blank');
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid or unsafe file URL.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -270,7 +283,7 @@ export function VaultManager() {
             (activeFilters.length === 0) || 
             activeFilters.some((filter: string) => fileType.includes(filter));
             
-          const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             false;
           return matchesType && matchesSearch;
@@ -478,7 +491,7 @@ export function VaultManager() {
                                 (activeFilters.length === 0) || 
                                 activeFilters.some((filter: string) => fileType.includes(filter));
                                 
-                              const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                                 file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                                 false;
                               return matchesType && matchesSearch;
@@ -505,7 +518,7 @@ export function VaultManager() {
                               activeFilters.some((filter: string) => fileType.includes(filter));
                             
                             // Apply search filter
-                            const matchesSearch = file.filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                               file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                               false;
                             
@@ -517,7 +530,7 @@ export function VaultManager() {
                               <Checkbox 
                                 checked={selectedFiles.includes(file.id)}
                                 onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
-                                aria-label={`Select ${file.original_filename || file.filename}`}
+                                aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
                               />
                             </TableCell>
                              <TableCell className="font-medium">
@@ -525,7 +538,7 @@ export function VaultManager() {
                                 <FileText className="h-5 w-5 text-muted-foreground" />
                                 <span>
                                   {/* Display original filename if available, otherwise the filename */}
-                                  {file.original_filename || file.filename || 'Unnamed File'}
+                                  {file.original_filename || 'Unnamed File'}
                                 </span>
                               </div>
                             </TableCell>
