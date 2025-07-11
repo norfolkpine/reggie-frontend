@@ -31,6 +31,15 @@ interface ModalExportProps {
   open: boolean;
 }
 
+function sanitizeFilename(filename: string): string {
+  // Remove any character that is not a-z, A-Z, 0-9, dash, underscore, or dot
+  // Replace spaces with dashes, remove other potentially dangerous characters
+  return filename
+    .replace(/[^a-zA-Z0-9._-]/g, '-') // Only allow safe characters
+    .replace(/-+/g, '-') // Collapse multiple dashes
+    .replace(/^[-.]+|[-.]+$/g, ''); // Remove leading/trailing dashes or dots
+}
+
 export const ModalExport = ({ onClose, doc, open }: ModalExportProps) => {
   const { t } = useTranslation();
   const { data: templates } = useTemplates({
@@ -73,11 +82,13 @@ export const ModalExport = ({ onClose, doc, open }: ModalExportProps) => {
 
     setIsExporting(true);
 
-    const title = (doc.title || untitledDocument)
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s/g, '-');
+    const title = sanitizeFilename(
+      (doc.title || untitledDocument)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\s/g, '-')
+        .replace(/[\u0300-\u036f]/g, '')
+    );
 
     const html = templateSelected === 'empty' ? '' : templateSelected;
     let exportDocument = editor.document;

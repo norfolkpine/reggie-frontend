@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Icons } from "@/components/icons";
+import { isSafeUrl } from "@/lib/utils/url";
 
 const appText = new Map<string, string>([
   ["all", "All Apps"],
@@ -196,7 +198,11 @@ export default function Apps() {
                 <div
                   className={`flex size-10 items-center justify-center rounded-lg bg-muted p-2`}
                 >
-                  { app.icon_url && <img src={app.icon_url} />}
+                  {app.icon_url && isSafeUrl(app.icon_url) ? (
+                    <img src={app.icon_url} alt="App icon" className="h-8 w-8 object-contain" />
+                  ) : (
+                    <Icons.media className="h-8 w-8 text-muted-foreground" />
+                  )}
                 </div>
                 {app.is_connected ? (
   <div className="flex gap-2">

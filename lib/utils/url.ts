@@ -1,3 +1,24 @@
+/*
+ * URL Safety Utility
+ * ------------------
+ * Use the isSafeUrl function to validate any URL before using it in DOM attributes (such as <img src>, <a href>, <link href>, etc.).
+ *
+ * Why use this?
+ *  - Prevents DOM-based XSS vulnerabilities by ensuring only safe, trusted URLs are used in your application.
+ *  - Centralizes URL validation logic for consistency and maintainability.
+ *
+ * How to use:
+ *  import { isSafeUrl } from '@/lib/utils/url';
+ *  if (isSafeUrl(url)) {
+ *    // Safe to use in DOM
+ *    <img src={url} />
+ *  } else {
+ *    // Use a fallback or show an error
+ *  }
+ *
+ * Only use URLs that pass this check in any dynamic DOM context.
+ */
+
 export function isSafeUrl(url: string): boolean {
   try {
     // Parse the URL with a base to support relative URLs
