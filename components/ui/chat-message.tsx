@@ -135,7 +135,7 @@ export interface Message {
   reasoningSteps?: ReasoningStep[]
 }
 
-interface ToolCall {
+export interface ToolCall {
   id: string;
   toolName: string;
   toolArgs: any;
