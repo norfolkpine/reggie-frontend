@@ -381,9 +381,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 }
               } else if (parsedData.event === "ToolCallStarted") {
                 console.log("ToolCallStarted", parsedData);
-
-                for (const tool of parsedData.tools) {
-                  if(tool){
+                  if(parsedData.tool){
+                    const tool = parsedData.tool;
                     const toolCall: ToolCall = {
                       id: tool.tool_call_id,
                       toolName: tool.tool_name,
@@ -393,12 +392,10 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     };
                     setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
                   }
-                }
-               
               } else if (parsedData.event === "ToolCallCompleted") {
                 console.log("ToolCallCompleted", parsedData);
                 // Handle tool call completed
-                for (const tool of parsedData.tools) {
+                const tool = parsedData.tool;
                   if(tool){
                     setCurrentToolCalls(prev => {
                       const newMap = new Map(prev);
@@ -413,7 +410,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                       }
                       return newMap;
                     });
-                  }
+                  
                 }
                 
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
