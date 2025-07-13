@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/issue-message-action
+      - fix/issue-tool-call-action
 
 env:
   PROJECT_ID: bh-reggie-test
