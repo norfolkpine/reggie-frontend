@@ -6,6 +6,7 @@ import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from "@/contexts/auth-context";
+import { ToolCall } from '@/components/ui/chat-message';
 
 interface Message {
   id: string;
@@ -17,16 +18,6 @@ interface Message {
   experimental_attachments?: { name: string; contentType: string; url: string }[];
 }
 
-interface ToolCall {
-  id: string;
-  toolName: string;
-  toolArgs: any;
-  status: 'started' | 'completed' | 'error';
-  result?: any;
-  error?: string;
-  startTime?: number;
-  endTime?: number;
-}
 
 interface ReasoningStep {
   title: string;
@@ -129,7 +120,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         const formattedMessages = messageResponse.results
           .filter(msg => msg.role === 'user' || msg.role === 'assistant')
           .map(msg => {
-            console.log('🔍 Debug: Processing message:', msg);
+           
             return {
               id: msg.id || msg.timestamp?.toString() || uuidv4(),
               content: msg.content,
@@ -138,9 +129,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
             };
           });
         
-        console.log('🔍 Debug: Formatted messages:', formattedMessages);
-        console.log('🔍 Debug: User messages count:', formattedMessages.filter(m => m.role === 'user').length);
-        console.log('🔍 Debug: Assistant messages count:', formattedMessages.filter(m => m.role === 'assistant').length);
         
         setMessages(formattedMessages);
         setInternalSessionId(ssid);
@@ -296,6 +284,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     
     setIsLoading(true); // General loading state for agent response
     setIsAgentResponding(true);
+    let toolCalls: ToolCall[] = [];
+    let reasoningSteps: ReasoningStep[] = [];
 
     try {
       const token = localStorage.getItem(TOKEN_KEY);
@@ -333,6 +323,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       const decoder = new TextDecoder();
       let assistantMessageCreated = false;
       let buffer = '';
+      
 
       while (true) {
         if (abortControllerRef.current?.signal.aborted) break;
@@ -380,7 +371,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                   onTitleUpdate(parsedData.title);
                 }
               } else if (parsedData.event === "ToolCallStarted") {
-                console.log("ToolCallStarted", parsedData);
+               
                   if(parsedData.tool){
                     const tool = parsedData.tool;
                     const toolCall: ToolCall = {
@@ -393,7 +384,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     setCurrentToolCalls(prev => new Map(prev).set(toolCall.id, toolCall));
                   }
               } else if (parsedData.event === "ToolCallCompleted") {
-                console.log("ToolCallCompleted", parsedData);
+               
                 // Handle tool call completed
                 const tool = parsedData.tool;
                   if(tool){
@@ -410,7 +401,6 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                       }
                       return newMap;
                     });
-                  
                 }
                 
               } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
@@ -419,6 +409,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 // Update reasoning steps if available
                 if (parsedData.extra_data?.reasoning_steps) {
                   setCurrentReasoningSteps(parsedData.extra_data.reasoning_steps);
+                  reasoningSteps.push(parsedData.extra_data.reasoning_steps);
                 }
                 
                 // Create assistant message only when we start receiving content
@@ -449,7 +440,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                   });
                 }
                 
-                if (isAgentResponding) setIsAgentResponding(false);
+                setIsAgentResponding(!isAgentResponding);
               } else if (parsedData.event === "MemoryUpdateStarted") {
                 setIsMemoryUpdating(true);
               } else if (parsedData.event) {
@@ -494,6 +485,9 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       setCurrentToolCalls(new Map());
       setCurrentReasoningSteps([]);
       setIsMemoryUpdating(false); // Set memory updating state to false at the end
+
+      toolCalls = [];
+      reasoningSteps = [];
       
       // Call onNewSessionCreated after message processing is complete
       // This ensures the URL update happens after the message is fully displayed

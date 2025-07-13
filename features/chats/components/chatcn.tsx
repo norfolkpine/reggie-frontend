@@ -20,7 +20,6 @@ import MessageActions from "./message-actions";
 import { sendUserFeedback } from "../api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
-import { AgentThinking } from "@/components/ui/agent-thinking";
 import { Button } from "@/components/ui/button";
 import { Brain, Lightbulb } from "lucide-react";
 import { motion } from "framer-motion";
@@ -352,9 +351,14 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
             reasoningSteps={currentReasoningSteps}
           >
             <div className="max-w-3xl mx-auto w-full py-4">
+             
+              
               <MessageList 
                 messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')} 
                 isTyping={isTyping}
+                currentToolCalls={currentToolCalls}
+                currentReasoningSteps={currentReasoningSteps}
+                isAgentResponding={isAgentResponding}
                 messageOptions={(message) => {
                   if (message.role === 'assistant' && completedMessages.has(message.id)) {
                     const feedback = messageFeedback[message.id] || {};
@@ -380,19 +384,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
               />
               
               {/* Live Thinking Indicator */}
-              {isAgentResponding && (currentToolCalls.size > 0 || currentReasoningSteps.length > 0) && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4"
-                >
-                  <AgentThinking 
-                    toolCalls={Array.from(currentToolCalls.values())}
-                    reasoningSteps={currentReasoningSteps}
-                    isActive={true}
-                  />
-                </motion.div>
-              )}
+              
             </div>
           </ChatMessages>
         )}
