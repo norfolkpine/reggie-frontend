@@ -3,8 +3,19 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, ArrowRight, LucideIcon } from "lucide-react"
+import { Star, ArrowRight, LucideIcon, MoreHorizontal } from "lucide-react"
 import { Project } from "@/types/api"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { updateProject, deleteProject } from "@/api/projects";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProjectCardProps {
   project: Project
@@ -12,6 +23,40 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onSelect }: ProjectCardProps) {
+  const { toast } = useToast();
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newName, setNewName] = useState(project.name || "");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleRename = async () => {
+    setIsRenaming(true);
+    try {
+      await updateProject(project.id, { ...project, name: newName });
+      toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
+      setRenameOpen(false);
+      if (typeof window !== "undefined") window.location.reload();
+    } catch (e) {
+      toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete project '${project.name}'? This cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      await deleteProject(project.id);
+      toast({ title: "Project deleted", description: `Project '${project.name}' was deleted.` });
+      if (typeof window !== "undefined") window.location.reload();
+    } catch (e) {
+      toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Card 
       className={`overflow-hidden flex flex-col h-full w-full aspect-[4/5] ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
@@ -25,11 +70,24 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
             </div>
             <CardTitle className="text-lg line-clamp-2">{project.name}</CardTitle>
           </div>
-          {project.starred && (
-            <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 shrink-0">
-              <Star className="h-3 w-3 mr-1 fill-primary" /> Popular
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {project.starred && (
+              <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 shrink-0">
+                <Star className="h-3 w-3 mr-1 fill-primary" /> Popular
+              </Badge>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameOpen(true); }}>Rename</DropdownMenuItem>
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(); }} disabled={isDeleting} className="text-destructive focus:text-destructive">{isDeleting ? "Deleting..." : "Delete"}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <CardDescription className="mt-2 line-clamp-3 h-12">{project.description}</CardDescription>
       </CardHeader>
@@ -58,6 +116,18 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
           View <ArrowRight className="h-4 w-4" />
         </Button>
       </CardFooter>
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent onClick={e => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+          </DialogHeader>
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project name" />
+          <DialogFooter>
+            <Button onClick={() => setRenameOpen(false)} variant="outline">Cancel</Button>
+            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>{isRenaming ? "Renaming..." : "Rename"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

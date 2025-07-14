@@ -67,35 +67,22 @@ export default function AgentEngine({  }: AgentEngineProps) {
           ) : error ? (
             <div className="text-destructive text-sm p-4 text-center">{error}</div>
           ) : (
-            <RadioGroup value={agentData.model} onValueChange={(value) => setAgentData({ model: value })} className="space-y-1">
+            <select
+              className="w-full border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              value={agentData.model || ''}
+              onChange={e => setAgentData({ model: e.target.value })}
+            >
+              <option value="" disabled>Select a model</option>
               {modelProviders.map((model) => (
-                <div
+                <option
                   key={model.model_name}
-                  className={`flex items-center space-x-1 border rounded-md p-2 ${
-                    model.model_name === agentData.model ? "bg-muted/50" : ""
-                  } ${!model.is_enabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  value={model.id}
+                  disabled={!model.is_enabled}
                 >
-                  <RadioGroupItem 
-                    value={model.id.toString()} 
-                    id={model.provider} 
-                    className="mt-1"
-                    disabled={!model.is_enabled}
-                  />
-                  <div className="flex-1">
-                    <Label 
-                      htmlFor={model.provider} 
-                      className={`font-normal ${!model.is_enabled ? "cursor-not-allowed" : ""}`}
-                    >
-                      {model.model_name}
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {model.description ?? model.provider}
-                        {!model.is_enabled && " (Currently unavailable)"}
-                      </p>
-                    </Label>
-                  </div>
-                </div>
+                  {model.model_name} {model.description ? `- ${model.description}` : ''} {!model.is_enabled ? '(Currently unavailable)' : ''}
+                </option>
               ))}
-            </RadioGroup>
+            </select>
           )}
         </div>
 

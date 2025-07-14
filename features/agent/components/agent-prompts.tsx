@@ -28,6 +28,8 @@ export default function AgentPrompts({}: AgentPromptsProps) {
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showFormats, setShowFormats] = useState(false);
 
 
   const { agentData, setAgentData } = useAgent();
@@ -107,36 +109,46 @@ export default function AgentPrompts({}: AgentPromptsProps) {
           </div>
 
           {instructions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {instructions.map((template) => (
-                <Card
-                  key={template.id}
-                  className={cn(
-                    "cursor-pointer hover:border-primary transition-colors",
-                    agentData.systemTemplateId === template.id.toString() &&
-                      "border-primary bg-primary/5",
-                    "border-dashed"
-                  )}
-                  onClick={() => {
-                    setAgentData({
-                      systemMessage: template.instruction,
-                      systemTemplateId: template.id.toString() === "0" ? "" : template.id.toString(),
-                    });
-
-                  }}
-                >
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-base flex items-center">
-                      {template.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-sm text-muted-foreground">
-                      {truncateText(template.instruction)}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+            <div>
+              <button
+                type="button"
+                className="mb-2 text-primary underline text-sm"
+                onClick={() => setShowSuggestions((prev) => !prev)}
+              >
+                {showSuggestions ? 'Hide Suggested Prompts' : 'Show Suggested Prompts'}
+              </button>
+              {showSuggestions && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {instructions.map((template) => (
+                    <Card
+                      key={template.id}
+                      className={cn(
+                        "cursor-pointer hover:border-primary transition-colors",
+                        agentData.systemTemplateId === template.id.toString() &&
+                          "border-primary bg-primary/5",
+                        "border-dashed"
+                      )}
+                      onClick={() => {
+                        setAgentData({
+                          systemMessage: template.instruction,
+                          systemTemplateId: template.id.toString() === "0" ? "" : template.id.toString(),
+                        });
+                      }}
+                    >
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base flex items-center">
+                          {template.title}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <p className="text-sm text-muted-foreground">
+                          {truncateText(template.instruction)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center border rounded-lg bg-muted/50">
@@ -209,34 +221,45 @@ export default function AgentPrompts({}: AgentPromptsProps) {
           </div>
 
           {apiOutputs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {apiOutputs.map((output) => (
-                <Card
-                  key={output.id}
-                  className={cn(
-                    "cursor-pointer hover:border-primary transition-colors",
-                    agentData.expectedTemplateId === output.id.toString() &&
-                      "border-primary bg-primary/5"
-                  )}
-                  onClick={() => {
-                    setAgentData({
-                      expectedOutput: output.id.toString() === "0" ? "" : output.expected_output,
-                      expectedTemplateId: output.id.toString(),
-                    });
-                  }}
-                >
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-base flex items-center">
-                      {output.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-sm text-muted-foreground">
-                      {truncateText(output.expected_output)}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+            <div>
+              <button
+                type="button"
+                className="mb-2 text-primary underline text-sm"
+                onClick={() => setShowFormats((prev) => !prev)}
+              >
+                {showFormats ? 'Hide Suggested Formats' : 'Show Suggested Formats'}
+              </button>
+              {showFormats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {apiOutputs.map((output) => (
+                    <Card
+                      key={output.id}
+                      className={cn(
+                        "cursor-pointer hover:border-primary transition-colors",
+                        agentData.expectedTemplateId === output.id.toString() &&
+                          "border-primary bg-primary/5"
+                      )}
+                      onClick={() => {
+                        setAgentData({
+                          expectedOutput: output.id.toString() === "0" ? "" : output.expected_output,
+                          expectedTemplateId: output.id.toString(),
+                        });
+                      }}
+                    >
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base flex items-center">
+                          {output.title}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <p className="text-sm text-muted-foreground">
+                          {truncateText(output.expected_output)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center border rounded-lg bg-muted/50">
