@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 type DockTab = "current" | "all" | "workflow"
 
@@ -34,9 +34,11 @@ interface ChatSection {
 const AgentChatDock = memo(function AgentChatDock({
   onSelectChat,
   onNewChat,
+  selectedSessionId: selectedSessionIdProp,
 }: {
   onSelectChat?: (chatId: string, agentCode?: string | null) => void
   onNewChat?: () => void
+  selectedSessionId?: string
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
@@ -46,6 +48,15 @@ const AgentChatDock = memo(function AgentChatDock({
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const router = useRouter()
+  const pathname = usePathname()
+  // Extract session id from URL if not provided as prop
+  let selectedSessionId = selectedSessionIdProp
+  if (!selectedSessionId) {
+    const match = pathname.match(/\/chat\/(\w+)/)
+    if (match) {
+      selectedSessionId = match[1]
+    }
+  }
   const { chatSessions, isLoading, page, hasMore, setPage, deleteSession, renameSession } = useChatSessionContext()
 
   // Load dock state from localStorage on mount
@@ -238,7 +249,7 @@ const AgentChatDock = memo(function AgentChatDock({
           </div>
 
           {/* New Chat Button & Search Bar */}
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-2 border-b border-gray-100">
             <Button
               onClick={() => {
                 console.log("New Chat button clicked");
@@ -248,7 +259,7 @@ const AgentChatDock = memo(function AgentChatDock({
                   console.log("onNewChat function not provided");
                 }
               }}
-              className="w-full bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 justify-start mb-4 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 rounded-lg"
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 justify-start mb-2 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 rounded-lg"
               size="sm"
             >
               <Plus className="w-4 h-4 mr-2 text-gray-500" />
@@ -263,7 +274,7 @@ const AgentChatDock = memo(function AgentChatDock({
           </div>
 
           {/* Chat History Sections */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4" onScroll={handleScroll}>
+          <div className="flex-1 overflow-y-auto px-1 pb-4" onScroll={handleScroll}>
             {sections.map((section, sectionIndex) => (
               <div key={section.title} className="mb-4">
                 <button
@@ -279,7 +290,11 @@ const AgentChatDock = memo(function AgentChatDock({
                     {(isLoading && page == 1 ? [] : section.items).map((item, itemIndex) => (
                         <div
                           key={`chat ${item.id} ${itemIndex}`}
-                          className="bg-gray-100 rounded-lg p-2 hover:bg-gray-200 transition-colors duration-150 group relative"
+                          className={cn(
+                            "rounded-lg p-2 transition-colors duration-150 group relative",
+                            (selectedSessionId === item.id || editingSessionId === item.id) ? "bg-gray-100" : "",
+                            "hover:bg-gray-100"
+                          )}
                         >
                           {/* Main content area */}
                           <div
