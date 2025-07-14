@@ -50,8 +50,10 @@ import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
 import { chatStorage } from "@/lib/utils/chat-storage";
-import { getProjects } from "@/api/projects";
+import { getProjects, updateProject, deleteProject } from "@/api/projects";
 import { Project } from "@/types/api";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 
 const FolderShieldIcon = () => (
@@ -151,6 +153,13 @@ export default function Sidebar() {
   const [vaultExpanded, setVaultExpanded] = useState(false);
   const [hoveredVault, setHoveredVault] = useState(false);
 
+  // Add state for rename dialog and project
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameProjectId, setRenameProjectId] = useState<number | null>(null);
+  const [newName, setNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
   useEffect(() => {
     if (vaultExpanded) {
       setLoadingProjects(true);
@@ -228,6 +237,39 @@ export default function Sidebar() {
         description: "Failed to create vault. Please try again later.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleRename = async () => {
+    if (!renameProjectId) return;
+    setIsRenaming(true);
+    try {
+      await updateProject(renameProjectId, { name: newName });
+      toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
+      setRenameOpen(false);
+      setRenameProjectId(null);
+      setNewName("");
+      // Refresh projects
+      getProjects().then((res) => setProjects(res.results || []));
+    } catch (e) {
+      toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleDelete = async (projectId: number, projectName: string) => {
+    if (!window.confirm(`Are you sure you want to delete project '${projectName}'? This cannot be undone.`)) return;
+    setIsDeleting(projectId);
+    try {
+      await deleteProject(projectId);
+      toast({ title: "Project deleted", description: `Project '${projectName}' was deleted.` });
+      // Refresh projects
+      getProjects().then((res) => setProjects(res.results || []));
+    } catch (e) {
+      toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -347,7 +389,22 @@ export default function Sidebar() {
                               }}
                             >
                               <FolderGit2 className="h-4 w-4" />
-                              <span>{project.name}</span>
+                              <span className="flex-1 truncate">{project.name}</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameProjectId(typeof project.id === 'number' ? project.id : -1); setNewName(project.name || ""); setRenameOpen(true); }}>
+                                    <Edit className="h-4 w-4 mr-2" />Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(typeof project.id === 'number' ? project.id : -1, project.name || ""); }} disabled={isDeleting === project.id} className="text-destructive focus:text-destructive">
+                                    <Trash className="h-4 w-4 mr-2" />{isDeleting === project.id ? "Deleting..." : "Delete"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           ))
                         )}
@@ -449,7 +506,22 @@ export default function Sidebar() {
                               }}
                             >
                               <FolderGit2 className="h-4 w-4" />
-                              <span>{project.name}</span>
+                              <span className="flex-1 truncate">{project.name}</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameProjectId(typeof project.id === 'number' ? project.id : -1); setNewName(project.name || ""); setRenameOpen(true); }}>
+                                    <Edit className="h-4 w-4 mr-2" />Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(typeof project.id === 'number' ? project.id : -1, project.name || ""); }} disabled={isDeleting === project.id} className="text-destructive focus:text-destructive">
+                                    <Trash className="h-4 w-4 mr-2" />{isDeleting === project.id ? "Deleting..." : "Delete"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           ))
                         )}
@@ -476,6 +548,18 @@ export default function Sidebar() {
         onOpenChange={setCreateProjectOpen}
         onCreateProject={handleCreateProject}
       />
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent onClick={e => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+          </DialogHeader>
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project name" />
+          <DialogFooter>
+            <Button onClick={() => setRenameOpen(false)} variant="outline">Cancel</Button>
+            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>{isRenaming ? "Renaming..." : "Rename"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

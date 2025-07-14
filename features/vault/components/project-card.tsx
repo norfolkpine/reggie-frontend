@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, ArrowRight, LucideIcon, MoreHorizontal } from "lucide-react"
+import { Star, ArrowRight, LucideIcon, MoreHorizontal, Edit, Trash } from "lucide-react"
 import { Project } from "@/types/api"
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleRename = async () => {
+    if (typeof project.id !== 'number') return;
     setIsRenaming(true);
     try {
       await updateProject(project.id, { ...project, name: newName });
@@ -44,6 +45,7 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   };
 
   const handleDelete = async () => {
+    if (typeof project.id !== 'number') return;
     if (!window.confirm(`Are you sure you want to delete project '${project.name}'? This cannot be undone.`)) return;
     setIsDeleting(true);
     try {
@@ -83,8 +85,12 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameOpen(true); }}>Rename</DropdownMenuItem>
-                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(); }} disabled={isDeleting} className="text-destructive focus:text-destructive">{isDeleting ? "Deleting..." : "Delete"}</DropdownMenuItem>
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameOpen(true); }}>
+                  <Edit className="h-4 w-4 mr-2" />Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(); }} disabled={isDeleting} className="text-destructive focus:text-destructive">
+                  <Trash className="h-4 w-4 mr-2" />{isDeleting ? "Deleting..." : "Delete"}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -10,13 +10,14 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit } from "lucide-react";
 import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
 import { 
   DropdownMenu,
@@ -79,6 +80,9 @@ export function VaultManager() {
     return 'files';
   });
   const projectId = params?.id as string;
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
   useEffect(() => {
     fetchProject();
@@ -302,6 +306,24 @@ export function VaultManager() {
     );
   };
 
+  // Add a function to handle rename
+  const handleRename = async () => {
+    if (!project || typeof project.id !== 'number') return;
+    setIsRenaming(true);
+    try {
+      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id, { ...project, name: newName }));
+      toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
+      setRenameOpen(false);
+      setNewName("");
+      // Refresh project name
+      fetchProject();
+    } catch (e) {
+      toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   if (!project && !loading) {
     return (
       <div className="text-center py-12">
@@ -321,8 +343,18 @@ export function VaultManager() {
           <Button variant="ghost" size="icon" onClick={() => router.push("/vault")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-medium">
+          <h1 className="text-xl font-medium flex items-center gap-2">
             {loading ? "Loading project..." : project?.name}
+            {!loading && project && (
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-gray-200 focus:outline-none"
+                title="Edit project name"
+                onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+              >
+                <Edit className="h-5 w-5 text-muted-foreground" />
+              </button>
+            )}
           </h1>
           {loading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
         </div>
@@ -759,6 +791,18 @@ export function VaultManager() {
           </Tabs>
         )}
       </div>
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent onClick={e => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Rename Project</DialogTitle>
+          </DialogHeader>
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project name" />
+          <DialogFooter>
+            <Button onClick={() => setRenameOpen(false)} variant="outline">Cancel</Button>
+            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>{isRenaming ? "Renaming..." : "Rename"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
