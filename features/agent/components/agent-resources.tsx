@@ -18,12 +18,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getKnowledgeBases } from "@/api/knowledge-bases"
 import { KnowledgeBase } from "@/types/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAgent } from "../context/agent-context";
 
 interface AgentResourcesProps {
   onChange: (agentData: AgentForm) => void
 }
 
 export default function AgentResources({ onChange }: AgentResourcesProps) {
+  const { agentData } = useAgent();
  
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [urls, setUrls] = useState<UrlResource[]>([])
@@ -35,6 +37,12 @@ export default function AgentResources({ onChange }: AgentResourcesProps) {
   const [citeKnowledge, setCiteKnowledge] = useState(false)
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
   const [isLoadingKnowledgeBases, setIsLoadingKnowledgeBases] = useState(false)
+
+  // Sync local knowledgeBaseId with agentData.knowledgeBaseId only on mount
+  useEffect(() => {
+    setKnowledgeBaseId(agentData.knowledgeBaseId ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

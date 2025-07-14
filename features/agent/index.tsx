@@ -44,6 +44,10 @@ export default function ExploreAgents() {
     }
   }
 
+  const handleDeleteAgent = async () => {
+    await fetchAgents();
+  };
+
   useEffect(() => {
     fetchAgents()
   }, [])
@@ -104,6 +108,7 @@ export default function ExploreAgents() {
             <AgentList
               title="All Agents"
               agents={filteredAgents}
+              onDelete={handleDeleteAgent}
             />
           </>
         )}

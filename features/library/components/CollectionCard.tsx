@@ -12,7 +12,7 @@ export function CollectionCard({ collection }: CollectionCardProps) {
   const isPublic = collection.access === "public"
 
   return (
-    <Card>
+    <Card className="h-full w-full aspect-[4/5]">
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
