@@ -63,7 +63,7 @@ export function LibraryTabs({
       </div>
 
       <TabsContent value="all" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-stretch items-stretch">
           {filteredDocuments.map((doc) => (
             <DocumentCard key={doc.id} document={doc} />
           ))}
