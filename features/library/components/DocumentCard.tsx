@@ -21,7 +21,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
   }
 
   return (
-    <Card className={`overflow-hidden ${isStarred ? "border-yellow-300" : ""} hover:shadow-md transition-all`}>
+    <Card className={`overflow-hidden h-full w-full aspect-[4/5] ${isStarred ? "border-yellow-300" : ""} hover:shadow-md transition-all`}>
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{document.title}</CardTitle>
