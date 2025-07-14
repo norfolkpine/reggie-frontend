@@ -219,15 +219,15 @@ const AgentChatDock = memo(function AgentChatDock({
       {activeTab && (
         <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-2 border-b border-gray-200">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              {/* <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                 {(() => {
                   const activeItem = dockItems.find((item) => item.id === activeTab)
                   const Icon = activeItem?.icon || Bot
                   return <Icon className="w-4 h-4 text-blue-600" />
                 })()}
-              </div>
+              </div> */}
               <h2 className="font-semibold text-gray-900">{getTabLabel(activeTab)}</h2>
             </div>
             <div className="flex items-center gap-1">
