@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   BookOpen,
   FolderGit2,
   Folder,
@@ -49,6 +50,8 @@ import { useToast } from "./ui/use-toast";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
 import { chatStorage } from "@/lib/utils/chat-storage";
+import { getProjects } from "@/api/projects";
+import { Project } from "@/types/api";
 
 
 const FolderShieldIcon = () => (
@@ -90,7 +93,6 @@ const chats: ChatItem[] = [
 
 const navigationItems: NavigationItem[] = [
   { name: "Assistant", icon: Workflow, url: "/chat" },
-
   {
     name: "Vault",
     icon: FolderShieldIcon,
@@ -144,10 +146,19 @@ export default function Sidebar() {
     null
   );
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [vaultExpanded, setVaultExpanded] = useState(false);
+  const [hoveredVault, setHoveredVault] = useState(false);
 
-  // Define navigationItems inside the component so it has access to setCreateProjectOpen
-  // Update the navigationItems definition inside the component
-  // Change the Projects item to navigate to the projects view instead of opening the dialog
+  useEffect(() => {
+    if (vaultExpanded) {
+      setLoadingProjects(true);
+      getProjects()
+        .then((res) => setProjects(res.results || []))
+        .finally(() => setLoadingProjects(false));
+    }
+  }, [vaultExpanded]);
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -257,27 +268,90 @@ export default function Sidebar() {
                 'type' in item ? (
                   <div key={index} className="sidebar-divider"></div>
                 ) : (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname === item.url ? "bg-gray-200" : ""}`}
-                    onClick={() => handleNavItemClick(item.url)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {renderIcon(item.icon)}
-                      <span>{item.name}</span>
-                    </div>
-                    {item.name === "Vault" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 rounded-full hover:bg-gray-300"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCreateProjectOpen(true);
-                        }}
+                  <div key={index} className="w-full">
+                    {item.name === "Vault" ? (
+                      <div
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        onMouseEnter={() => setHoveredVault(true)}
+                        onMouseLeave={() => setHoveredVault(false)}
                       >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                        <div className="flex items-center gap-2">
+                          {/* Fixed-width icon/arrow container to prevent text shift */}
+                          <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
+                            {hoveredVault ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0 rounded-full hover:bg-gray-200"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setVaultExpanded((prev) => !prev);
+                                }}
+                                tabIndex={-1}
+                                aria-label={vaultExpanded ? "Collapse" : "Expand"}
+                              >
+                                {vaultExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              </Button>
+                            ) : (
+                              renderIcon(item.icon)
+                            )}
+                          </span>
+                          <span
+                            className="select-none"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleNavItemClick(item.url);
+                            }}
+                          >
+                            {item.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full hover:bg-gray-300"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setCreateProjectOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        onClick={() => handleNavItemClick(item.url)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
+                            {renderIcon(item.icon)}
+                          </span>
+                          <span>{item.name}</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Sub nav for Vault: dynamically render projects only if expanded */}
+                    {item.name === "Vault" && vaultExpanded && (
+                      <div className="ml-6 mt-1 flex flex-col gap-1">
+                        {loadingProjects ? (
+                          <span className="text-xs text-muted-foreground p-2">Loading...</span>
+                        ) : (
+                          projects.map((project) => (
+                            <div
+                              key={project.id}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleNavItemClick(`/vault/${project.id}`);
+                              }}
+                            >
+                              <FolderGit2 className="h-4 w-4" />
+                              <span>{project.name}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
                 )
@@ -339,9 +413,7 @@ export default function Sidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`rounded-full w-10 h-10 ${
-                        pathname.includes(item.url) ? "bg-gray-200" : ""
-                      }`}
+                      className={`rounded-full w-10 h-10 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
                       title={item.name}
                       onClick={() => handleNavItemClick(item.url)}
                     >
@@ -352,7 +424,7 @@ export default function Sidebar() {
                         variant="ghost"
                         size="icon"
                         className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           setCreateProjectOpen(true);
                         }}
@@ -360,6 +432,28 @@ export default function Sidebar() {
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
+                    )}
+                    {/* Collapsed sub nav for Vault: dynamically render projects as a popover */}
+                    {item.name === "Vault" && pathname.startsWith("/vault") && (
+                      <div className="absolute left-12 top-0 z-10 bg-white border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
+                        {loadingProjects ? (
+                          <span className="text-xs text-muted-foreground p-2">Loading...</span>
+                        ) : (
+                          projects.map((project) => (
+                            <div
+                              key={project.id}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleNavItemClick(`/vault/${project.id}`);
+                              }}
+                            >
+                              <FolderGit2 className="h-4 w-4" />
+                              <span>{project.name}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
                 )
