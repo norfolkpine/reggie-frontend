@@ -17,9 +17,9 @@ export function PromptSuggestions({
           <button
             key={suggestion}
             onClick={() => append({ role: "user", content: suggestion })}
-            className="h-max flex-1 rounded-xl border bg-background p-4 hover:bg-muted"
+            className="flex-1 min-h-[64px] flex items-center justify-center rounded-xl border bg-background p-4 hover:bg-muted text-center"
           >
-            <p>{suggestion}</p>
+            <p className="w-full">{suggestion}</p>
           </button>
         ))}
       </div>
