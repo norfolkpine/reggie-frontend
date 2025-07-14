@@ -14,7 +14,7 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   return (
     <Card 
-      className={`overflow-hidden flex flex-col  ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
+      className={`overflow-hidden flex flex-col h-full w-full aspect-[4/5] ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
       onClick={() => onSelect?.(project.name ?? '')}
     >
       <CardHeader className={`p-4 pb-2 flex-1 ${project.color || 'bg-muted'}`}>
