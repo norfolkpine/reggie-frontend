@@ -16,12 +16,12 @@ import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { AgentThinking } from "@/components/ui/agent-thinking"
 
 const chatBubbleVariants = cva(
-  "group/message relative break-words rounded-lg p-3 text-sm sm:max-w-[70%]",
+  "group/message relative break-words rounded-lg p-3 text-sm",
   {
     variants: {
       isUser: {
-        true: "bg-primary text-primary-foreground",
-        false: "bg-muted text-foreground",
+        true: "bg-primary text-primary-foreground sm:max-w-[70%]",
+        false: "bg-muted text-foreground w-full",
       },
       animation: {
         none: "",
@@ -227,7 +227,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   // For assistant messages, show the thinking process and tool calls
   return (
-    <div className="flex flex-col items-start space-y-3">
+    <div className="flex flex-col items-start space-y-3 w-full">
       {/* Agent Thinking Process - Moved above content */}
       {((toolCalls && toolCalls.length > 0) || (reasoningSteps && reasoningSteps.length > 0)) && (
         <AgentThinking 
@@ -244,7 +244,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             return (
               <div
                 className={cn(
-                  "flex flex-col",
+                  "flex flex-col w-full",
                   isUser ? "items-end" : "items-start"
                 )}
                 key={`text-${index}`}
@@ -272,7 +272,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </div>
             )
           } else if (part.type === "reasoning") {
-            return <ReasoningBlock key={`reasoning-${index}`} part={part} />
+            return <ReasoningBlock key={`reasoning-${index}`} part={part} fullWidth={!isUser} />
           } else if (part.type === "tool-invocation") {
             return (
               <ToolCall
@@ -285,7 +285,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         })
       ) : (
         // Main content message
-        <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+        <div className={cn("flex flex-col w-full", isUser ? "items-end" : "items-start")}> 
           <div className={cn(chatBubbleVariants({ isUser, animation }))}>
             <MarkdownRenderer>{content}</MarkdownRenderer>
             {actions ? (
@@ -323,11 +323,11 @@ function dataUrlToUint8Array(data: string) {
   return new Uint8Array(buf)
 }
 
-const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
+const ReasoningBlock = ({ part, fullWidth = false }: { part: ReasoningPart, fullWidth?: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="mb-2 flex flex-col items-start sm:max-w-[70%]">
+    <div className={cn("mb-2 flex flex-col items-start", fullWidth ? "w-full" : "sm:max-w-[70%]")}> 
       <Collapsible
         open={isOpen}
         onOpenChange={setIsOpen}
