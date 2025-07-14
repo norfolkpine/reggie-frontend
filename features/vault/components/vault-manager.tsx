@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2 } from "lucide-react";
 import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
@@ -42,6 +42,14 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { isSafeUrl } from '@/lib/utils/url';
+import { CustomChat } from "../../chats/components/chatcn";
+import { ChatForm } from "@/components/ui/chat";
+import { MessageInput } from "@/components/ui/message-input";
+import { useAgentChat } from "@/hooks/use-agent-chat";
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { InstructionsDialog } from "./instructions-dialog";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -83,6 +91,8 @@ export function VaultManager() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [instructions, setInstructions] = useState("");
 
   useEffect(() => {
     fetchProject();
@@ -141,7 +151,7 @@ export function VaultManager() {
       setHasPreviousPage(!!response.previous);
       
       // Add file_type property based on filename extension or MIME type
-      const filesWithType: VaultFile[] = response.results.map(file => {
+      const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
         // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
@@ -311,7 +321,7 @@ export function VaultManager() {
     if (!project || typeof project.id !== 'number') return;
     setIsRenaming(true);
     try {
-      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id, { ...project, name: newName }));
+      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id || 0, { ...project, name: newName }));
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       setNewName("");
@@ -360,7 +370,37 @@ export function VaultManager() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      {/* Chat input only (no chat content), above Tabs, only when project is loaded */}
+      {!loading && project && (
+        <>
+          <ChatInputOnly sessionId={`vault-${projectId}`} agentId="vault-assistant" />
+          <div className="max-w-2xl mx-auto w-full mt-4">
+            <div
+              className="border rounded-md bg-muted/40 p-4 flex flex-col gap-2 cursor-pointer transition hover:shadow-md focus:ring-2 focus:ring-ring outline-none"
+              tabIndex={0}
+              role="button"
+              onClick={() => setShowInstructionsDialog(true)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setShowInstructionsDialog(true); }}
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-muted-foreground" />
+                <span className="font-semibold text-md">Project Instructions</span>
+              </div>
+              <div className="text-muted-foreground text-xs">
+                Grok will follow these instructions for all conversations in this project.
+              </div>
+            </div>
+          </div>
+          <InstructionsDialog
+            open={showInstructionsDialog}
+            onOpenChange={setShowInstructionsDialog}
+            instructions={instructions}
+            setInstructions={setInstructions}
+          />
+        </>
+      )}
+
+      <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
@@ -803,6 +843,68 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function ChatInputOnly({ agentId, sessionId }: { agentId: string; sessionId: string }) {
+  const [input, setInput] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const {
+    handleSubmit,
+    uploadFiles,
+    isLoading,
+    fileUploads,
+    isUploadingFiles,
+  } = useAgentChat({ agentId, sessionId });
+
+  function onSubmit() {
+    if (!input.trim()) return;
+    handleSubmit(input, files);
+    setInput("");
+    setFiles([]);
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto w-full p-4 border rounded-md mt-4 bg-white">
+      <ChatForm
+        isPending={isLoading}
+        handleSubmit={e => {
+          e?.preventDefault?.();
+          onSubmit();
+        }}
+      >
+        {({ setFiles: setFormFiles }) => (
+          <MessageInput
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            allowAttachments
+            files={files}
+            setFiles={newFiles => {
+              if (Array.isArray(newFiles)) {
+                const currentFiles = files || [];
+                const addedFiles = newFiles.filter(newFile =>
+                  !currentFiles.some(existingFile =>
+                    existingFile.name === newFile.name &&
+                    existingFile.size === newFile.size
+                  )
+                );
+                setFiles([...newFiles]);
+                if (addedFiles.length > 0) {
+                  uploadFiles(addedFiles);
+                }
+              } else {
+                setFiles([]);
+              }
+              setFormFiles?.(newFiles);
+            }}
+            stop={() => {}}
+            isGenerating={isLoading || isUploadingFiles}
+            fileUploads={fileUploads}
+            isUploadingFiles={isUploadingFiles}
+          />
+        )}
+      </ChatForm>
     </div>
   );
 }
