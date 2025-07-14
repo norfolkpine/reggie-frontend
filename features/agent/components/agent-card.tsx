@@ -27,7 +27,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 
   const { refresh } = useChatSessionContext();
   return (
-    <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50">
+    <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50 h-full w-full aspect-[4/5]">
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
