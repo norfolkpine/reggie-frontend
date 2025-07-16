@@ -175,14 +175,37 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   reasoningSteps,
 }) => {
   const files = useMemo(() => {
-    return experimental_attachments?.map((attachment) => {
-      const dataArray = dataUrlToUint8Array(attachment.url)
-      const file = new File([dataArray], attachment.name ?? "Unknown", {
-        type: attachment.contentType,
-      })
-      return file
-    })
-  }, [experimental_attachments])
+    if (!experimental_attachments) return [];
+    return experimental_attachments.map((attachment) => {
+      // Only decode if it's a data URL
+      if (attachment.url && attachment.url.startsWith('data:')) {
+        try {
+          const base64 = attachment.url.split(",")[1];
+          if (!base64) return null;
+          // Use atob for base64 decoding in browser
+          const binary = atob(base64);
+          const array = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            array[i] = binary.charCodeAt(i);
+          }
+          return new File([array], attachment.name ?? "Unknown", {
+            type: attachment.contentType,
+          });
+        } catch (e) {
+          return null;
+        }
+      } else if (attachment.url) {
+        // If it's a plain URL, return a pseudo-File object with just the URL and metadata
+        // (You may want to handle this differently in FilePreview)
+        return {
+          name: attachment.name ?? "Unknown",
+          type: attachment.contentType ?? "application/octet-stream",
+          url: attachment.url,
+        };
+      }
+      return null;
+    }).filter(Boolean);
+  }, [experimental_attachments]);
 
   const isUser = role === "user"
 

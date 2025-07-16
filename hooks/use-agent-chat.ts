@@ -249,26 +249,26 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
 
     // Now that we have a session, add the user message to the UI
     const userMessageContent = value ?? "";
-    
-    // Convert files to data URLs for attachments
-    const attachments = filesToUpload && filesToUpload.length > 0 
-      ? await Promise.all(filesToUpload.map(async (file) => {
-          const arrayBuffer = await file.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          const dataUrl = `data:${file.type};base64,${base64}`;
-          return {
-            name: file.name,
-            contentType: file.type,
-            url: dataUrl
-          };
-        }))
-      : undefined;
-    
+    let attachments: { id: string; name: string; contentType: string; url: string }[] | undefined = undefined;
+    if (filesToUpload && filesToUpload.length > 0) {
+      // Upload files and get their metadata
+      const uploadResponse = await apiUploadFiles(filesToUpload, { session_id: tempSessionId!, is_ephemeral: true });
+      if (Array.isArray(uploadResponse?.documents) && uploadResponse.documents.length > 0) {
+        attachments = uploadResponse.documents.map(doc => ({
+          id: doc.uuid,
+          name: doc.title,
+          contentType: doc.file_type,
+          url: doc.file
+        }));
+      } else {
+        setError('File upload failed or returned no files.');
+        attachments = [];
+      }
+    }
     const userMessage: Message = {
       id: uuidv4(),
       content: userMessageContent,
       role: 'user',
-      // Add file attachments if files are provided
       ...(attachments && { experimental_attachments: attachments })
     };
     
