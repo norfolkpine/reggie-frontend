@@ -277,7 +277,7 @@ export default function Sidebar() {
   return (
     <div
       className={cn(
-        "h-full border-r border-border flex flex-col bg-gray-50 transition-all duration-300",
+        "h-full border-r border-border flex flex-col bg-[hsl(var(--sidebar-background))] transition-all duration-300",
         isExpanded ? "w-64" : "w-16"
       )}
     >
@@ -313,7 +313,7 @@ export default function Sidebar() {
                   <div key={index} className="w-full">
                     {item.name === "Vault" ? (
                       <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-[hsl(var(--accent))] ${pathname.startsWith(item.url) ? "bg-[hsl(var(--secondary))]" : ""}`}
                         onMouseEnter={() => setHoveredVault(true)}
                         onMouseLeave={() => setHoveredVault(false)}
                       >
@@ -324,7 +324,7 @@ export default function Sidebar() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 p-0 rounded-full hover:bg-gray-200"
+                                className="h-5 w-5 p-0 rounded-full hover:bg-[hsl(var(--accent))]"
                                 onClick={e => {
                                   e.stopPropagation();
                                   setVaultExpanded((prev) => !prev);
@@ -351,7 +351,7 @@ export default function Sidebar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 rounded-full hover:bg-gray-300"
+                          className="h-6 w-6 rounded-full hover:bg-[hsl(var(--secondary))]"
                           onClick={e => {
                             e.stopPropagation();
                             setCreateProjectOpen(true);
@@ -362,7 +362,7 @@ export default function Sidebar() {
                       </div>
                     ) : (
                       <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-[hsl(var(--accent))] ${pathname.startsWith(item.url) ? "bg-[hsl(var(--secondary))]" : ""}`}
                         onClick={() => handleNavItemClick(item.url)}
                       >
                         <div className="flex items-center gap-2">
@@ -382,7 +382,7 @@ export default function Sidebar() {
                           projects.map((project) => (
                             <div
                               key={project.id}
-                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-[hsl(var(--accent))] text-sm ${pathname === `/vault/${project.id}` ? "bg-[hsl(var(--secondary))] font-semibold" : ""}`}
                               onClick={e => {
                                 e.stopPropagation();
                                 handleNavItemClick(`/vault/${project.id}`);
@@ -470,7 +470,7 @@ export default function Sidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`rounded-full w-10 h-10 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                      className={`rounded-full w-10 h-10 ${pathname.startsWith(item.url) ? "bg-[hsl(var(--secondary))]" : ""}`}
                       title={item.name}
                       onClick={() => handleNavItemClick(item.url)}
                     >
@@ -480,7 +480,7 @@ export default function Sidebar() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
+                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-[hsl(var(--accent))] hover:bg-[hsl(var(--secondary))]"
                         onClick={e => {
                           e.stopPropagation();
                           setCreateProjectOpen(true);
@@ -499,7 +499,7 @@ export default function Sidebar() {
                           projects.map((project) => (
                             <div
                               key={project.id}
-                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-[hsl(var(--accent))] text-sm ${pathname === `/vault/${project.id}` ? "bg-[hsl(var(--secondary))] font-semibold" : ""}`}
                               onClick={e => {
                                 e.stopPropagation();
                                 handleNavItemClick(`/vault/${project.id}`);

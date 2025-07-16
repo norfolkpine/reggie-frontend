@@ -311,12 +311,12 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         onDrop={handleDrop}
       >
         {isDragOver && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+          <div className="absolute inset-0 bg-[hsl(var(--accent))/0.1] border-2 border-dashed border-[hsl(var(--accent))] z-50 flex items-center justify-center">
+            <div className="bg-[hsl(var(--background))] rounded-lg p-6 shadow-lg border border-[hsl(var(--accent))]">
               <div className="text-center">
-                <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                <p className="text-lg font-medium text-gray-900">Drop files here</p>
-                <p className="text-sm text-gray-500">Release to upload</p>
+                <Paperclip className="w-8 h-8 mx-auto mb-2 text-[hsl(var(--accent))]" />
+                <p className="text-lg font-medium text-[hsl(var(--foreground))]">Drop files here</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Release to upload</p>
               </div>
             </div>
           </div>
@@ -381,19 +381,19 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
           </ChatMessages>
         )}
 
-        <div className="border-t mt-auto">
+        <div className="border-t mt-auto border-border">
           {/* Memory Updating Indicator - Positioned above the input box */}
           {isMemoryUpdating && (
-            <div className="py-[2px] px-3 text-xs text-blue-700 bg-blue-50 leading-tight">
+            <div className="py-[2px] px-3 text-xs text-[hsl(var(--accent))] bg-[hsl(var(--accent))/0.1] leading-tight">
               <div className="max-w-3xl mx-auto w-full inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                <svg className="animate-spin h-4 w-4 text-[hsl(var(--accent))]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
                 <span>Agent is updating its memory...</span>
               </div>
             </div>
           )}
           {/* Error Message - Positioned above the input box */}
           {error && (
-            <div className="py-[2px] px-3 text-sm text-red-500 bg-red-50 leading-tight">
+            <div className="py-[2px] px-3 text-sm text-[hsl(var(--destructive))] bg-[hsl(var(--destructive))/0.1] leading-tight">
               <div className="max-w-3xl mx-auto w-full">
                 {error}
               </div>
@@ -402,7 +402,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
           {/* Debug Message - Positioned above the input box */}
           {currentDebugMessage && (
-            <div className="py-[2px] px-3 text-xs text-gray-500 bg-yellow-50 leading-tight">
+            <div className="py-[2px] px-3 text-xs text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))/0.1] leading-tight">
               <div className="max-w-3xl mx-auto w-full inline-flex items-center">
                 <span className="font-medium mr-1">Debug:</span> {currentDebugMessage}
               </div>
@@ -429,8 +429,8 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                 </span>
               )}
               {isAgentResponding && reasoningEnabled && (
-                <div className="flex items-center gap-1 text-xs text-blue-600">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center gap-1 text-xs text-[hsl(var(--accent))]">
+                  <div className="w-2 h-2 bg-[hsl(var(--accent))] rounded-full animate-pulse"></div>
                   <span>Showing reasoning...</span>
                 </div>
               )}
