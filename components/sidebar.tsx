@@ -276,7 +276,7 @@ export default function Sidebar() {
 
   // Filter navigation items to hide Knowledge Base for non-superusers
   const filteredNavigationItems = navigationItems.filter(item => {
-    if (typeof item === 'object' && 'name' in item && item.name === "Knowledge Base (admin)") {
+    if (typeof item === 'object' && 'name' in item && item.name === "Knowledge Base") {
       return user?.is_superuser;
     }
     return true;
