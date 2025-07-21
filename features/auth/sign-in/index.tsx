@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { UserAuthForm } from './components/user-auth-form'
 import AuthLayout from '@/features/auth/auth-layout'
+import Link from 'next/link'
 
 export default function SignIn() {
   return (
@@ -30,6 +31,15 @@ export default function SignIn() {
             Privacy Policy
           </a>
           .
+        </p>
+        <p className='mt-2 px-8 text-center text-sm text-muted-foreground'>
+          Don&apos;t have an account?{' '}
+          <Link
+            href='/sign-up'
+            className='underline underline-offset-4 hover:text-primary'
+          >
+            Sign Up
+          </Link>
         </p>
       </Card>
     </AuthLayout>
