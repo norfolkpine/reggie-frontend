@@ -54,6 +54,11 @@ import { getProjects, updateProject, deleteProject } from "@/api/projects";
 import { Project } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useDocs, useInfiniteDocs } from "@/features/docs/doc-management/api/useDocs";
+import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
+import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
+import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
+import { Doc } from "@/features/docs/doc-management/types";
 
 
 const FolderShieldIcon = () => (
@@ -160,6 +165,58 @@ export default function Sidebar() {
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  // Documents state
+  const [documentsExpanded, setDocumentsExpanded] = useState(false);
+  const [hoveredDocuments, setHoveredDocuments] = useState(false);
+  const [createDocOpen, setCreateDocOpen] = useState(false);
+  const [renameDocOpen, setRenameDocOpen] = useState(false);
+  const [renameDocId, setRenameDocId] = useState<string | null>(null);
+  const [renameDocTitle, setRenameDocTitle] = useState("");
+  const [isRenamingDoc, setIsRenamingDoc] = useState(false);
+  const [isDeletingDoc, setIsDeletingDoc] = useState<string | null>(null);
+
+  // Infinite paginated fetch for documents (only user's own)
+  const {
+    data: docsPages,
+    isLoading: loadingDocs,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteDocs({ page: 1, is_creator_me: true });
+
+  // Flatten all loaded pages into a single array
+  const documents = docsPages?.pages.flatMap(page => page.results) || [];
+  // Only show the first 5 unless user has loaded more
+  const visibleDocuments = documents.slice(0, documentsExpanded ? documents.length : 5);
+  const showShowMore = !documentsExpanded && (documents.length > 5 || hasNextPage);
+
+  // Create document
+  const createDocMutation = useCreateDoc({
+    onSuccess: (doc) => {
+      setCreateDocOpen(false);
+      handleNavItemClick(`/documents/${doc.id}`);
+    },
+  });
+
+  // Rename document
+  const updateDocMutation = useUpdateDoc({
+    onSuccess: () => {
+      setRenameDocOpen(false);
+      setRenameDocId(null);
+      setRenameDocTitle("");
+    },
+  });
+
+  // Delete document
+  const removeDocMutation = useRemoveDoc({
+    onSuccess: () => {
+      setIsDeletingDoc(null);
+      setRenameDocOpen(false);
+      setRenameDocId(null);
+      setRenameDocTitle("");
+    },
+  });
 
   useEffect(() => {
     if (vaultExpanded) {
@@ -368,6 +425,55 @@ export default function Sidebar() {
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                    ) : item.name === "Documents" ? (
+                      <div
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        onMouseEnter={() => setHoveredDocuments(true)}
+                        onMouseLeave={() => setHoveredDocuments(false)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
+                            {hoveredDocuments ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0 rounded-full hover:bg-gray-200"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setDocumentsExpanded((prev) => !prev);
+                                }}
+                                tabIndex={-1}
+                                aria-label={documentsExpanded ? "Collapse" : "Expand"}
+                              >
+                                {documentsExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              </Button>
+                            ) : (
+                              renderIcon(item.icon)
+                            )}
+                          </span>
+                          <span
+                            className="select-none"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleNavItemClick(item.url);
+                            }}
+                          >
+                            {item.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full hover:bg-gray-300"
+                          onClick={e => {
+                            e.stopPropagation();
+                            createDocMutation.mutate();
+                          }}
+                          disabled={createDocMutation.isLoading}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     ) : (
                       <div
                         className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
@@ -415,6 +521,60 @@ export default function Sidebar() {
                               </DropdownMenu>
                             </div>
                           ))
+                        )}
+                      </div>
+                    )}
+                    {/* Sub nav for Documents: dynamically render documents only if expanded or up to 5 */}
+                    {item.name === "Documents" && (
+                      <div className="ml-6 mt-1 flex flex-col gap-1">
+                        {loadingDocs ? (
+                          <span className="text-xs text-muted-foreground p-2">Loading...</span>
+                        ) : (
+                          <>
+                            {visibleDocuments.map((doc: Doc) => (
+                              <div
+                                key={doc.id}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/documents/${doc.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleNavItemClick(`/documents/${doc.id}`);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span className="flex-1 truncate">{doc.title || "Untitled"}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameDocId(doc.id); setRenameDocTitle(doc.title || ""); setRenameDocOpen(true); }}>
+                                      <Edit className="h-4 w-4 mr-2" />Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); setIsDeletingDoc(doc.id); removeDocMutation.mutate({ docId: doc.id }); }} disabled={isDeletingDoc === doc.id} className="text-destructive focus:text-destructive">
+                                      <Trash className="h-4 w-4 mr-2" />{isDeletingDoc === doc.id ? "Deleting..." : "Delete"}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            ))}
+                            {showShowMore && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-1"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  if (hasNextPage) fetchNextPage();
+                                  setDocumentsExpanded(true);
+                                }}
+                                disabled={isFetchingNextPage}
+                              >
+                                {isFetchingNextPage ? "Loading..." : "Show more"}
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -484,6 +644,7 @@ export default function Sidebar() {
                     >
                       {renderIcon(item.icon)}
                     </Button>
+                    {/* Vault popover (existing) */}
                     {item.name === "Vault" && (
                       <Button
                         variant="ghost"
@@ -498,40 +659,57 @@ export default function Sidebar() {
                         <Plus className="h-3 w-3" />
                       </Button>
                     )}
-                    {/* Collapsed sub nav for Vault: dynamically render projects as a popover */}
-                    {item.name === "Vault" && pathname.startsWith("/vault") && (
+                    {/* Documents popover */}
+                    {item.name === "Documents" && pathname.startsWith("/documents") && (
                       <div className="absolute left-12 top-0 z-10 bg-white border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
-                        {loadingProjects ? (
+                        {loadingDocs ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (
-                          projects.filter(project => project.owner === user?.id).map((project) => (
-                            <div
-                              key={project.id}
-                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleNavItemClick(`/vault/${project.id}`);
-                              }}
-                            >
-                              <FolderGit2 className="h-4 w-4" />
-                              <span className="flex-1 truncate">{project.name}</span>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameProjectId(typeof project.id === 'number' ? project.id : -1); setNewName(project.name || ""); setRenameOpen(true); }}>
-                                    <Edit className="h-4 w-4 mr-2" />Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(typeof project.id === 'number' ? project.id : -1, project.name || ""); }} disabled={isDeleting === project.id} className="text-destructive focus:text-destructive">
-                                    <Trash className="h-4 w-4 mr-2" />{isDeleting === project.id ? "Deleting..." : "Delete"}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          ))
+                          <>
+                            {visibleDocuments.map((doc: Doc) => (
+                              <div
+                                key={doc.id}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/documents/${doc.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleNavItemClick(`/documents/${doc.id}`);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span className="flex-1 truncate">{doc.title || "Untitled"}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameDocId(doc.id); setRenameDocTitle(doc.title || ""); setRenameDocOpen(true); }}>
+                                      <Edit className="h-4 w-4 mr-2" />Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); setIsDeletingDoc(doc.id); removeDocMutation.mutate({ docId: doc.id }); }} disabled={isDeletingDoc === doc.id} className="text-destructive focus:text-destructive">
+                                      <Trash className="h-4 w-4 mr-2" />{isDeletingDoc === doc.id ? "Deleting..." : "Delete"}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            ))}
+                            {showShowMore && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-1"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  if (hasNextPage) fetchNextPage();
+                                  setDocumentsExpanded(true);
+                                }}
+                                disabled={isFetchingNextPage}
+                              >
+                                {isFetchingNextPage ? "Loading..." : "Show more"}
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -565,6 +743,45 @@ export default function Sidebar() {
           <DialogFooter>
             <Button onClick={() => setRenameOpen(false)} variant="outline">Cancel</Button>
             <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>{isRenaming ? "Renaming..." : "Rename"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Rename Document Dialog */}
+      <Dialog open={renameDocOpen} onOpenChange={setRenameDocOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Document</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameDocTitle}
+            onChange={e => setRenameDocTitle(e.target.value)}
+            placeholder="Document title"
+            disabled={isRenamingDoc}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                setIsRenamingDoc(true);
+                updateDocMutation.mutate({ id: renameDocId!, title: renameDocTitle });
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => {
+                setIsRenamingDoc(true);
+                updateDocMutation.mutate({ id: renameDocId!, title: renameDocTitle });
+              }}
+              disabled={isRenamingDoc || !renameDocTitle.trim()}
+            >
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setRenameDocOpen(false)}
+              disabled={isRenamingDoc}
+            >
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
