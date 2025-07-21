@@ -59,6 +59,7 @@ import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
 import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
 import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
 import { Doc } from "@/features/docs/doc-management/types";
+import { useProjects } from "@/features/vault/api/useProjects";
 
 
 const FolderShieldIcon = () => (
@@ -154,8 +155,6 @@ export default function Sidebar() {
     null
   );
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
   const [vaultExpanded, setVaultExpanded] = useState(false);
   const [hoveredVault, setHoveredVault] = useState(false);
 
@@ -191,6 +190,14 @@ export default function Sidebar() {
   const visibleDocuments = documents.slice(0, documentsExpanded ? documents.length : 5);
   const showShowMore = !documentsExpanded && (documents.length > 5 || hasNextPage);
 
+  // Projects query using React Query
+  const {
+    data: projectsData,
+    isLoading: loadingProjects,
+  } = useProjects({ owner: user?.id });
+
+  const projects = projectsData?.results || [];
+
   // Create document
   const createDocMutation = useCreateDoc({
     onSuccess: (doc) => {
@@ -218,14 +225,7 @@ export default function Sidebar() {
     },
   });
 
-  useEffect(() => {
-    if (vaultExpanded) {
-      setLoadingProjects(true);
-      getProjects()
-        .then((res) => setProjects(res.results || []))
-        .finally(() => setLoadingProjects(false));
-    }
-  }, [vaultExpanded]);
+
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -307,8 +307,6 @@ export default function Sidebar() {
       setRenameOpen(false);
       setRenameProjectId(null);
       setNewName("");
-      // Refresh projects
-      getProjects().then((res) => setProjects(res.results || []));
     } catch (e) {
       toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -322,8 +320,6 @@ export default function Sidebar() {
     try {
       await deleteProject(projectId);
       toast({ title: "Project deleted", description: `Project '${projectName}' was deleted.` });
-      // Refresh projects
-      getProjects().then((res) => setProjects(res.results || []));
     } catch (e) {
       toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -524,14 +520,14 @@ export default function Sidebar() {
                         )}
                       </div>
                     )}
-                    {/* Sub nav for Documents: dynamically render documents only if expanded or up to 5 */}
-                    {item.name === "Documents" && (
+                    {/* Sub nav for Documents: dynamically render documents only if expanded */}
+                    {item.name === "Documents" && documentsExpanded && (
                       <div className="ml-6 mt-1 flex flex-col gap-1">
                         {loadingDocs ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (
                           <>
-                            {visibleDocuments.map((doc: Doc) => (
+                            {documents.map((doc: Doc) => (
                               <div
                                 key={doc.id}
                                 className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/documents/${doc.id}` ? "bg-gray-300 font-semibold" : ""}`}
@@ -559,21 +555,6 @@ export default function Sidebar() {
                                 </DropdownMenu>
                               </div>
                             ))}
-                            {showShowMore && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full mt-1"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  if (hasNextPage) fetchNextPage();
-                                  setDocumentsExpanded(true);
-                                }}
-                                disabled={isFetchingNextPage}
-                              >
-                                {isFetchingNextPage ? "Loading..." : "Show more"}
-                              </Button>
-                            )}
                           </>
                         )}
                       </div>
