@@ -112,7 +112,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
 
   const onFilter = useDebouncedCallback((str: string) => {
     setUserQuery(str);
-  }, 300);
+  }, 700);
 
   const onSelect = (user: User) => {
     setUserQuery(''); // Reset searchUsers by clearing the query
@@ -234,7 +234,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value);
-                      setUserQuery(e.target.value);
+                      onFilter(e.target.value); // Use debounced function for user search
                       setSelectedUser(null);
                     }}
                     autoComplete="off"
