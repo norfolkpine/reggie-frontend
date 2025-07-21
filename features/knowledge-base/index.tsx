@@ -5,8 +5,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileManager } from "./components/file-manager"
 import { KnowledgeBaseManager } from "./components/knowledge-base-manager"
 import type { File, KnowledgeBase } from "@/types/knowledge-base"
+import { useAuth } from "@/contexts/auth-context";
+import { Loader2 } from "lucide-react";
 
 export default function KnowledgeManagement() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user?.is_superuser) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground">You must be a superuser to access the Knowledgebase page.</p>
+        </div>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('kb_active_tab') || 'files';

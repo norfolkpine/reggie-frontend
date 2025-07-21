@@ -1,6 +1,5 @@
 import {
   BlockNoteSchema,
-  Dictionary,
   defaultBlockSpecs,
   withPageBreak,
 } from '@blocknote/core';
@@ -32,6 +31,7 @@ import React from 'react';
 import { PageBreakIndicators } from './PageBreakIndicators';
 import styles from './BlockNoteEditor.module.css';
 
+// Create the schema with default blocks and custom blocks
 export const blockNoteSchema = withPageBreak(
   BlockNoteSchema.create({
     blockSpecs: {
@@ -124,7 +124,6 @@ export const BlockNoteEditor = ({
 
   useEffect(() => {
     setEditor(editor);
-
     return () => {
       setEditor(undefined);
     };
@@ -193,7 +192,6 @@ export const BlockNoteEditorVersion = ({
 
   useEffect(() => {
     setEditor(editor);
-
     return () => {
       setEditor(undefined);
     };

@@ -62,7 +62,6 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import {
-  getFiles,
   deleteFile,
   listFiles,
   listFilesWithKbs,
@@ -98,6 +97,8 @@ export function FileManager() {
   const [files, setFiles] = useState<FileWithUI[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // Only allow 'mine' as the scope
+  const [scope] = useState<'mine'>('mine');
   // TanStack column filters
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -121,7 +122,7 @@ export function FileManager() {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, itemsPerPage, searchQuery]);
+  }, [currentPage, itemsPerPage, searchQuery]); // scope is fixed
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -129,6 +130,7 @@ export function FileManager() {
       const params: Record<string, string> = {
         page: currentPage.toString(),
         page_size: itemsPerPage.toString(),
+        scope: 'mine', // always use mine
       };
 
       if (searchQuery) {
@@ -136,7 +138,7 @@ export function FileManager() {
       }
 
       // NOTE: If getFiles does not support page_size, update the API call accordingly
-      const response = await getFiles(currentPage, itemsPerPage, searchQuery);
+      const response = await listFiles(params);
 
       // Convert API response to FileWithUI format
       const convertedFiles: FileWithUI[] = response.results.map(
@@ -350,13 +352,24 @@ export function FileManager() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">File Manager</h2>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsUploadDialogOpen(true)}>
-            Upload Files
-          </Button>
+    <div className="flex-1 flex flex-col h-full">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-64"
+          />
+          {/* No scope filter UI, always mine */}
+        </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">File Manager</h2>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsUploadDialogOpen(true)}>
+              Upload Files
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -34,6 +34,7 @@ function setCachedTranslation(translations: ConfigResponse) {
 }
 
 export const getConfig = async (): Promise<ConfigResponse> => {
+  // fetchAPI now uses NEXT_PUBLIC_API_BASE_URL for all config requests
   const response = await fetchAPI('config');
   if (!response.ok) {
     throw new APIError('Failed to get the doc', await errorCauses(response));

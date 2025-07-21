@@ -34,8 +34,9 @@ export const DocTitleText = ({ title }: DocTitleTextProps) => {
   const { isMobile } = useResponsiveStore();
   const { untitledDocument } = useTrans();
 
+  // Previously: text-4xl for desktop, text-2xl for mobile
   return (
-    <h2 className={`font-bold ${isMobile ? 'text-2xl' : 'text-4xl'} text-gray-900`}>
+    <h2 className={`${isMobile ? 'text-lg' : 'text-2xl'} text-gray-900`}>
       {title || untitledDocument}
     </h2>
   );
@@ -89,15 +90,16 @@ const DocTitleInput = ({ doc }: DocTitleProps) => {
     setTitleDisplay(doc.title);
   }, [doc]);
 
+  // Previously: text-4xl for desktop, text-2xl for mobile
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
             role="textbox"
-            className="--docs--doc-title-input min-h-[40px] pr-4 text-gray-900 font-bold outline-none cursor-text
+            className={`--docs--doc-title-input min-h-[40px] pr-4 text-gray-900 outline-none cursor-text ${isDesktop ? 'text-2xl' : 'text-lg'}
               before:content-[attr(data-placeholder)] before:text-gray-400 before:italic before:pointer-events-none
-              empty:before:content-[attr(data-placeholder)]"
+              empty:before:content-[attr(data-placeholder)]`}
             contentEditable
             data-placeholder={untitledDocument}
             onKeyDownCapture={handleKeyDown}
@@ -106,11 +108,6 @@ const DocTitleInput = ({ doc }: DocTitleProps) => {
             onBlurCapture={(event: React.FocusEvent<HTMLSpanElement>) =>
               handleTitleSubmit(event.target.textContent || '')
             }
-            style={{
-              fontSize: isDesktop ? '2.25rem' : '1.5rem', // 4xl for desktop, 2xl for mobile
-              fontWeight: 700,
-              color: '#111827',
-            }}
           >
             {titleDisplay}
           </span>
