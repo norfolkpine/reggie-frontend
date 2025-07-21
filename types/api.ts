@@ -409,6 +409,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   language?: string | 'en-US';
+  is_superuser?: boolean;
 }
 
 export interface PatchedUser extends Partial<User> {}

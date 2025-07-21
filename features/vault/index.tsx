@@ -18,6 +18,8 @@ import {
   Globe,
   Zap,
   Loader2,
+  User,
+  Folder,
 } from "lucide-react"
 import { CreateProjectDialog } from "./components/create-project-dialog"
 import { getProjects, createProject } from "@/api/projects"
@@ -36,7 +38,7 @@ export default function Projects() {
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [viewMode, setViewMode] = useState<"all" | "starred">("all")
+  const [viewMode, setViewMode] = useState<"starred" | "user" | "userProjects">("user")
   const auth = useAuth()
 
   useEffect(() => {
@@ -136,7 +138,10 @@ export default function Projects() {
     const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
 
     // Filter by view mode
-    const matchesViewMode = viewMode === "all" || (viewMode === "starred" && project.starred)
+    const matchesViewMode =
+      (viewMode === "starred" && project.starred) ||
+      (viewMode === "user" && project.owner === auth.user?.id) ||
+      (viewMode === "userProjects" && project.owner !== auth.user?.id)
 
     return matchesSearch && matchesTags && matchesViewMode
   })
@@ -189,13 +194,23 @@ export default function Projects() {
         {/* View mode selector */}
         <div className="flex rounded-md overflow-hidden border w-fit">
           <Button
-            variant={viewMode === "all" ? "default" : "ghost"}
+            variant={viewMode === "user" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setViewMode("all")}
-            className="rounded-none"
+            onClick={() => setViewMode("user")}
+            className="rounded-none flex items-center gap-1"
           >
-            All Projects
+            <Folder className="h-3.5 w-3.5" /> All Projects
           </Button>
+          {auth.user?.is_superuser && (
+            <Button
+              variant={viewMode === "userProjects" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("userProjects")}
+              className="rounded-none flex items-center gap-1"
+            >
+              <User className="h-3.5 w-3.5" /> User Projects
+            </Button>
+          )}
           <Button
             variant={viewMode === "starred" ? "default" : "ghost"}
             size="sm"

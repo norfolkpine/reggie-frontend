@@ -62,7 +62,6 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import {
-  getFiles,
   deleteFile,
   listFiles,
   listFilesWithKbs,
@@ -138,7 +137,7 @@ export function KBFileManager() {
       }
 
       // NOTE: If getFiles does not support page_size, update the API call accordingly
-      const response = await getFiles(currentPage, itemsPerPage, searchQuery);
+      const response = await listFiles(params);
 
       // Convert API response to FileWithUI format
       const convertedFiles: FileWithUI[] = response.results.map(

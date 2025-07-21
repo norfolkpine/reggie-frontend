@@ -110,7 +110,8 @@ const navigationItems: NavigationItem[] = [
     url: "/app-integration",
   },
   { type: "divider" },
-  { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
+  // SuperUser Only. Future feature: Allow and restrict for Enterprise users 
+  { name: "Knowledge Base", icon: Database, url: "/knowledge-base" },
 ];
 
 // const navigationItems: ChatItem[] = [
@@ -273,6 +274,13 @@ export default function Sidebar() {
     }
   };
 
+  // Filter navigation items to hide Knowledge Base for non-superusers
+  const filteredNavigationItems = navigationItems.filter(item => {
+    if (typeof item === 'object' && 'name' in item && item.name === "Knowledge Base (admin)") {
+      return user?.is_superuser;
+    }
+    return true;
+  });
 
   return (
     <div
@@ -306,7 +314,7 @@ export default function Sidebar() {
               {/* Update the expanded sidebar navigation items rendering
               // Change the onClick handler to properly handle navigation vs. dialog opening */}
 
-              {navigationItems.map((item, index) => (
+              {filteredNavigationItems.map((item, index) => (
                 'type' in item ? (
                   <div key={index} className="sidebar-divider"></div>
                 ) : (
@@ -379,7 +387,7 @@ export default function Sidebar() {
                         {loadingProjects ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (
-                          projects.map((project) => (
+                          projects.filter(project => project.owner === user?.id).map((project) => (
                             <div
                               key={project.id}
                               className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
@@ -462,7 +470,7 @@ export default function Sidebar() {
               {/* Update the collapsed sidebar navigation items rendering
               // Change the onClick handler to properly handle navigation */}
 
-              {navigationItems.map((item, index) => (
+              {filteredNavigationItems.map((item, index) => (
                 'type' in item ? (
                   <div key={index} className="sidebar-divider sidebar-divider--collapsed"></div>
                 ) : (
@@ -496,7 +504,7 @@ export default function Sidebar() {
                         {loadingProjects ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (
-                          projects.map((project) => (
+                          projects.filter(project => project.owner === user?.id).map((project) => (
                             <div
                               key={project.id}
                               className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
