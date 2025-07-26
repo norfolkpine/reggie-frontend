@@ -14,5 +14,8 @@ export const useCollaborationUrl = (room?: string) => {
       ? `ws://${window.location.hostname}:4444/collaboration/ws/`
       : '');
 
-  return `${base}?room=${room}`;
+  // Try to bypass CORS by using a different approach
+  const url = `${base}?room=${room}`;
+  console.log('🔗 Generated collaboration URL:', url);
+  return url;
 };
