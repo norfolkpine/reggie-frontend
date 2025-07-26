@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2 } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2, AlertCircle } from "lucide-react";
 import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
+import QueryPanel from "./query-panel";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -50,6 +51,8 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { InstructionsDialog } from "./instructions-dialog";
+import { Progress } from "@/components/ui/progress";
+import { File } from "@/types/knowledge-base";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -58,6 +61,7 @@ interface VaultFile extends BaseVaultFile {
   size?: number;
   // type is not included in the interface as we're accessing it with (file as any).type
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
+  progress?: number; // For tracking progress
 }
 
 export function VaultManager() {
@@ -155,14 +159,15 @@ export function VaultManager() {
         // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-                // Or extract extension from filename
-        const fileExtension = file.original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
+        // Or extract extension from filename
+        const fileExtension = (file as any).original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
         
         return {
           ...file,
           file_type: fileExtension
         };
       });
+
       setVaultFiles(filesWithType);
     } catch (error) {
       console.error('Error fetching vault files:', error);
@@ -187,12 +192,14 @@ export function VaultManager() {
     fetchFiles(); // Refresh the file list
   };
 
+
+
   const handleFileDownload = (file: VaultFile) => {
     // Direct download through URL
-    if (file.file && isSafeUrl(file.file)) {
+    if (file.file && isSafeUrl(file.file.file)) {
       const a = document.createElement('a');
-      a.href = file.file;
-      a.download = file.original_filename || 'download';
+      a.href = file.file.file;
+      a.download = (file as any).original_filename || 'download';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -207,8 +214,8 @@ export function VaultManager() {
 
   const handleFilePreview = (file: VaultFile) => {
     // Open file in new tab for preview
-    if (file.file && isSafeUrl(file.file)) {
-      window.open(file.file, '_blank');
+    if (file.file && isSafeUrl(file.file.file)) {
+      window.open(file.file.file, '_blank');
     } else {
       toast({
         title: "Error",
@@ -290,18 +297,7 @@ export function VaultManager() {
   
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
-      const filteredFiles = vaultFiles
-        .filter(file => {
-          const fileType = file.file_type || '';
-          const matchesType = showAllFiles || 
-            (activeFilters.length === 0) || 
-            activeFilters.some((filter: string) => fileType.includes(filter));
-            
-          const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            false;
-          return matchesType && matchesSearch;
-        });
+      const filteredFiles = vaultFiles;
       setSelectedFiles(filteredFiles.map(file => file.id));
     } else {
       setSelectedFiles([]);
@@ -318,7 +314,7 @@ export function VaultManager() {
 
   // Add a function to handle rename
   const handleRename = async () => {
-    if (!project || typeof project.id !== 'number') return;
+    if (!project || !project.id) return;
     setIsRenaming(true);
     try {
       await import("@/api/projects").then(({ updateProject }) => updateProject(project.id || 0, { ...project, name: newName }));
@@ -420,6 +416,7 @@ export function VaultManager() {
             </TabsList>
             
             <TabsContent value="files" className="mt-4">
+              <QueryPanel />
               {/* Replace with custom file manager UI since shared component doesn't support our vault-specific API needs */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
@@ -557,17 +554,7 @@ export function VaultManager() {
                       <TableRow>
                         <TableHead className="w-[50px]">
                             <Checkbox 
-                            checked={selectedFiles.length > 0 && selectedFiles.length === vaultFiles.filter((file) => {
-                              const fileType = file.file_type || '';
-                              const matchesType = showAllFiles || 
-                                (activeFilters.length === 0) || 
-                                activeFilters.some((filter: string) => fileType.includes(filter));
-                                
-                              const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                false;
-                              return matchesType && matchesSearch;
-                            }).length}
+                            checked={selectedFiles.length > 0 && selectedFiles.length === vaultFiles.length}
                             onCheckedChange={toggleSelectAll}
                             aria-label="Select all files"
                           />
@@ -576,33 +563,22 @@ export function VaultManager() {
                         <TableHead>Type</TableHead>
                         <TableHead>Size</TableHead>
                         <TableHead>Last Modified</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Progress</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {vaultFiles.length > 0 ? (
                         vaultFiles
-                          .filter(file => {
-                            // Apply file type filters
-                            const fileType = file.file_type || '';
-                            const matchesType = showAllFiles || 
-                              (activeFilters.length === 0) || 
-                              activeFilters.some((filter: string) => fileType.includes(filter));
-                            
-                            // Apply search filter
-                            const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              false;
-                            
-                            return matchesType && matchesSearch;
-                          })
+                          
                           .map((file) => (
                           <TableRow key={file.id}>
                             <TableCell>
                               <Checkbox 
                                 checked={selectedFiles.includes(file.id)}
                                 onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
-                                aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
+                                aria-label={`Select ${(file as any).original_filename || 'Unnamed File'}`}
                               />
                             </TableCell>
                              <TableCell className="font-medium">
@@ -610,25 +586,66 @@ export function VaultManager() {
                                 <FileText className="h-5 w-5 text-muted-foreground" />
                                 <span>
                                   {/* Display original filename if available, otherwise the filename */}
-                                  {file.original_filename || 'Unnamed File'}
+                                  {(file as any).filename || 'Unnamed File'}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
+                              <Badge variant="outline">{file.file.file_type ? file.file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
                             </TableCell>
                             <TableCell>
                               {/* Display file size in KB or MB */}
-                              {file.size 
-                                ? file.size < 1024 * 1024 
-                                  ? `${(file.size / 1024).toFixed(1)} KB` 
-                                  : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                              {file.file.filesize 
+                                ? file.file.filesize < 1024 * 1024 
+                                  ? `${(file.file.filesize / 1024).toFixed(1)} KB` 
+                                  : `${(file.file.filesize / (1024 * 1024)).toFixed(2)} MB`
                                 : 'N/A'}
                             </TableCell>
                             <TableCell>
                               {file.created_at ? 
                                 formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
                                 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  file.ingestion_status === "completed"
+                                    ? "success"
+                                    : file.ingestion_status === "processing"
+                                    ? "default"
+                                    : file.ingestion_status === "failed"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {file.ingestion_status!.charAt(0).toUpperCase() +
+                                  file.ingestion_status!.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                            {file.ingestion_status === "failed" ? (
+                            <div className="flex items-center text-destructive">
+                              <AlertCircle className="h-4 w-4 mr-1" />
+                              <span className="text-sm">Error</span>
+                            </div>
+                          ) :
+                              (<div className="relative w-full max-w-xs min-w-[80px]">
+                                <div className="bg-secondary h-2 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-primary h-2 rounded-full transition-all"
+                                    style={{ width: `${file.ingestion_progress ?? 0}%` }}
+                                  />
+                                  <span
+                                    className={
+                                      `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold transition-colors pointer-events-none ` +
+                                      (typeof file.ingestion_progress === 'number' && file.ingestion_progress > 50 ? 'text-white' : 'text-gray-900')
+                                    }
+                                  >
+                                    {typeof file.ingestion_progress === "number" ? `${Math.round(file.ingestion_progress)}%` : "--"}
+                                  </span>
+                                </div>
+                              </div>) 
+                              }
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
@@ -664,7 +681,7 @@ export function VaultManager() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center">
+                          <TableCell colSpan={6} className="h-24 text-center">
                             No files found.
                           </TableCell>
                         </TableRow>

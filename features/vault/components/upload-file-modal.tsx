@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { UploadCloud, X, AlertCircle, FileText } from "lucide-react"
-import { uploadFiles } from "@/api/vault"
+import { uploadFiles, bulkUploadFiles } from "@/api/vault"
 
 interface UploadFileModalProps {
   open: boolean
@@ -92,43 +92,35 @@ export function UploadFileModal({
   }
 
   async function handleUpload() {
-    if (!files.length) return
+    if (!files.length) return;
 
-    setUploading(true)
-    setError(null)
-    const uploaded: any[] = []
+    setUploading(true);
+    setError(null);
 
-    for (const [idx, fileObj] of files.entries()) {
-      try {
-        setFiles((prev) =>
-          prev.map((f, i) => (i === idx ? { ...f, progress: 50 } : f))
-        )
+    debugger;
 
-        const formData = new FormData()
-        formData.append("file", fileObj.file)
-        formData.append("project", projectId.toString())
+    try {
+      // Kumpulkan semua file
+      const fileList = files.map((f) => f.file);
+      // TODO: Ganti uploaded_by sesuai kebutuhan autentikasi user
+      const uploaded = await bulkUploadFiles({
+        files: fileList,
+        project: projectId,
+        uploaded_by: 1, // Ganti dengan ID user yang benar jika ada
+      });
 
-        const result = await uploadFiles({ formData })
-        uploaded.push(result)
+      setFiles((prev) => prev.map((f) => ({ ...f, progress: 100, error: undefined })));
+      setUploading(false);
 
-        setFiles((prev) =>
-          prev.map((f, i) => (i === idx ? { ...f, progress: 100 } : f))
-        )
-      } catch {
-        setFiles((prev) =>
-          prev.map((f, i) =>
-            i === idx ? { ...f, error: "Failed to upload", progress: 0 } : f
-          )
-        )
+      if (uploaded && uploaded.length) {
+        onUploadComplete(uploaded);
+        setTimeout(() => setFiles([]), 1500);
+        onOpenChange(false);
       }
-    }
-
-    setUploading(false)
-
-    if (uploaded.length) {
-      onUploadComplete(uploaded)
-      setTimeout(() => setFiles([]), 1500)
-      onOpenChange(false)
+    } catch (err: any) {
+      setError(err?.message || "Bulk upload failed");
+      setFiles((prev) => prev.map((f) => ({ ...f, error: "Failed to upload", progress: 0 })));
+      setUploading(false);
     }
   }
 

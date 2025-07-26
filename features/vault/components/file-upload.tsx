@@ -9,13 +9,14 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { uploadFiles } from "@/api/vault"
+import { bulkUploadFiles } from "@/api/vault"
 import { useAuth } from "@/contexts/auth-context"
 
 interface FileUploadProps {
   onUploadComplete: (files: any[]) => void
   projectId: number
   title?: string
+  onProgress?: (fileName: string, progress: number, status: 'uploading' | 'completed' | 'failed') => void
 }
 
 interface UploadingFile {
@@ -24,7 +25,7 @@ interface UploadingFile {
   error?: string
 }
 
-export function FileUpload({ onUploadComplete, projectId, title }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, projectId, title, onProgress }: FileUploadProps) {
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
@@ -103,30 +104,40 @@ export function FileUpload({ onUploadComplete, projectId, title }: FileUploadPro
         currentFiles.map((file) => ({ ...file, progress: 50 }))
       );
 
-      // Upload all files
-      const uploadedFiles = [];
-      for (const fileObj of files) {
-        try {
-          // Pass file and project parameters directly to the uploadFiles function
-          const result = await uploadFiles({ 
-            file: fileObj.file, 
-            project: projectId,
-            uploaded_by: user?.id || 0
-          });
-          uploadedFiles.push(result);
-        } catch (err) {
-          console.error("Error uploading file:", fileObj.file.name, err);
-          setError(`Error uploading ${fileObj.file.name}`);
-        }
+      // Notify parent of progress
+      files.forEach(fileObj => {
+        onProgress?.(fileObj.file.name, 50, 'uploading');
+      });
+
+      // Upload all files using bulk upload
+      try {
+        const fileList = files.map(fileObj => fileObj.file);
+        const uploadedFiles = await bulkUploadFiles({
+          files: fileList,
+          project: projectId,
+          uploaded_by: user?.id || 0
+        });
+        
+        // Notify parent of completion for all files
+        files.forEach(fileObj => {
+          onProgress?.(fileObj.file.name, 100, 'completed');
+        });
+        
+        // Pass uploaded files to parent component
+        onUploadComplete(uploadedFiles);
+      } catch (err) {
+        console.error("Error uploading files:", err);
+        setError("Error uploading files. Please try again.");
+        files.forEach(fileObj => {
+          onProgress?.(fileObj.file.name, 0, 'failed');
+        });
+        return;
       }
 
       // Update progress to 100% for all files
       setFiles((currentFiles) =>
         currentFiles.map((file) => ({ ...file, progress: 100 }))
       );
-
-      // Pass uploaded files to parent component immediately
-      onUploadComplete(uploadedFiles);
       
       // Reset state after successful upload
       setFiles([]);

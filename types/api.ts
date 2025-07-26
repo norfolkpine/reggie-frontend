@@ -460,7 +460,6 @@ export interface ExpectedOutput {
 
 export interface VaultFile {
   id: number;
-  file: string;
   project: number;
   uploaded_by: number;
   team: number;
@@ -470,4 +469,8 @@ export interface VaultFile {
   inherited_teams: string;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
+  
+  file: File;
+  ingestion_status?: string;
+  ingestion_progress?: number;
 }

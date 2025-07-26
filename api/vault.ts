@@ -20,6 +20,15 @@ export interface VaultFilesResponse {
   previous: string | null;
 }
 
+export interface BulkUploadFileParams {
+  files: File[];
+  project: number;
+  uploaded_by: number;
+  team?: number;
+  shared_with_users?: number[];
+  shared_with_teams?: number[];
+}
+
 export async function getVaultFilesByProject(
   projectId: number,
   page: number = 1,
@@ -92,5 +101,52 @@ export async function deleteVaultFile(fileId: number): Promise<void> {
   } catch (error) {
     const { message } = handleApiError(error);
     throw new Error(message || 'Failed to delete file');
+  }
+}
+
+export async function bulkUploadFiles({
+  files,
+  project,
+  uploaded_by,
+  team,
+  shared_with_users,
+  shared_with_teams,
+}: BulkUploadFileParams) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const formData = new FormData();
+  files.forEach((file, idx) => {
+    formData.append('files', file);
+  });
+  formData.append('project', String(project));
+  formData.append('uploaded_by', String(uploaded_by));
+  if (typeof team !== 'undefined') {
+    formData.append('team', String(team));
+  }
+  if (shared_with_users) {
+    shared_with_users.forEach((user) => formData.append('shared_with_users', String(user)));
+  }
+  if (shared_with_teams) {
+    shared_with_teams.forEach((team) => formData.append('shared_with_teams', String(team)));
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/bulk-upload/`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.detail || 'Bulk upload failed';
+      throw new Error(message);
+    }
+    const data = await response.json();
+    return data as VaultFile[];
+  } catch (error: any) {
+    const message = error?.message || 'Bulk upload failed';
+    console.error(message);
+    throw new Error(message);
   }
 }
