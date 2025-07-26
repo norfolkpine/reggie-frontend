@@ -1,5 +1,5 @@
 # ---- Build Stage ----
-FROM node:24.0.2-alpine AS builder
+FROM node:24.4.1-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -30,7 +30,7 @@ ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
 RUN npm run build
 
 # ---- Production Stage ----
-FROM node:24.0.2-alpine AS runner
+FROM node:24.4.1-alpine AS runner
 
 WORKDIR /app
 
