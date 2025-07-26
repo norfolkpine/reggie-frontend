@@ -20,10 +20,15 @@ export const errorCauses = async (response: Response, data?: unknown) => {
 /**
  * Retrieves the CSRF token from the document's cookies.
  */
-export function getCSRFToken() {
-  return document.cookie
-    .split(';')
-    .filter((cookie) => cookie.trim().startsWith('csrftoken='))
-    .map((cookie) => cookie.split('=')[1])
-    .pop();
+export function getCSRFToken(): string | null {
+  if (typeof document !== 'undefined') {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'csrftoken') {
+        return value;
+      }
+    }
+  }
+  return null;
 }

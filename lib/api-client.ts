@@ -3,6 +3,20 @@ import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 // Debug: Log env variable at build time
 console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PUBLIC_API_BASE_URL);
 
+// CSRF token utility function
+export function getCSRFToken(): string | null {
+  if (typeof document !== 'undefined') {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'csrftoken') {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
 // Robust BASE_URL logic
 export const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -44,10 +58,12 @@ async function handleResponse(response: Response, httpMethod?: string) {
       const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
       if (refreshTokenLocal) {
         try {
+          const csrfToken = getCSRFToken();
           const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...(csrfToken && { "X-CSRFToken": csrfToken }),
             },
             body: JSON.stringify({ refresh: refreshTokenLocal }),
             credentials: 'include',
@@ -70,11 +86,13 @@ async function handleResponse(response: Response, httpMethod?: string) {
           localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
 
           // Retry the original request with new token
+          const retryCsrfToken = getCSRFToken();
           const retryResponse = await fetch(response.url, {
             ...response,
             headers: {
               ...response.headers,
               Authorization: `Bearer ${access}`,
+              ...(retryCsrfToken && { "X-CSRFToken": retryCsrfToken }),
             },
             credentials: 'include',
           });
@@ -113,6 +131,7 @@ async function handleResponse(response: Response, httpMethod?: string) {
 async function apiClient(endpoint: string, config: RequestConfig = {}) {
   const { params, ...requestConfig } = config;
   const token = localStorage.getItem(TOKEN_KEY);
+  const csrfToken = getCSRFToken();
 
   const url = new URL(`${BASE_URL}${endpoint}`);
   if (params) {
@@ -124,6 +143,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
   const headers = {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...config.headers,
   };
 

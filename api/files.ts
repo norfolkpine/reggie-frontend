@@ -1,4 +1,4 @@
-import { api, BASE_URL } from '@/lib/api-client';
+import { api, BASE_URL, getCSRFToken } from '@/lib/api-client';
 import { File, PaginatedFileList, PatchedFile } from '../types/api';
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
@@ -89,12 +89,14 @@ export const uploadFiles = async (files: globalThis.File[], options?: FileUpload
     throw new Error('No authentication token found');
   }
   
+  const csrfToken = getCSRFToken();
   const response = await fetch(BASE_URL+'/reggie/api/v1/files/', {
     method: 'POST',
     body: formData,
     credentials: 'include',
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      ...(csrfToken && { 'X-CSRFToken': csrfToken }),
     }
   });
 

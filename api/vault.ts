@@ -1,4 +1,4 @@
-import { api } from '@/lib/api-client';
+import { api, getCSRFToken } from '@/lib/api-client';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';
@@ -65,11 +65,13 @@ export async function uploadFiles({
   }
 
   try {
+    const csrfToken = getCSRFToken();
     const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/`, {
       method: 'POST',
       body: formData,
       headers: {
         Authorization: `Bearer ${token}`,
+        ...(csrfToken && { 'X-CSRFToken': csrfToken }),
       },
     });
     if (!response.ok) {

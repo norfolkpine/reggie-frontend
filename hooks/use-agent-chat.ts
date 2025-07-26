@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
 import { uploadFiles as apiUploadFiles } from '@/api/files'; // Renamed to avoid conflict
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
-import { BASE_URL } from '@/lib/api-client';
+import { BASE_URL, getCSRFToken } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from "@/contexts/auth-context";
@@ -301,9 +301,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       const assistantMessageId = `assistant-${uuidv4()}`;
       // Don't create empty assistant message here - wait for actual content
 
+      const csrfToken = getCSRFToken();
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}`,
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
+        },
         body: JSON.stringify(payload),
         signal: abortControllerRef.current.signal,
       });
