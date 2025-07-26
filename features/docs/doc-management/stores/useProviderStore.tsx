@@ -34,6 +34,23 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
       document: doc,
     });
 
+    // Add connection event listeners for debugging
+    provider.on('connect', () => {
+      console.log('🏭 Provider connected:', storeId);
+    });
+
+    provider.on('disconnect', () => {
+      console.log('🏭 Provider disconnected:', storeId);
+    });
+
+    provider.on('close', () => {
+      console.log('🏭 Provider closed:', storeId);
+    });
+
+    provider.on('error', (error: any) => {
+      console.error('🏭 Provider error:', error);
+    });
+
     set({
       provider,
     });

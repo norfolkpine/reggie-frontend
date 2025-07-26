@@ -69,6 +69,12 @@ export const BlockNoteEditor = ({
     : user?.first_name || user?.email || t('Anonymous');
   const showCursorLabels: 'always' | 'activity' | (string & {}) = 'activity';
 
+  console.log('📝 Creating BlockNote editor with provider:', {
+    providerId: provider?.document?.guid,
+    providerConnected: provider?.isConnected,
+    fragment: provider?.document?.getXmlFragment('document-store')
+  });
+
   const editor = useCreateBlockNote(
     {
       collaboration: {
