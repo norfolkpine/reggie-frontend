@@ -24,6 +24,7 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
     const doc = new Y.Doc({
       guid: storeId,
     });
+
     if (initialDoc) {
       Y.applyUpdate(doc, Buffer.from(initialDoc, 'base64'));
     }
@@ -32,11 +33,16 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
       url: wsUrl,
       name: storeId,
       document: doc,
+      // ⛔ REMOVE token — we now rely on cookie-based session authentication
+      onAuthenticated: () => {
+        console.log('🏭 Provider authenticated:', storeId);
+      },
     });
 
-    // Add connection event listeners for debugging
     provider.on('connect', () => {
       console.log('🏭 Provider connected:', storeId);
+      console.log('🏭 WebSocket URL:', wsUrl);
+      console.log('🏭 Cookies will be sent automatically by browser if domain/cors allow it');
     });
 
     provider.on('disconnect', () => {
@@ -49,11 +55,15 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
 
     provider.on('error', (error: any) => {
       console.error('🏭 Provider error:', error);
+      console.error('🏭 Error details:', {
+        message: error.message,
+        type: error.type,
+        url: wsUrl,
+        storeId,
+      });
     });
 
-    set({
-      provider,
-    });
+    set({ provider });
 
     return provider;
   },
@@ -62,7 +72,6 @@ export const useProviderStore = create<UseCollaborationStore>((set, get) => ({
     if (provider) {
       provider.destroy();
     }
-
     set(defaultValues);
   },
 }));
