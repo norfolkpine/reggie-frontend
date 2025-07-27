@@ -32,16 +32,15 @@ jobs:
       - name: Build Docker image
         run: |
           IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
-          SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }} \
-          NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }} \
+          SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           docker buildx build --builder default \
             --build-arg NEXT_PUBLIC_DEFAULT_AGENT_ID=${{ secrets.NEXT_PUBLIC_DEFAULT_AGENT_ID }} \
             --build-arg NEXT_PUBLIC_API_ORIGIN=${{ secrets.NEXT_PUBLIC_API_ORIGIN }} \
             --build-arg NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }} \
             --build-arg COLLABORATION_WS_URL=${{ secrets.COLLABORATION_WS_URL }} \
             --build-arg NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }} \
-            -t $IMAGE_FRONTEND \
-            .
+            -t $IMAGE_FRONTEND .
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
