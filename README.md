@@ -54,6 +54,11 @@ Reggie AI includes several specialized agents:
 - PostgreSQL (recommended for production)
 - OpenAI API key
 
+### Documentation
+
+- [Sentry Integration Setup](docs/sentry-setup.md) - Error tracking and monitoring configuration
+- [URL Safety Utility](docs/url-safety.md) - Security guidelines for URL handling
+
 ### Frontend Setup
 
 1. Clone the repository:
