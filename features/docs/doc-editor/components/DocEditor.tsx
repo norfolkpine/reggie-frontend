@@ -67,7 +67,9 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
         <div className="w-full flex justify-center">
-          <div className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header`} style={{width: 1040}}>
+          <div 
+            className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header w-full max-w-4xl mx-auto`}
+          >
             {isVersion ? (
               <DocVersionHeader title={doc.title} />
             ) : (
@@ -78,10 +80,10 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
         <div className="w-full flex justify-center">
           <div
-            className="--docs--doc-editor-content flex justify-center"
+            className="--docs--doc-editor-content flex justify-center w-full"
             style={{ backgroundColor: colorsTokens['primary-bg'] }}
           >
-            <div style={{ width: 1040 }}>
+            <div className="w-full max-w-4xl mx-auto px-4">
               {isVersion ? (
                 <DocVersionEditor docId={doc.id} versionId={versionId} />
               ) : (
