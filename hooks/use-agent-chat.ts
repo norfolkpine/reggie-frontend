@@ -7,6 +7,7 @@ import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from "@/contexts/auth-context";
 import { ToolCall } from '@/components/ui/chat-message';
+import { captureChatError } from '@/lib/error-handler';
 
 interface Message {
   id: string;
@@ -135,6 +136,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         setSessionCreated(true);
       } catch (error) {
         console.error('Error loading session details or messages:', error);
+        captureChatError(error, { 
+          action: 'loadExistingSessionDetails',
+          agentId: agentId,
+          sessionId: ssid,
+          apiResponse: error,
+          component: 'chat'
+        });
         setError('Failed to load chat. Please try refreshing.');
         setCurrentChatTitle("Chat");
       } finally {
@@ -173,6 +181,12 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         }
       } catch (sessionError) {
         console.error('Failed to create chat session:', sessionError);
+        captureChatError(sessionError, { 
+          action: 'createChatSession',
+          agentId: agentId,
+          apiResponse: sessionError,
+          component: 'chat'
+        });
         setError('Failed to create chat session. Please check your connection and try again.');
         return;
       }
@@ -194,6 +208,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
           return { success: true, file };
         } catch (uploadError) {
           console.error(`Failed to upload file ${file.name}:`, uploadError);
+          captureChatError(uploadError, { 
+            action: 'uploadFile',
+            agentId: agentId,
+            fileName: file.name, 
+            sessionId: tempSessionId,
+            apiResponse: uploadError,
+            component: 'chat'
+          });
           const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
           setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
           return { success: false, file, error: errorMessage };
@@ -208,6 +230,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       }
     } catch (e) {
       console.error('Error during file upload orchestration:', e);
+      captureChatError(e, { 
+        action: 'fileUploadOrchestration',
+        agentId: agentId,
+        sessionId: tempSessionId,
+        apiResponse: e,
+        component: 'chat'
+      });
       setError('A general error occurred during file uploads.');
     } finally {
       setIsUploadingFiles(false);
@@ -240,7 +269,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         shouldCallOnNewSessionCreated = true;
         // Don't call onNewSessionCreated here - we'll call it after message processing is complete
       } catch (sessionError) {
-        console.error('Failed to create chat session:', sessionError);
+        console.log('Session error details:', sessionError);
+        console.error('Failed to create chat session - see console.log above for details');
+        captureChatError(sessionError, { 
+          action: 'createChatSessionInHandleSubmit',
+          agentId: agentId,
+          apiResponse: sessionError,
+          component: 'chat'
+        });
         setError('Failed to create chat session. Please check your connection and try again.');
         setIsLoading(false);
         return;
@@ -452,6 +488,14 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
               // Log parsing errors for debugging, but don't clear the buffer
               // as this might be an incomplete JSON object
               console.warn("Failed to parse SSE data:", dataContent, e);
+              captureChatError(e, { 
+                action: 'parseSSEData',
+                agentId: agentId,
+                sessionId: tempSessionId,
+                dataContent: dataContent,
+                apiResponse: e,
+                component: 'chat'
+              });
             }
           }
         }
@@ -461,6 +505,13 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         console.log('Request was aborted.');
       } else {
         console.error('Stream error:', streamError);
+        captureChatError(streamError, { 
+          action: 'streamError',
+          agentId: agentId,
+          sessionId: tempSessionId,
+          apiResponse: streamError,
+          component: 'chat'
+        });
         setError(streamError instanceof Error ? streamError.message : 'An unknown error occurred during streaming.');
         setMessages(prev => {
           const newMessages = [...prev];
@@ -497,7 +548,16 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       
       if (readerRef.current) {
         try { readerRef.current.releaseLock(); } 
-        catch (e) { console.error('Error releasing reader lock:', e); }
+        catch (e) { 
+          console.error('Error releasing reader lock:', e);
+          captureChatError(e, { 
+            action: 'releaseReaderLock',
+            agentId: agentId,
+            sessionId: tempSessionId,
+            apiResponse: e,
+            component: 'chat'
+          });
+        }
         readerRef.current = null;
       }
       if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
