@@ -34,6 +34,13 @@ RUN npm run build
 # ---- Production Stage ----
 FROM node:24.4.1-alpine AS runner
 
+# Build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_DEFAULT_AGENT_ID
+ARG NEXT_PUBLIC_API_ORIGIN
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG COLLABORATION_WS_URL
+ARG NEXT_PUBLIC_SENTRY_DSN
+
 WORKDIR /app
 
 # Only copy over the necessary files from the build stage
@@ -44,6 +51,11 @@ COPY --from=builder /app/package.json ./package.json
 
 # Set environment variables (can be customized)
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_DEFAULT_AGENT_ID=$NEXT_PUBLIC_DEFAULT_AGENT_ID
+ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
 # Expose the port Next.js runs on
 EXPOSE 3000
