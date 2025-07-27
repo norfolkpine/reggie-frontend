@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import { Login, User, Register, JWT } from '@/types/api';
+import { Login, User, Register, JWT, PatchedUser } from '@/types/api';
 
 interface LoginResponse {
   jwt: {
@@ -31,5 +31,10 @@ export async function verifyToken(token: string): Promise<JWT> {
 
 export async function getCurrentUser(): Promise<User> {
   const response = await api.get('/api/auth/user/');
+  return response as User;
+}
+
+export async function updateUser(userData: PatchedUser): Promise<User> {
+  const response = await api.patch('/api/auth/user/', userData);
   return response as User;
 }
