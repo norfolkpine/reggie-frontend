@@ -40,6 +40,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }} \
             --build-arg SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }} \
             -t $IMAGE_FRONTEND .
+
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
