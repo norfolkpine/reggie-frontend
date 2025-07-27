@@ -19,7 +19,8 @@ const allowedRoutes = [
   "/sign-up",
   "/forgot-password",
   "/test-token-expiration",
-]
+  ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
+];
 
 export default function RootLayout({
   children,
