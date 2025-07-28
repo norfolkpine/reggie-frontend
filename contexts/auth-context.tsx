@@ -15,6 +15,7 @@ export interface AuthContext {
   user: User | null;
   loading: boolean;
   handleTokenExpiration: () => void;
+  updateUser: (userData: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContext | null>(null);
@@ -107,6 +108,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = React.useCallback(async (userData: Partial<User>) => {
+    try {
+      const updatedUser = await authApi.updateUser(userData);
+      setStoredAuth(getStoredToken(), updatedUser);
+      flushSync(() => {
+        setUser(updatedUser);
+      });
+    } catch (error) {
+      console.error("Update user failed:", error);
+      throw error;
+    }
+  }, []);
+
   React.useEffect(() => {
     async function initializeAuth() {
       console.log("Initializing auth...");
@@ -134,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, login, logout, loading, handleTokenExpiration }}
+      value={{ isAuthenticated, user, login, logout, loading, handleTokenExpiration, updateUser }}
     >
       {children}
     </AuthContext.Provider>

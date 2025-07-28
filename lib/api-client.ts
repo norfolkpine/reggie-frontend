@@ -50,6 +50,7 @@ async function handleResponse(response: Response, httpMethod?: string) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ refresh: refreshTokenLocal }),
+            credentials: 'include',
           });
 
           if (!refreshResponse.ok) {
@@ -75,6 +76,7 @@ async function handleResponse(response: Response, httpMethod?: string) {
               ...response.headers,
               Authorization: `Bearer ${access}`,
             },
+            credentials: 'include',
           });
 
           return handleResponse(retryResponse, httpMethod);
@@ -129,6 +131,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     const response = await fetch(url.toString(), {
       ...requestConfig,
       headers,
+      credentials: 'include',
     });
 
     // Pass HTTP method to handleResponse if available
