@@ -54,7 +54,7 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
             type="button"
             aria-label="Back"
             className="rounded-full hover:bg-gray-100 p-2 transition-colors"
-            onClick={() => router.back()}
+            onClick={() => router.push('/documents')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -67,7 +67,9 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
         <div className="w-full flex justify-center">
-          <div className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header`} style={{width: 1040}}>
+          <div 
+            className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header w-full max-w-4xl mx-auto`}
+          >
             {isVersion ? (
               <DocVersionHeader title={doc.title} />
             ) : (
@@ -78,10 +80,10 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
         <div className="w-full flex justify-center">
           <div
-            className="--docs--doc-editor-content flex justify-center"
+            className="--docs--doc-editor-content flex justify-center w-full"
             style={{ backgroundColor: colorsTokens['primary-bg'] }}
           >
-            <div style={{ width: 1040 }}>
+            <div className="w-full max-w-4xl mx-auto px-4">
               {isVersion ? (
                 <DocVersionEditor docId={doc.id} versionId={versionId} />
               ) : (
