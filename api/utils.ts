@@ -22,9 +22,12 @@ export const errorCauses = async (response: Response, data?: unknown) => {
  */
 export function getCSRFToken(): string | null {
   if (typeof document !== 'undefined') {
+    console.log('document.cookie', document.cookie);
     const cookies = document.cookie.split(';');
     for (const cookie of cookies) {
       const [name, value] = cookie.trim().split('=');
+      console.log('name', name);
+      console.log('value', value);
       if (name === 'csrftoken') {
         return value;
       }
