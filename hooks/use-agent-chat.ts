@@ -42,6 +42,7 @@ interface UseAgentChatProps {
   onTitleUpdate?: (title: string | null) => void; // Add title update callback
   onMessageComplete?: () => void; // Add message complete callback
   reasoning?: boolean; // Add reasoning parameter
+  selectedVaultProjectInstructionId?: number; // Add selected instruction ID parameter
 }
 
 interface UseAgentChatReturn {
@@ -60,7 +61,7 @@ interface UseAgentChatReturn {
   isMemoryUpdating: boolean; // Add memory updating state
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false, selectedVaultProjectInstructionId }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -296,6 +297,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         message: userMessageContent,
         session_id: tempSessionId,
         reasoning: reasoning, // Add reasoning parameter to payload
+        ...(selectedVaultProjectInstructionId && { vault_project_instruction_id: selectedVaultProjectInstructionId }), // Add selected instruction ID to payload
       };
 
       const assistantMessageId = `assistant-${uuidv4()}`;
@@ -505,7 +507,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         onMessageComplete();
       }
     }
-  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
+  }, [agentId, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, selectedVaultProjectInstructionId, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
   
   return {
     messages,

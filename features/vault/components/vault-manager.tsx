@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse, VaultProjectInstruction } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
-import QueryPanel from "./query-panel";
+import InstructionsPanel from "./instructions-panel";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -52,7 +52,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { InstructionsDialog } from "./instructions-dialog";
 import { Progress } from "@/components/ui/progress";
-import { File } from "@/types/knowledge-base";
+import { File as KnowledgeBaseFile } from "@/types/knowledge-base";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -96,7 +96,8 @@ export function VaultManager() {
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
-  const [instructions, setInstructions] = useState("");
+  const [editingInstruction, setEditingInstruction] = useState<VaultProjectInstruction | null>(null);
+  const [selectedInstruction, setSelectedInstruction] = useState<VaultProjectInstruction | null>(null);
 
   useEffect(() => {
     fetchProject();
@@ -178,6 +179,8 @@ export function VaultManager() {
       });
     }
   };
+
+
 
   const handleFileUpload = async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
@@ -369,14 +372,22 @@ export function VaultManager() {
       {/* Chat input only (no chat content), above Tabs, only when project is loaded */}
       {!loading && project && (
         <>
-          <ChatInputOnly sessionId={`vault-${projectId}`} agentId="vault-assistant" />
+          <ChatInputOnly sessionId={`vault-${projectId}`} agentId="vault-assistant" selectedInstructionId={selectedInstruction?.id} />
           <div className="max-w-2xl mx-auto w-full mt-4">
             <div
               className="border rounded-md bg-muted/40 p-4 flex flex-col gap-2 cursor-pointer transition hover:shadow-md focus:ring-2 focus:ring-ring outline-none"
               tabIndex={0}
               role="button"
-              onClick={() => setShowInstructionsDialog(true)}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setShowInstructionsDialog(true); }}
+              onClick={() => {
+                setEditingInstruction(null);
+                setShowInstructionsDialog(true);
+              }}
+              onKeyDown={e => { 
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setEditingInstruction(null);
+                  setShowInstructionsDialog(true);
+                }
+              }}
             >
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-muted-foreground" />
@@ -390,8 +401,14 @@ export function VaultManager() {
           <InstructionsDialog
             open={showInstructionsDialog}
             onOpenChange={setShowInstructionsDialog}
-            instructions={instructions}
-            setInstructions={setInstructions}
+            projectId={Number(projectId)}
+            editingInstruction={editingInstruction}
+            onSave={(savedInstruction) => {
+              // Automatically select the newly created/updated instruction
+              setSelectedInstruction(savedInstruction);
+              setEditingInstruction(null);
+              setShowInstructionsDialog(false);
+            }}
           />
         </>
       )}
@@ -416,7 +433,19 @@ export function VaultManager() {
             </TabsList>
             
             <TabsContent value="files" className="mt-4">
-              <QueryPanel />
+              <InstructionsPanel 
+                projectId={Number(projectId)}
+                onInstructionSelect={setSelectedInstruction}
+                selectedInstructionId={selectedInstruction?.id}
+                onEditInstruction={(instruction) => {
+                  setEditingInstruction(instruction);
+                  setShowInstructionsDialog(true);
+                }}
+                onCreateInstruction={() => {
+                  setEditingInstruction(null);
+                  setShowInstructionsDialog(true);
+                }}
+              />
               {/* Replace with custom file manager UI since shared component doesn't support our vault-specific API needs */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
@@ -864,16 +893,17 @@ export function VaultManager() {
   );
 }
 
-function ChatInputOnly({ agentId, sessionId }: { agentId: string; sessionId: string }) {
+function ChatInputOnly({ agentId, sessionId, selectedInstructionId }: { agentId: string; sessionId: string; selectedInstructionId?: number }) {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const {
+    messages,
     handleSubmit,
     uploadFiles,
     isLoading,
     fileUploads,
     isUploadingFiles,
-  } = useAgentChat({ agentId, sessionId });
+  } = useAgentChat({ agentId, sessionId, selectedVaultProjectInstructionId: selectedInstructionId });
 
   function onSubmit() {
     if (!input.trim()) return;
@@ -884,6 +914,40 @@ function ChatInputOnly({ agentId, sessionId }: { agentId: string; sessionId: str
 
   return (
     <div className="max-w-2xl mx-auto w-full p-4 border rounded-md mt-4 bg-white">
+      {/* Messages Display */}
+      {messages.length > 0 && (
+        <div className="mb-4 space-y-3 max-h-96 overflow-y-auto">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                <div className="text-sm">
+                  {message.content}
+                </div>
+                {message.experimental_attachments && message.experimental_attachments.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {message.experimental_attachments.map((attachment, index) => (
+                      <div key={index} className="text-xs opacity-75">
+                        📎 {attachment.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input Form */}
       <ChatForm
         isPending={isLoading}
         handleSubmit={e => {
