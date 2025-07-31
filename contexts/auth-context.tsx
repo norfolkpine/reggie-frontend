@@ -5,7 +5,7 @@ import { User, Login } from "@/types/api";
 import * as authApi from "@/api/auth";
 import { flushSync } from "react-dom";
 import { useEffect } from "react";
-import { setAuthContext } from "@/lib/api-client";
+import { getCSRFToken, setAuthContext } from "@/lib/api-client";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 export interface AuthContext {
@@ -91,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: Login) => {
     try {
+      console.log("csrf token:", getCSRFToken());
       const response = await authApi.login(credentials);
       setStoredAuth(
         {

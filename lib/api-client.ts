@@ -7,6 +7,7 @@ console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PU
 export function getCSRFToken(): string | null {
   if (typeof document !== 'undefined') {
     const cookies = document.cookie.split(';');
+    console.log('cookies:', cookies);
     for (const cookie of cookies) {
       const [name, value] = cookie.trim().split('=');
       if (name === 'csrftoken') {
