@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { TracingLogo } from '@/components/ui/tracing-logo'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -38,7 +39,7 @@ const AuthGuard = ({ children, allowedRoutes = [] }: AuthGuardProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        <TracingLogo size={80} duration={3} strokeColor="#513379" />
       </div>
     )
   }
