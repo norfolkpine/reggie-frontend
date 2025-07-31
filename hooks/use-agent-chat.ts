@@ -43,6 +43,7 @@ interface UseAgentChatProps {
   onMessageComplete?: () => void; // Add message complete callback
   reasoning?: boolean; // Add reasoning parameter
   selectedVaultProjectInstructionId?: number; // Add selected instruction ID parameter
+  projectId?: number | null;
 }
 
 interface UseAgentChatReturn {
@@ -61,7 +62,7 @@ interface UseAgentChatReturn {
   isMemoryUpdating: boolean; // Add memory updating state
 }
 
-export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false, selectedVaultProjectInstructionId }: UseAgentChatProps): UseAgentChatReturn {
+export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCreated, onTitleUpdate, onMessageComplete, reasoning = false, selectedVaultProjectInstructionId, projectId=null }: UseAgentChatProps): UseAgentChatReturn {
   const isNewConversationRef = useRef<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -297,7 +298,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         message: userMessageContent,
         session_id: tempSessionId,
         reasoning: reasoning, // Add reasoning parameter to payload
-        ...(selectedVaultProjectInstructionId && { vault_project_instruction_id: selectedVaultProjectInstructionId }), // Add selected instruction ID to payload
+        ...(selectedVaultProjectInstructionId && { vault_project_instruction_id: selectedVaultProjectInstructionId }), // Add selected instruction ID to payload,
+        ...(projectId && { project_id: projectId }), // Add project ID to payload if it exists
       };
 
       const assistantMessageId = `assistant-${uuidv4()}`;

@@ -13,6 +13,15 @@ export interface UploadFileParams {
   shared_with_teams?: number[];
 }
 
+export interface BulkUploadFileParams {
+  files: File[];
+  project: number;
+  uploaded_by: number;
+  team?: number;
+  shared_with_users?: number[];
+  shared_with_teams?: number[];
+}
+
 export interface VaultFilesResponse {
   results: VaultFile[];
   count: number;
@@ -86,6 +95,53 @@ export async function uploadFiles({
   }
 }
 
+export async function bulkUploadFiles({
+  files,
+  project,
+  uploaded_by,
+  team,
+  shared_with_users,
+  shared_with_teams,
+}: BulkUploadFileParams) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const formData = new FormData();
+  files.forEach((file, idx) => {
+    formData.append('files', file);
+  });
+  formData.append('project', String(project));
+  formData.append('uploaded_by', String(uploaded_by));
+  if (typeof team !== 'undefined') {
+    formData.append('team', String(team));
+  }
+  if (shared_with_users) {
+    shared_with_users.forEach((user) => formData.append('shared_with_users', String(user)));
+  }
+  if (shared_with_teams) {
+    shared_with_teams.forEach((team) => formData.append('shared_with_teams', String(team)));
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/bulk-upload/`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.detail || 'Bulk upload failed';
+      throw new Error(message);
+    }
+    const data = await response.json();
+    return data as VaultFile[];
+  } catch (error: any) {
+    const message = error?.message || 'Bulk upload failed';
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
 export async function deleteVaultFile(fileId: number): Promise<void> {
   try {
     await api.delete(`/reggie/api/v1/vault-files/${fileId}/`);
@@ -107,10 +163,18 @@ export interface VaultProjectInstruction {
   updated_at: string;
 }
 
+export interface VaultProjectInstructionsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: VaultProjectInstruction[];
+}
+
 export async function getVaultProjectInstructions(projectId: number): Promise<VaultProjectInstruction[]> {
   try {
     const response = await api.get(`/reggie/api/v1/vault-project-instructions/?project=${projectId}`);
-    return response as VaultProjectInstruction[];
+    const data = response as VaultProjectInstructionsResponse;
+    return data.results;
   } catch (error) {
     const { message } = handleApiError(error);
     throw new Error(message || 'Failed to fetch project instructions');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
-import InstructionsPanel from "./instructions-panel";
+import InstructionsPanel, { InstructionsPanelRef } from "./instructions-panel";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -44,8 +44,9 @@ import {
 } from "@/components/ui/pagination";
 import { isSafeUrl } from '@/lib/utils/url';
 import { CustomChat } from "../../chats/components/chatcn";
-import { ChatForm } from "@/components/ui/chat";
+import { ChatForm, ChatMessages } from "@/components/ui/chat";
 import { MessageInput } from "@/components/ui/message-input";
+import { MessageList } from "@/components/ui/message-list";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -98,6 +99,9 @@ export function VaultManager() {
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
   const [editingInstruction, setEditingInstruction] = useState<VaultProjectInstruction | null>(null);
   const [selectedInstruction, setSelectedInstruction] = useState<VaultProjectInstruction | null>(null);
+
+  // Add ref for InstructionsPanel
+  const instructionsPanelRef = useRef<InstructionsPanelRef>(null);
 
   useEffect(() => {
     fetchProject();
@@ -372,7 +376,7 @@ export function VaultManager() {
       {/* Chat input only (no chat content), above Tabs, only when project is loaded */}
       {!loading && project && (
         <>
-          <ChatInputOnly sessionId={`vault-${projectId}`} agentId="vault-assistant" selectedInstructionId={selectedInstruction?.id} />
+          <ChatInputOnly projectId={Number(projectId)} sessionId={project.session_id || ""} agentId="vault-assistant" selectedInstructionId={selectedInstruction?.id} />
           <div className="max-w-2xl mx-auto w-full mt-4">
             <div
               className="border rounded-md bg-muted/40 p-4 flex flex-col gap-2 cursor-pointer transition hover:shadow-md focus:ring-2 focus:ring-ring outline-none"
@@ -408,6 +412,9 @@ export function VaultManager() {
               setSelectedInstruction(savedInstruction);
               setEditingInstruction(null);
               setShowInstructionsDialog(false);
+              
+              // Refresh the instructions list
+              instructionsPanelRef.current?.refresh();
             }}
           />
         </>
@@ -434,6 +441,7 @@ export function VaultManager() {
             
             <TabsContent value="files" className="mt-4">
               <InstructionsPanel 
+                ref={instructionsPanelRef}
                 projectId={Number(projectId)}
                 onInstructionSelect={setSelectedInstruction}
                 selectedInstructionId={selectedInstruction?.id}
@@ -893,7 +901,7 @@ export function VaultManager() {
   );
 }
 
-function ChatInputOnly({ agentId, sessionId, selectedInstructionId }: { agentId: string; sessionId: string; selectedInstructionId?: number }) {
+function ChatInputOnly({ agentId, sessionId, projectId, selectedInstructionId }: { agentId: string; sessionId: string; projectId: number; selectedInstructionId?: number }) {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const {
@@ -903,10 +911,42 @@ function ChatInputOnly({ agentId, sessionId, selectedInstructionId }: { agentId:
     isLoading,
     fileUploads,
     isUploadingFiles,
-  } = useAgentChat({ agentId, sessionId, selectedVaultProjectInstructionId: selectedInstructionId });
+    isAgentResponding,
+    currentToolCalls,
+    currentReasoningSteps,
+  } = useAgentChat({ agentId, sessionId, selectedVaultProjectInstructionId: selectedInstructionId, projectId: projectId });
+
+  // Auto-scroll logic similar to chatcn.tsx
+  useEffect(() => {
+    console.log('Messages updated in ChatInputOnly:', messages.length, messages);
+    if (messages.length > 0) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [messages]);
+
+  // Additional scroll trigger for agent responses
+  useEffect(() => {
+    if (isAgentResponding && messages.length > 0) {
+      const timer = setTimeout(() => {
+        const chatMessagesContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (chatMessagesContainer) {
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAgentResponding, messages]);
 
   function onSubmit() {
     if (!input.trim()) return;
+    console.log('Submitting message:', input, 'with files:', files);
+    console.log('Current messages before submit:', messages);
     handleSubmit(input, files);
     setInput("");
     setFiles([]);
@@ -915,44 +955,38 @@ function ChatInputOnly({ agentId, sessionId, selectedInstructionId }: { agentId:
   return (
     <div className="max-w-2xl mx-auto w-full p-4 border rounded-md mt-4 bg-white">
       {/* Messages Display */}
-      {messages.length > 0 && (
-        <div className="mb-4 space-y-3 max-h-96 overflow-y-auto">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                <div className="text-sm">
-                  {message.content}
-                </div>
-                {message.experimental_attachments && message.experimental_attachments.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {message.experimental_attachments.map((attachment, index) => (
-                      <div key={index} className="text-xs opacity-75">
-                        📎 {attachment.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+      <div className="mb-4 space-y-3 max-h-50 overflow-y-auto" style={{ maxHeight: '20vh' }}>
+        {messages.length > 0 ? (
+          <ChatMessages 
+            messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')}
+            toolCalls={currentToolCalls}
+            reasoningSteps={currentReasoningSteps}
+          >
+            <div className="max-w-3xl mx-auto w-full py-4">
+              <MessageList 
+                messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')} 
+                isTyping={isAgentResponding}
+                currentToolCalls={currentToolCalls}
+                currentReasoningSteps={currentReasoningSteps}
+                isAgentResponding={isAgentResponding}
+              />
             </div>
-          ))}
-        </div>
-      )}
+          </ChatMessages>
+        ) : (
+          <div className="text-center text-gray-500 text-sm py-4">
+            {isLoading ? 'Processing message...' : 'No messages yet. Start a conversation!'}
+          </div>
+        )}
+      </div>
 
       {/* Input Form */}
       <ChatForm
         isPending={isLoading}
         handleSubmit={e => {
           e?.preventDefault?.();
-          onSubmit();
+          if (!isLoading) {
+            onSubmit();
+          }
         }}
       >
         {({ setFiles: setFormFiles }) => (
@@ -983,6 +1017,7 @@ function ChatInputOnly({ agentId, sessionId, selectedInstructionId }: { agentId:
             isGenerating={isLoading || isUploadingFiles}
             fileUploads={fileUploads}
             isUploadingFiles={isUploadingFiles}
+            placeholder={isLoading ? "Processing..." : "Type your message..."}
           />
         )}
       </ChatForm>

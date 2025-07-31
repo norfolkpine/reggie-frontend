@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,26 +16,31 @@ interface InstructionsPanelProps {
   onCreateInstruction?: () => void;
 }
 
-export default function InstructionsPanel({ 
+export interface InstructionsPanelRef {
+  refresh: () => void;
+}
+
+const InstructionsPanel = forwardRef<InstructionsPanelRef, InstructionsPanelProps>(({ 
   projectId, 
   onInstructionSelect, 
   selectedInstructionId,
   onEditInstruction,
   onCreateInstruction
-}: InstructionsPanelProps) {
+}, ref) => {
   const [instructions, setInstructions] = useState<VaultProjectInstruction[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchInstructions();
-  }, [projectId]);
 
   const fetchInstructions = async () => {
     try {
       setLoading(true);
       const data = await getVaultProjectInstructions(projectId);
       setInstructions(data);
+      
+      // Auto-select the first instruction if none is selected and there are instructions
+      if (data.length > 0 && !selectedInstructionId) {
+        onInstructionSelect?.(data[0]);
+      }
     } catch (error) {
       console.error('Error fetching instructions:', error);
       toast({
@@ -47,6 +52,37 @@ export default function InstructionsPanel({
       setLoading(false);
     }
   };
+
+  // Expose refresh function to parent component
+  useImperativeHandle(ref, () => ({
+    refresh: fetchInstructions
+  }));
+
+  useEffect(() => {
+    const fetchInstructions = async () => {
+      try {
+        setLoading(true);
+        const data = await getVaultProjectInstructions(projectId);
+        setInstructions(data);
+        
+        // Auto-select the first instruction if none is selected and there are instructions
+        if (data.length > 0 && !selectedInstructionId) {
+          onInstructionSelect?.(data[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching instructions:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load instructions",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInstructions();
+  }, [projectId, onInstructionSelect, selectedInstructionId]);
 
   const handleInstructionClick = (instruction: VaultProjectInstruction) => {
     onInstructionSelect?.(instruction);
@@ -155,4 +191,8 @@ export default function InstructionsPanel({
       </Card>
     </div>
   );
-} 
+});
+
+InstructionsPanel.displayName = "InstructionsPanel";
+
+export default InstructionsPanel; 

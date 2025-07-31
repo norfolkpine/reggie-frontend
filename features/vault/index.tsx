@@ -22,7 +22,7 @@ import {
   Folder,
 } from "lucide-react"
 import { CreateProjectDialog } from "./components/create-project-dialog"
-import { getProjects, createProject } from "@/api/projects"
+import { getProjects, createProject, updateProjectSessionId } from "@/api/projects"
 import { ProjectCard } from "./components/project-card"
 import { Project } from "@/types/api"
 import { formatDateVariants } from "@/lib/utils/date-formatter"
@@ -30,9 +30,17 @@ import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import SearchInput from "@/components/ui/search-input"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
+import { createChatSession, getChatSession } from "@/api/chat-sessions"
+import { useChatSessionContext } from "@/features/chats/ChatSessionContext"
+
+// Default agent ID to use for new conversations
+const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-9b9bdc247-reggie";
 
 export default function Projects() {
   const { toast } = useToast()
+  const router = useRouter()
+  const { refresh, chatSessions } = useChatSessionContext()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
@@ -146,6 +154,56 @@ export default function Projects() {
     return matchesSearch && matchesTags && matchesViewMode
   })
 
+  const handleProjectSelect = async (project: Project) => {
+    try {
+      // Generate a predictable session ID based on the project
+      const projectChatTitle = `Chat for ${project.name}`;
+      const sessionId = project.session_id || ``;
+      
+      // Check if a chat session already exists for this project by trying to get it
+      try {
+        await getChatSession(sessionId);
+        // If session exists, just redirect to the vault page
+        router.push(`/vault/${project.id?.toString()}`);
+        return;
+      } catch (error) {
+        // Session doesn't exist, create a new one
+        const session = await createChatSession({
+          title: projectChatTitle,
+          agent_id: DEFAULT_AGENT_ID,
+          agent_code: DEFAULT_AGENT_ID,
+        });
+        
+        // Save the session ID to the project
+        if (project.id) {
+          try {
+            await updateProjectSessionId(project.id, session.session_id);
+            // Update the local project state with the session ID
+            setProjects(prevProjects => 
+              prevProjects.map(p => 
+                p.id === project.id 
+                  ? { ...p, session_id: session.session_id }
+                  : p
+              )
+            );
+          } catch (updateError) {
+            console.error('Failed to update project with session ID:', updateError);
+            // Continue with navigation even if update fails
+          }
+        }
+        
+        refresh();
+        // Redirect to the vault page for the project
+        router.push(`/vault/${project.id?.toString()}`);
+      }
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: "Failed to create chat session. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
 
   // Otherwise, show the projects list
@@ -242,16 +300,13 @@ export default function Projects() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => (
-              <Link
-                key={project.id}
-                href={`/vault/${project.id?.toString()}`}
-              >
+              <div key={project.id}>
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  onSelect={() => {}}
+                  onSelect={() => handleProjectSelect(project)}
                 />
-              </Link>
+              </div>
             ))}
           </div>
         )}

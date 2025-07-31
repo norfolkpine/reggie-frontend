@@ -133,7 +133,6 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
       headers,
       credentials: 'include',
     });
-
     // Pass HTTP method to handleResponse if available
     return handleResponse(response, requestConfig.method);
   } catch (error) {

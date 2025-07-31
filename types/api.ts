@@ -20,6 +20,7 @@ export interface Project {
   team?: number;
   tags?: string[];
   starred_by?: number[];
+  session_id?: string;
   icon?: LucideIcon
   color?: string
   starred?: boolean

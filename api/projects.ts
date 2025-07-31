@@ -31,3 +31,10 @@ export const patchProject = async (id: number, project: PatchedProject) => {
 export const deleteProject = async (id: number) => {
   await api.delete(`/reggie/api/v1/projects/${id}/`);
 };
+
+export const updateProjectSessionId = async (id: number, sessionId: string) => {
+  const response = await api.patch(`/reggie/api/v1/projects/${id}/update-session-id/`, {
+    session_id: sessionId
+  });
+  return response as Project;
+};

@@ -47,10 +47,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
-import { ChatSession, getChatSessions } from "@/api/chat-sessions";
+import { ChatSession, getChatSessions, createChatSession, getChatSession } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
 import { chatStorage } from "@/lib/utils/chat-storage";
-import { getProjects, updateProject, deleteProject } from "@/api/projects";
+import { getProjects, updateProject, deleteProject, updateProjectSessionId } from "@/api/projects";
 import { Project } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,10 @@ import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
 import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
 import { Doc } from "@/features/docs/doc-management/types";
 import { useProjects } from "@/features/vault/api/useProjects";
+import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
 
+// Default agent ID to use for new conversations
+const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
 
 const FolderShieldIcon = () => (
   // If larger, all icons should be made larger (larger looks better)
@@ -146,34 +149,30 @@ const navigationItems: NavigationItem[] = [
 // Update the sidebar component to handle chat item clicks
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
+  const { refresh } = useChatSessionContext();
   const [isExpanded, setIsExpanded] = useState(true);
-
-  const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
-    null
-  );
+  const [projectsExpanded, setProjectsExpanded] = useState(false);
+  const [documentsExpanded, setDocumentsExpanded] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameProjectId, setRenameProjectId] = useState<number>(-1);
+  const [newName, setNewName] = useState("");
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [renameDocOpen, setRenameDocOpen] = useState(false);
+  const [renameDocId, setRenameDocId] = useState<string>("");
+  const [renameDocTitle, setRenameDocTitle] = useState("");
+  const [isDeletingDoc, setIsDeletingDoc] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
   const [vaultExpanded, setVaultExpanded] = useState(false);
   const [hoveredVault, setHoveredVault] = useState(false);
-
-  // Add state for rename dialog and project
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameProjectId, setRenameProjectId] = useState<number | null>(null);
-  const [newName, setNewName] = useState("");
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(null);
 
   // Documents state
-  const [documentsExpanded, setDocumentsExpanded] = useState(false);
   const [hoveredDocuments, setHoveredDocuments] = useState(false);
   const [createDocOpen, setCreateDocOpen] = useState(false);
-  const [renameDocOpen, setRenameDocOpen] = useState(false);
-  const [renameDocId, setRenameDocId] = useState<string | null>(null);
-  const [renameDocTitle, setRenameDocTitle] = useState("");
-  const [isRenamingDoc, setIsRenamingDoc] = useState(false);
-  const [isDeletingDoc, setIsDeletingDoc] = useState<string | null>(null);
 
   // Infinite paginated fetch for documents (only user's own)
   const {
@@ -210,7 +209,7 @@ export default function Sidebar() {
   const updateDocMutation = useUpdateDoc({
     onSuccess: () => {
       setRenameDocOpen(false);
-      setRenameDocId(null);
+      setRenameDocId("");
       setRenameDocTitle("");
     },
   });
@@ -220,7 +219,7 @@ export default function Sidebar() {
     onSuccess: () => {
       setIsDeletingDoc(null);
       setRenameDocOpen(false);
-      setRenameDocId(null);
+      setRenameDocId("");
       setRenameDocTitle("");
     },
   });
@@ -299,16 +298,23 @@ export default function Sidebar() {
   };
 
   const handleRename = async () => {
-    if (!renameProjectId) return;
+    if (renameProjectId === -1) return;
     setIsRenaming(true);
     try {
       await updateProject(renameProjectId, { name: newName });
-      toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
-      setRenameProjectId(null);
+      setRenameProjectId(-1);
       setNewName("");
-    } catch (e) {
-      toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
+      toast({
+        title: "Success",
+        description: "Project renamed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to rename project. Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setIsRenaming(false);
     }
@@ -324,6 +330,51 @@ export default function Sidebar() {
       toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsDeleting(null);
+    }
+  };
+
+  const handleProjectClick = async (project: Project) => {
+    try {
+      // Generate a predictable session ID based on the project
+      const projectChatTitle = `Chat for ${project.name}`;
+      const sessionId = project.session_id || `vault-${project.id}`;
+      
+      // Check if a chat session already exists for this project by trying to get it
+      try {
+        await getChatSession(sessionId);
+        // If session exists, just redirect to the vault page
+        router.push(`/vault/${project.id?.toString()}`);
+        return;
+      } catch (error) {
+        // Session doesn't exist, create a new one
+        const session = await createChatSession({
+          title: projectChatTitle,
+          agent_id: DEFAULT_AGENT_ID,
+          agent_code: DEFAULT_AGENT_ID,
+        });
+        
+        // Save the session ID to the project
+        if (project.id) {
+          try {
+            await updateProjectSessionId(project.id, session.session_id);
+            // Note: We can't update the local state here since we're using React Query
+            // The project list will be refreshed when the user navigates
+          } catch (updateError) {
+            console.error('Failed to update project with session ID:', updateError);
+            // Continue with navigation even if update fails
+          }
+        }
+        
+        refresh();
+        // Redirect to the vault page for the project
+        router.push(`/vault/${project.id?.toString()}`);
+      }
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: "Failed to create chat session. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -465,7 +516,7 @@ export default function Sidebar() {
                             e.stopPropagation();
                             createDocMutation.mutate();
                           }}
-                          disabled={createDocMutation.isLoading}
+                          disabled={createDocMutation.isPending}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
@@ -495,7 +546,7 @@ export default function Sidebar() {
                               className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
                               onClick={e => {
                                 e.stopPropagation();
-                                handleNavItemClick(`/vault/${project.id}`);
+                                handleProjectClick(project);
                               }}
                             >
                               <FolderGit2 className="h-4 w-4" />
@@ -737,11 +788,10 @@ export default function Sidebar() {
             value={renameDocTitle}
             onChange={e => setRenameDocTitle(e.target.value)}
             placeholder="Document title"
-            disabled={isRenamingDoc}
+            disabled={updateDocMutation.isPending}
             onKeyDown={e => {
               if (e.key === 'Enter') {
-                setIsRenamingDoc(true);
-                updateDocMutation.mutate({ id: renameDocId!, title: renameDocTitle });
+                updateDocMutation.mutate({ id: renameDocId, title: renameDocTitle });
               }
             }}
           />
@@ -749,17 +799,16 @@ export default function Sidebar() {
             <Button
               variant="default"
               onClick={() => {
-                setIsRenamingDoc(true);
-                updateDocMutation.mutate({ id: renameDocId!, title: renameDocTitle });
+                updateDocMutation.mutate({ id: renameDocId, title: renameDocTitle });
               }}
-              disabled={isRenamingDoc || !renameDocTitle.trim()}
+              disabled={updateDocMutation.isPending || !renameDocTitle.trim()}
             >
               Save
             </Button>
             <Button
               variant="outline"
               onClick={() => setRenameDocOpen(false)}
-              disabled={isRenamingDoc}
+              disabled={updateDocMutation.isPending}
             >
               Cancel
             </Button>
