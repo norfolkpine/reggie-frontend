@@ -1,4 +1,4 @@
-import { api } from '@/lib/api-client';
+import { api, getCSRFToken } from '@/lib/api-client';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';
@@ -44,7 +44,7 @@ export async function uploadFiles({
   shared_with_users,
   shared_with_teams,
 }: UploadFileParams) {
-  const token = localStorage.getItem(TOKEN_KEY);
+  
   const formData = new FormData();
   formData.append('file', file);
   formData.append('project', String(project));
@@ -64,12 +64,15 @@ export async function uploadFiles({
     console.log(key, value);
   }
 
+  const csrfToken = getCSRFToken();
   try {
     const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/`, {
       method: 'POST',
       body: formData,
+      
       headers: {
-        Authorization: `Bearer ${token}`,
+        credentials: 'include',
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
       },
     });
     if (!response.ok) {

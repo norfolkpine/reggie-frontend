@@ -1,4 +1,4 @@
-import { api, BASE_URL } from '@/lib/api-client';
+import { api, BASE_URL, getCookie, getCSRFToken, triggerTokenExpiration } from '@/lib/api-client';
 import { File, PaginatedFileList, PatchedFile } from '../types/api';
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
@@ -84,27 +84,20 @@ export const uploadFiles = async (files: globalThis.File[], options?: FileUpload
     });
   }
 
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-  
+  const csrfToken = getCSRFToken();
   const response = await fetch(BASE_URL+'/reggie/api/v1/files/', {
     method: 'POST',
     body: formData,
     credentials: 'include',
     headers: {
-      'Authorization': `Bearer ${token}`
+      ...(csrfToken && { "X-CSRFToken": csrfToken }),
     }
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
-      // Clear auth state and redirect to sign-in
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem('reggie.auth.refresh.token');
-      localStorage.removeItem('reggie.auth.user');
-      window.location.href = '/sign-in';
+    if (response.status === 401 || response.status === 403) {
+      // Use centralized auth context for consistent handling
+      triggerTokenExpiration();
       throw new Error('Authentication failed');
     }
     throw new Error(`Upload failed: ${response.statusText}`);

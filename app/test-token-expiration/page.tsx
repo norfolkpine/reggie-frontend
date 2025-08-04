@@ -84,7 +84,7 @@ export default function TestTokenExpirationPage() {
               <div>
                 <h4 className="font-semibold mb-2">3. Automatic Redirect</h4>
                 <p className="text-sm text-muted-foreground">
-                  If refresh fails or no refresh token is available, the user is automatically redirected to the sign-in page.
+                  If refresh fails or no refresh token is available, the user is automatically redirected to the sign-in page using client-side routing (no page refresh).
                 </p>
               </div>
               

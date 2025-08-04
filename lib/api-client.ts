@@ -34,70 +34,50 @@ export function triggerTokenExpiration() {
   } else {
     // Fallback if auth context is not available
     localStorage.clear();
-    window.location.href = "/sign-in";
+    if (typeof window !== 'undefined') {
+      window.location.href = "/sign-in";
+    }
   }
+}
+
+export async function ensureCSRFToken() {
+  const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+  return response.ok;
+}
+
+export function getCookie (name: string) {
+  let cookieValue = null
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';')
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue
+}
+
+export function getCSRFToken () {
+  return getCookie('csrftoken')
 }
 
 async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (refreshTokenLocal) {
-        try {
-          const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refresh: refreshTokenLocal }),
-            credentials: 'include',
-          });
-
-          if (!refreshResponse.ok) {
-            // Use auth context to handle token expiration
-            if (authContext) {
-              authContext.handleTokenExpiration();
-            } else {
-              // Fallback if auth context is not available
-              localStorage.clear();
-              window.location.href = "/sign-in";
-            }
-            throw new Error("Refresh token failed");
-          }
-
-          const { access, refresh } = await refreshResponse.json();
-          localStorage.setItem(TOKEN_KEY, access);
-          localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-
-          // Retry the original request with new token
-          const retryResponse = await fetch(response.url, {
-            ...response,
-            headers: {
-              ...response.headers,
-              Authorization: `Bearer ${access}`,
-            },
-            credentials: 'include',
-          });
-
-          return handleResponse(retryResponse, httpMethod);
-        } catch (error) {
-          // Use auth context to handle token expiration
-          if (authContext) {
-            authContext.handleTokenExpiration();
-          } else {
-            // Fallback if auth context is not available
-            localStorage.clear();
-            window.location.href = "/sign-in";
-          }
-          throw error;
-        }
+    if(response.status === 401 || response.status === 403) {
+      // Handle authentication/authorization errors
+      if (authContext) {
+        authContext.handleTokenExpiration();
       } else {
-        // No refresh token available, redirect to sign-in
-        if (authContext) {
-          authContext.handleTokenExpiration();
-        } else {
-          localStorage.clear();
-          window.location.href = "/sign-in";
+        // Fallback if auth context is not available
+        localStorage.clear();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/sign-in';
         }
       }
     }
@@ -121,9 +101,13 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     });
   }
 
+  const csrfToken = getCSRFToken();
+
   const headers = {
     "Content-Type": "application/json",
+    "credentials": "include",
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...config.headers,
   };
 

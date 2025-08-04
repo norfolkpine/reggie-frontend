@@ -367,9 +367,18 @@ export interface Login {
 }
 
 export interface LoginResponse {
-  status: string;
-  detail: string;
-  jwt: JWT;
+  status: number;
+  data: {
+    user: User;
+    methods: Array<{
+      method: string;
+      at: number;
+      email: string;
+    }>;
+  };
+  meta: {
+    is_authenticated: boolean;
+  };
 }
 
 export interface Register {
