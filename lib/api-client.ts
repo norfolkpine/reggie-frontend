@@ -1,3 +1,4 @@
+import { getCSRFToken } from "@/api";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 // Debug: Log env variable at build time
@@ -48,24 +49,6 @@ export async function ensureCSRFToken() {
   return response.ok;
 }
 
-export function getCookie (name: string) {
-  let cookieValue = null
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';')
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue
-}
-
-export function getCSRFToken () {
-  return getCookie('csrftoken')
-}
 
 async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
