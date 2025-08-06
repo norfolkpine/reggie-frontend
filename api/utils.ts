@@ -21,6 +21,7 @@ export const errorCauses = async (response: Response, data?: unknown) => {
  * Retrieves the CSRF token from the document's cookies.
  */
 export function getCSRFToken() {
+  console.log("document.cookie", document.cookie);
   return document.cookie
     .split(';')
     .filter((cookie) => cookie.trim().startsWith('csrftoken='))

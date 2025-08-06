@@ -102,6 +102,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
   }
 
   const csrfToken = getCSRFToken();
+  console.log("csrfToken", csrfToken);
 
   const headers = {
     "Content-Type": "application/json",
