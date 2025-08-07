@@ -81,6 +81,16 @@ Sentry automatically captures:
 - Performance issues
 - React component errors
 
+### Browser Extension Error Filtering
+The client-side Sentry configuration includes a `beforeSend` filter that automatically filters out errors originating from browser extensions. This approach:
+
+- **Checks request URLs**: Filters errors from extension URLs (chrome-extension://, moz-extension://, etc.)
+- **Analyzes stack traces**: Examines error stack frames for extension-related file paths
+- **Comprehensive coverage**: Catches extension errors from various sources (content scripts, background scripts, etc.)
+- **Maintains app errors**: Ensures all legitimate application errors are captured
+
+The filter uses Sentry's built-in event structure to identify extension origins through request URLs and stack trace analysis.
+
 ### Manual Error Reporting
 Use Sentry's API to manually capture errors:
 
@@ -178,6 +188,12 @@ Sentry.setUser({
 3. **Performance data missing:**
    - Verify performance monitoring is enabled
    - Check that transactions are being created and finished properly
+
+4. **External errors appearing in Sentry:**
+   - Check that the `beforeSend` filter in `instrumentation-client.ts` is working correctly
+   - Verify that error stack traces contain your application's origin or paths
+   - Look for console logs indicating filtered errors
+   - If legitimate app errors are being filtered, check that stack traces include app paths
 
 ### Testing Sentry Integration
 1. Visit `/sentry-example-page` in your application
