@@ -74,12 +74,21 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
       const { hasFieldErrors, message } = handleApiError(error, form.setError)
       
       if (!hasFieldErrors) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: message || 'Failed to login',
-      })
-    }
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: message || 'Failed to login',
+        })
+      }else if(error.errors && error.errors.length > 0){
+    
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.errors.map((error: any) => error.message).join(', '),
+        })
+      }
+
+      
     } finally {
       setIsLoading(false)
     }

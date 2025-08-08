@@ -74,13 +74,14 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
         email: data.email,
         password2: data.password1,
         password1: data.password2,
+        password: data.password1,
       });
 
       toast({
         title: "Success",
         description: "Account created successfully! Please verify your email.",
       });
-      router.replace("/sign-in");
+      window.location.reload();
     } catch (error: any) {
       const { hasFieldErrors, message } = handleApiError(error, form.setError);
 
@@ -89,6 +90,12 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
           variant: "destructive",
           title: "Error",
           description: message || "Failed to create account. Please try again.",
+        });
+      }else if(error.errors && error.errors.length > 0){
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.errors.map((error: any) => error.message).join(', ') || "Failed to create account. Please try again.",
         });
       }
     } finally {

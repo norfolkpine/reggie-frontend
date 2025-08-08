@@ -43,3 +43,7 @@ export async function updateUser(userData: PatchedUser): Promise<User> {
   const response = await api.patch('/api/auth/user/', userData);
   return response as User;
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await api.post(`${settings.baseUrl}/auth/password/request`, { email });
+}

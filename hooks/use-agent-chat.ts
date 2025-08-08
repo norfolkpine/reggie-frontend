@@ -2,12 +2,13 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
 import { uploadFiles as apiUploadFiles } from '@/api/files'; // Renamed to avoid conflict
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
-import { BASE_URL, getCSRFToken } from '@/lib/api-client';
+import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from "@/contexts/auth-context";
 import { ToolCall } from '@/components/ui/chat-message';
 import { captureChatError } from '@/lib/error-handler';
+import { getCSRFToken } from '@/api';
 
 interface Message {
   id: string;
