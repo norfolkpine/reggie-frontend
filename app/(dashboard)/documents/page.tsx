@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, Search, Loader2 } from "lucide-react";
+import { Menu, Search, Loader2, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { RecentDocuments } from "./_components/recent-documents";
-import { TemplateGallery } from "./_components/template-gallery";
+import { CreateDocumentDialog } from "./_components/create-document-dialog";
 import { getPaginatedDocuments } from "@/api/documents";
 import { Document } from "@/types/api";
+import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import SearchInput from "@/components/ui/search-input";
 
 export default function DocumentListPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -17,71 +21,55 @@ export default function DocumentListPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  // Mock data for templates
-  const templates = [
-    {
-      id: "blank",
-      title: "Blank document",
-      category: "",
-      thumbnail: "",
+  const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
+  
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // Create document mutation
+  const createDocMutation = useCreateDoc({
+    onSuccess: (doc) => {
+      setCreateDocumentOpen(false);
+      toast({
+        title: "Success",
+        description: "Document created successfully"
+      });
+      // Refresh the documents list
+      loadDocuments();
     },
-    {
-      id: "letter",
-      title: "Letter",
-      category: "Spearmint",
-      thumbnail: "",
-    },
-    {
-      id: "resume-serif",
-      title: "Resume",
-      category: "Serif",
-      thumbnail: "",
-    },
-    {
-      id: "resume-coral",
-      title: "Resume",
-      category: "Coral",
-      thumbnail: "",
-    },
-    {
-      id: "project-proposal",
-      title: "Project proposal",
-      category: "Tropic",
-      thumbnail: "",
-    },
-    {
-      id: "brochure",
-      title: "Brochure",
-      category: "Geometric",
-      thumbnail: "",
-    },
-    {
-      id: "report",
-      title: "Report",
-      category: "Luxe",
-      thumbnail: ""
-    },
-  ]
+  });
+
+  const loadDocuments = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getPaginatedDocuments({
+        page,
+        title: searchQuery || undefined,
+      });
+      setDocuments(response.results);
+      setHasMore(!!response.next);
+    } catch (err) {
+      setError("Failed to load documents");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadDocuments = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getPaginatedDocuments({
-          page,
-          title: searchQuery || undefined,
-        });
-        setDocuments(response.results);
-        setHasMore(!!response.next);
-      } catch (err) {
-        setError("Failed to load documents");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadDocuments();
   }, [page, searchQuery]);
+
+  const handleCreateDocument = async (title: string, description?: string) => {
+    try {
+      await createDocMutation.mutateAsync();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create document. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Convert API documents to the format expected by RecentDocuments component
   const recentDocuments = documents.map(doc => (
@@ -101,16 +89,27 @@ export default function DocumentListPage() {
       {/* Header */}
       <div className="p-4 border-b flex justify-between items-center">
         <h1 className="text-xl font-medium">Documents</h1>
+        {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+      </div>
+
+      {/* Search and create */}
+      <div className="p-4 border-b">
+        <div className="flex gap-2">
+          <SearchInput 
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Button onClick={() => setCreateDocumentOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Document
+          </Button>
+        </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 overflow-auto p-4">
         <div className="space-y-8">
-          {/* Template Gallery Section */}
-          <section className="space-y-4">
-            <TemplateGallery templates={templates} />
-          </section>
-
           {/* Recent Documents Section */}
           <section className="bg-card rounded-lg shadow-sm">
             <div className="p-6">
@@ -147,6 +146,12 @@ export default function DocumentListPage() {
           </section>
         </div>
       </div>
+
+      <CreateDocumentDialog
+        open={createDocumentOpen}
+        onOpenChange={setCreateDocumentOpen}
+        onCreateDocument={handleCreateDocument}
+      />
     </div>
   )
 }

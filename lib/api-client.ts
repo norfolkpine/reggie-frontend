@@ -1,3 +1,4 @@
+import { getCSRFToken } from "@/api";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 // Debug: Log env variable at build time
@@ -34,70 +35,72 @@ export function triggerTokenExpiration() {
   } else {
     // Fallback if auth context is not available
     localStorage.clear();
-    window.location.href = "/sign-in";
+    if (typeof window !== 'undefined') {
+      window.location.href = "/sign-in";
+    }
   }
 }
 
+export async function ensureCSRFToken() {
+  try {
+    // First, try to get the CSRF token from cookies
+    let csrfToken = getCSRFToken();
+    
+    if (!csrfToken) {
+      // If no CSRF token exists, make a request to a Django page that will set it
+      // We'll use the config endpoint but ensure it sets the cookie
+      const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+      });
+      
+      if (response.ok) {
+        // Check if we now have a CSRF token
+        csrfToken = getCSRFToken();
+        console.log('CSRF token retrieved:', csrfToken);
+      }
+      
+      // If still no CSRF token, try to get it from a dedicated endpoint
+      if (!csrfToken) {
+        try {
+          const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/csrf-token`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (csrfResponse.ok) {
+            const csrfData = await csrfResponse.json();
+            csrfToken = csrfData.csrfToken;
+            console.log('CSRF token from endpoint:', csrfToken);
+          }
+        } catch (csrfError) {
+          console.log('CSRF endpoint not available, continuing with cookie method');
+        }
+      }
+    }
+    
+    return !!csrfToken;
+  } catch (error) {
+    console.error('Failed to ensure CSRF token:', error);
+    return false;
+  }
+}
+
+
 async function handleResponse(response: Response, httpMethod?: string) {
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      const refreshTokenLocal = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (refreshTokenLocal) {
-        try {
-          const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refresh: refreshTokenLocal }),
-            credentials: 'include',
-          });
-
-          if (!refreshResponse.ok) {
-            // Use auth context to handle token expiration
-            if (authContext) {
-              authContext.handleTokenExpiration();
-            } else {
-              // Fallback if auth context is not available
-              localStorage.clear();
-              window.location.href = "/sign-in";
-            }
-            throw new Error("Refresh token failed");
-          }
-
-          const { access, refresh } = await refreshResponse.json();
-          localStorage.setItem(TOKEN_KEY, access);
-          localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-
-          // Retry the original request with new token
-          const retryResponse = await fetch(response.url, {
-            ...response,
-            headers: {
-              ...response.headers,
-              Authorization: `Bearer ${access}`,
-            },
-            credentials: 'include',
-          });
-
-          return handleResponse(retryResponse, httpMethod);
-        } catch (error) {
-          // Use auth context to handle token expiration
-          if (authContext) {
-            authContext.handleTokenExpiration();
-          } else {
-            // Fallback if auth context is not available
-            localStorage.clear();
-            window.location.href = "/sign-in";
-          }
-          throw error;
-        }
+    if(response.status === 401 || response.status === 403) {
+      // Handle authentication/authorization errors
+      if (authContext) {
+        authContext.handleTokenExpiration();
       } else {
-        // No refresh token available, redirect to sign-in
-        if (authContext) {
-          authContext.handleTokenExpiration();
-        } else {
-          localStorage.clear();
-          window.location.href = "/sign-in";
+        // Fallback if auth context is not available
+        localStorage.clear();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/sign-in';
         }
       }
     }
@@ -121,9 +124,14 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     });
   }
 
+  const csrfToken = getCSRFToken();
+  console.log("csrfToken", csrfToken);
+
   const headers = {
     "Content-Type": "application/json",
+    "credentials": "include",
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...config.headers,
   };
 

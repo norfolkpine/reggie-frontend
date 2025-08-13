@@ -1,3 +1,5 @@
+"use client"
+
 import { HTMLAttributes, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
@@ -13,6 +15,9 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { forgotPassword } from '@/api/auth'
+import { useToast } from '@/components/ui/use-toast'
+import { handleApiError } from '@/lib/utils/handle-api-error'
 
 type ForgotFormProps = HTMLAttributes<HTMLDivElement>
 
@@ -25,20 +30,38 @@ const formSchema = z.object({
 
 export function ForgotForm({ className, ...props }: ForgotFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '' },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-    // eslint-disable-next-line no-console
-    console.log(data)
-
-    setTimeout(() => {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    try {
+      setIsLoading(true)
+      await forgotPassword(data.email)
+      
+      toast({
+        title: 'Success',
+        description: 'Password reset link has been sent to your email',
+      })
+      
+      // Reset form after successful submission
+      form.reset()
+    } catch (error: any) {
+      const { hasFieldErrors, message } = handleApiError(error, form.setError)
+      
+      if (!hasFieldErrors) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: message || 'Failed to send password reset email',
+        })
+      }
+    } finally {
       setIsLoading(false)
-    }, 3000)
+    }
   }
 
   return (

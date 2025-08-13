@@ -31,7 +31,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AppProvider>
-        <AuthProvider>
+        <AuthProvider allowedRoutes={allowedRoutes}>
           <AuthGuard allowedRoutes={allowedRoutes}>
             <SearchProvider>
               <ModalProvider>

@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from "@/contexts/auth-context";
 import { ToolCall } from '@/components/ui/chat-message';
 import { captureChatError } from '@/lib/error-handler';
+import { getCSRFToken } from '@/api';
 
 interface Message {
   id: string;
@@ -324,9 +325,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
     let reasoningSteps: ReasoningStep[] = [];
 
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) throw new Error("Authentication token is missing");
-
+      const csrfToken = getCSRFToken();
       const payload = {
         agent_id: agentId,
         message: userMessageContent,
@@ -338,14 +337,15 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       // Don't create empty assistant message here - wait for actual content
 
       const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        method: "POST", 
+        credentials: 'include',
+        headers: { "Content-Type": "application/json", ...(csrfToken && { "X-CSRFToken": csrfToken })}, 
         body: JSON.stringify(payload),
         signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
           handleTokenExpiration();
           return;
         }

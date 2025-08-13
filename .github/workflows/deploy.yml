@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - main
-      - fix/issue-message-action
-      - fix/issue-tool-call-action
+      - dev
 
 env:
   PROJECT_ID: bh-reggie-test
