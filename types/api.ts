@@ -11,7 +11,10 @@ export interface TokenVerify {
 }
 
 export interface Project {
-  id?: number;
+  id?: string;
+  uuid?: string;
+  project_id?: string;
+  project_uuid?: string;
   created_at?: string;
   updated_at?: string;
   name?: string;
@@ -420,6 +423,7 @@ export interface User {
   updated_at: string;
   language?: string | 'en-US';
   is_superuser?: boolean;
+  is_staff?: boolean;
 }
 
 export interface PatchedUser extends Partial<User> {}
@@ -471,7 +475,7 @@ export interface ExpectedOutput {
 export interface VaultFile {
   id: number;
   file: string;
-  project: number;
+  project_uuid: string;
   uploaded_by: number;
   team: number;
   shared_with_users: number[];
@@ -481,3 +485,28 @@ export interface VaultFile {
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }
+
+export interface AuthError {
+  status: number;
+  errors: Array<{
+    message: string;
+    code: string;
+    param: string;
+  }>;
+}
+
+export interface AuthErrorResponse {
+  status: number;
+  errors: Array<{
+    message: string;
+    code: string;
+    param: string;
+  }>;
+}
+
+// Helper function to get project ID from various possible fields
+export const getProjectId = (project: Project): string | undefined => {
+  // Prioritize UUID fields over the id field
+  // The id field might still contain numeric values from the backend
+  return project.uuid || project.project_uuid || project.project_id || project.id;
+};

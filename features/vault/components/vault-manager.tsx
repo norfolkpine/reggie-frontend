@@ -87,7 +87,7 @@ export function VaultManager() {
     }
     return 'files';
   });
-  const projectId = params?.id as string;
+  const projectId = params?.uuid as string;
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -124,7 +124,7 @@ export function VaultManager() {
     
     try {
       setLoading(true);
-      const data = await getProject(Number(projectId));
+      const data = await getProject(projectId);
       setProject(data);
     } catch (error) {
       toast({
@@ -140,7 +140,7 @@ export function VaultManager() {
   const fetchFiles = async () => {
     try {
       const response = await getVaultFilesByProject(
-        Number(projectId),
+        projectId,
         currentPage,
         itemsPerPage,
         searchQuery
@@ -318,10 +318,10 @@ export function VaultManager() {
 
   // Add a function to handle rename
   const handleRename = async () => {
-    if (!project || typeof project.id !== 'number') return;
+    if (!project || !project.id) return;
     setIsRenaming(true);
     try {
-      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id || 0, { ...project, name: newName }));
+      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id!, { ...project, name: newName }));
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       setNewName("");
@@ -373,7 +373,7 @@ export function VaultManager() {
       {/* Chat input only (no chat content), above Tabs, only when project is loaded */}
       {!loading && project && (
         <>
-          <ChatInputOnly sessionId={`vault-${projectId}`} agentId="vault-assistant" />
+          <ChatInputOnly sessionId={`vault/${projectId}`} agentId="vault-assistant" />
           <div className="max-w-2xl mx-auto w-full mt-4">
             <div
               className="border rounded-md bg-muted/40 p-4 flex flex-col gap-2 cursor-pointer transition hover:shadow-md focus:ring-2 focus:ring-ring outline-none"
@@ -792,7 +792,7 @@ export function VaultManager() {
                   </DialogHeader>
                   <FileUpload
                     onUploadComplete={handleFileUpload}
-                    projectId={Number(projectId)}
+                    projectId={projectId || ''}
                   />
                 </DialogContent>
               </Dialog>

@@ -51,7 +51,7 @@ import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
 import { chatStorage } from "@/lib/utils/chat-storage";
 import { getProjects, updateProject, deleteProject } from "@/api/projects";
-import { Project } from "@/types/api";
+import { Project, getProjectId } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useDocs, useInfiniteDocs } from "@/features/docs/doc-management/api/useDocs";
@@ -116,8 +116,8 @@ const navigationItems: NavigationItem[] = [
     url: "/app-integration",
   },
   { type: "divider" },
-  // SuperUser Only. Future feature: Allow and restrict for Enterprise users 
-  { name: "Knowledge Base", icon: Database, url: "/knowledge-base" },
+  // SuperUser/Staff Only. Future feature: Allow and restrict for Enterprise users
+  { name: "Admin", icon: Shield, url: "/admin" },
 ];
 
 // const navigationItems: ChatItem[] = [
@@ -327,10 +327,12 @@ export default function Sidebar() {
     }
   };
 
-  // Filter navigation items to hide Knowledge Base for non-superusers
+  // Filter navigation items to hide Admin for non-superusers/staff
   const filteredNavigationItems = navigationItems.filter(item => {
-    if (typeof item === 'object' && 'name' in item && item.name === "Knowledge Base") {
-      return user?.is_superuser;
+    if (typeof item === 'object' && 'name' in item) {
+      if (item.name === "Admin") {
+        return user?.is_superuser || user?.is_staff;
+      }
     }
     return true;
   });
@@ -491,11 +493,11 @@ export default function Sidebar() {
                         ) : (
                           projects.filter(project => project.owner === user?.id).map((project) => (
                             <div
-                              key={project.id}
-                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${project.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                              key={getProjectId(project)}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${getProjectId(project)}` ? "bg-gray-300 font-semibold" : ""}`}
                               onClick={e => {
                                 e.stopPropagation();
-                                handleNavItemClick(`/vault/${project.id}`);
+                                handleNavItemClick(`/vault/${getProjectId(project)}`);
                               }}
                             >
                               <FolderGit2 className="h-4 w-4" />
@@ -507,11 +509,11 @@ export default function Sidebar() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameProjectId(typeof project.id === 'number' ? project.id : -1); setNewName(project.name || ""); setRenameOpen(true); }}>
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameProjectId(getProjectId(project) || ''); setNewName(project.name || ""); setRenameOpen(true); }}>
                                     <Edit className="h-4 w-4 mr-2" />Rename
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(typeof project.id === 'number' ? project.id : -1, project.name || ""); }} disabled={isDeleting === project.id} className="text-destructive focus:text-destructive">
-                                    <Trash className="h-4 w-4 mr-2" />{isDeleting === project.id ? "Deleting..." : "Delete"}
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(getProjectId(project) || '', project.name || ""); }} disabled={isDeleting === getProjectId(project)} className="text-destructive focus:text-destructive">
+                                    <Trash className="h-4 w-4 mr-2" />{isDeleting === getProjectId(project) ? "Deleting..." : "Delete"}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>

@@ -42,11 +42,51 @@ export function triggerTokenExpiration() {
 }
 
 export async function ensureCSRFToken() {
-  const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
-    method: 'GET',
-    credentials: 'include'
-  });
-  return response.ok;
+  try {
+    // First, try to get the CSRF token from cookies
+    let csrfToken = getCSRFToken();
+    
+    if (!csrfToken) {
+      // If no CSRF token exists, make a request to a Django page that will set it
+      // We'll use the config endpoint but ensure it sets the cookie
+      const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+      });
+      
+      if (response.ok) {
+        // Check if we now have a CSRF token
+        csrfToken = getCSRFToken();
+        console.log('CSRF token retrieved:', csrfToken);
+      }
+      
+      // If still no CSRF token, try to get it from a dedicated endpoint
+      if (!csrfToken) {
+        try {
+          const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/csrf-token`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (csrfResponse.ok) {
+            const csrfData = await csrfResponse.json();
+            csrfToken = csrfData.csrfToken;
+            console.log('CSRF token from endpoint:', csrfToken);
+          }
+        } catch (csrfError) {
+          console.log('CSRF endpoint not available, continuing with cookie method');
+        }
+      }
+    }
+    
+    return !!csrfToken;
+  } catch (error) {
+    console.error('Failed to ensure CSRF token:', error);
+    return false;
+  }
 }
 
 

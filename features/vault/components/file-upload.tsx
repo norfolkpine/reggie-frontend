@@ -110,7 +110,7 @@ export function FileUpload({ onUploadComplete, projectId, title }: FileUploadPro
           // Pass file and project parameters directly to the uploadFiles function
           const result = await uploadFiles({ 
             file: fileObj.file, 
-            project: projectId,
+            project_uuid: projectId,
             uploaded_by: user?.id || 0
           });
           uploadedFiles.push(result);

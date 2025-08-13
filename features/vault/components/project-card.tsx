@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Star, ArrowRight, LucideIcon, MoreHorizontal, Edit, Trash } from "lucide-react"
-import { Project } from "@/types/api"
+import { Project, getProjectId } from "@/types/api"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -30,10 +30,11 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleRename = async () => {
-    if (typeof project.id !== 'number') return;
+    const projectId = getProjectId(project);
+    if (!projectId) return;
     setIsRenaming(true);
     try {
-      await updateProject(project.id, { ...project, name: newName });
+      await updateProject(projectId, { ...project, name: newName });
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       if (typeof window !== "undefined") window.location.reload();
@@ -45,11 +46,12 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   };
 
   const handleDelete = async () => {
-    if (typeof project.id !== 'number') return;
+    const projectId = getProjectId(project);
+    if (!projectId) return;
     if (!window.confirm(`Are you sure you want to delete project '${project.name}'? This cannot be undone.`)) return;
     setIsDeleting(true);
     try {
-      await deleteProject(project.id);
+      await deleteProject(projectId);
       toast({ title: "Project deleted", description: `Project '${project.name}' was deleted.` });
       if (typeof window !== "undefined") window.location.reload();
     } catch (e) {

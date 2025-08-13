@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { handleApiError } from '@/lib/utils/handle-api-error'
 import { PasswordInput } from '@/components/password-input'
 import { LinkButton } from '@/components/link-button'
@@ -23,6 +24,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/components/ui/use-toast'
+import { AuthErrorResponse } from '@/types/api'
 
 type UserAuthFormProps = HTMLAttributes<HTMLDivElement>
 
@@ -43,6 +45,7 @@ const formSchema = z.object({
 
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [generalError, setGeneralError] = useState<string | null>(null)
   const { login } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -60,6 +63,9 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true)
+      setGeneralError(null) // Clear any previous general errors
+      form.clearErrors() // Clear any previous form errors
+      
       await login({
         email: data.email,
         password: data.password,
@@ -71,24 +77,52 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
       router.replace(search.get('redirect') || '/')
     } catch (error: any) {
-      const { hasFieldErrors, message } = handleApiError(error, form.setError)
-      
-      if (!hasFieldErrors) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: message || 'Failed to login',
+      // Handle the specific error structure
+      if (error.errors && Array.isArray(error.errors)) {
+        let hasFieldErrors = false
+        
+        error.errors.forEach((err: AuthErrorResponse['errors'][0]) => {
+          if (err.param && err.message) {
+            // Map the param to the form field name
+            const fieldName = err.param === 'password' ? 'password' : 
+                            err.param === 'email' ? 'email' : err.param
+            form.setError(fieldName as any, { 
+              message: err.message 
+            })
+            hasFieldErrors = true
+          }
         })
-      }else if(error.errors && error.errors.length > 0){
-    
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.errors.map((error: any) => error.message).join(', '),
-        })
+        
+        // If no field-specific errors, show as general error
+        if (!hasFieldErrors) {
+          const firstError = error.errors[0]
+          if (firstError && firstError.message) {
+            setGeneralError(firstError.message)
+          }
+        }
+        
+        // Show toast with the first error message
+        const firstError = error.errors[0]
+        if (firstError && firstError.message) {
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: firstError.message,
+          })
+        }
+      } else {
+        // Fallback to existing error handling
+        const { hasFieldErrors, message } = handleApiError(error, form.setError)
+        
+        if (!hasFieldErrors) {
+          setGeneralError(message || 'Failed to login')
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: message || 'Failed to login',
+          })
+        }
       }
-
-      
     } finally {
       setIsLoading(false)
     }
@@ -98,6 +132,13 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     <div className={cn('grid gap-6', className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
+          {/* General Error Display */}
+          {generalError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{generalError}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className='grid gap-2'>
             <FormField
               control={form.control}
@@ -117,8 +158,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               name='password'
               render={({ field }) => (
                 <FormItem className='space-y-1'>
-                  <div className='flex items-center justify-between'>
-                    <FormLabel>Password</FormLabel>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput placeholder='********' {...field} />
+                  </FormControl>
+                  <FormMessage />
+                  <div className='flex justify-end'>
                     <Link
                       href='/forgot-password'
                       className='text-sm font-medium text-muted-foreground hover:opacity-75'
@@ -126,10 +171,6 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                       Forgot password?
                     </Link>
                   </div>
-                  <FormControl>
-                    <PasswordInput placeholder='********' {...field} />
-                  </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />

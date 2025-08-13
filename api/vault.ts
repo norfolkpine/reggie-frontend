@@ -6,7 +6,7 @@ import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 
 export interface UploadFileParams {
   file: File;
-  project: number;
+  project_uuid: string;
   uploaded_by: number;
   team?: number;
   shared_with_users?: number[];
@@ -21,12 +21,12 @@ export interface VaultFilesResponse {
 }
 
 export async function getVaultFilesByProject(
-  projectId: number,
+  projectId: string,
   page: number = 1,
   pageSize: number = 10,
   search: string = ''
 ): Promise<VaultFilesResponse> {
-  let url = `/reggie/api/v1/vault-files/by-project/?project_id=${projectId}&page=${page}&page_size=${pageSize}`;
+  let url = `/reggie/api/v1/vault-files/by-project/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}`;
   
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;
@@ -38,7 +38,7 @@ export async function getVaultFilesByProject(
 
 export async function uploadFiles({
   file,
-  project,
+  project_uuid,
   uploaded_by,
   team,
   shared_with_users,
@@ -47,7 +47,7 @@ export async function uploadFiles({
   
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('project', String(project));
+  formData.append('project_uuid', project_uuid);
   formData.append('uploaded_by', String(uploaded_by));
   if (typeof team !== 'undefined') {
     formData.append('team', String(team));

@@ -418,7 +418,7 @@ export function KnowledgeBaseManager() {
         <h2 className="text-2xl font-bold">Knowledge Bases</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          New Knowledge Base
+          Create Knowledge Base
         </Button>
       </div>
 
@@ -473,7 +473,7 @@ export function KnowledgeBaseManager() {
               onClick={() => setIsCreateDialogOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
-              New Knowledge Base
+              Create Knowledge Base
             </Button>
           )}
         </div>
