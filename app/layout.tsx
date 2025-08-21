@@ -1,4 +1,4 @@
-import type React from "react"
+import React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "../styles/globals.css"
@@ -19,7 +19,7 @@ const allowedRoutes = [
   "/sign-up",
   "/forgot-password",
   "/test-token-expiration",
-  ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
+  ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page", "/dev-proxy-test"] : [])
 ];
 
 export default function RootLayout({
@@ -48,7 +48,6 @@ export default function RootLayout({
     </html>
   )
 }
-
 
 
 import AuthGuard from "@/components/auth-guard"
