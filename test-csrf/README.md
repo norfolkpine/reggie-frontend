@@ -57,3 +57,4 @@ if (csrfToken) {
   console.log('Response:', response.status, response.statusText);
 }
 ```
+

@@ -58,6 +58,15 @@ export function FileManager({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Define table columns for colspan
+  const columns = [
+    { key: 'name', label: 'Name', width: 'w-[300px]' },
+    { key: 'type', label: 'Type', width: '' },
+    { key: 'size', label: 'Size', width: '' },
+    { key: 'lastModified', label: 'Last Modified', width: '' },
+    { key: 'actions', label: '', width: 'w-[100px]' }
+  ];
+
   useEffect(() => {
     // TODO: Replace with actual API call to fetch files
     const fetchFiles = async () => {
@@ -254,7 +263,7 @@ export function FileManager({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No files found.
                 </TableCell>
               </TableRow>

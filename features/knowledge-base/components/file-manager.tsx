@@ -14,6 +14,9 @@ import {
   Clock,
   Link,
   ChevronDown,
+  Plus,
+  Folder,
+  FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { FileUpload } from './file-upload';
 import { FilePreview } from './file-preview';
+import { CreateFolderDialog } from './create-folder-dialog';
 import { toast } from 'sonner';
 import { LinkFilesModal } from './link-files-modal';
 import { File, FileWithUI, KnowledgeBase } from '@/types/knowledge-base';
@@ -114,6 +118,7 @@ export function FileManager() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [fileToLink, setFileToLink] = useState<string | null>(null);
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -270,14 +275,54 @@ export function FileManager() {
 
   const columns = useMemo<ColumnDef<FileWithUI>[]>(
     () => [
-      { accessorKey: 'title' },
-      { accessorKey: 'status', filterFn: multiSelectFilter },
-      { accessorKey: 'file_type' },
+      // Checkbox column
       {
-        accessorKey: 'collection_name',
+        id: "select",
+        header: "",
+        enableSorting: false,
+        enableHiding: false,
+      },
+      // Name column
+      { 
+        accessorKey: 'title',
+        header: 'Name'
+      },
+      // File Size column
+      {
+        id: "file_size",
+        header: "File Size",
+        accessorFn: (row) => row.file_size,
+      },
+      // Type column
+      { 
+        accessorKey: 'file_type',
+        header: 'Type'
+      },
+      // Collection column
+      {
+        id: "collection",
         header: 'Collection',
         accessorFn: (row) => row.collection?.name ?? '',
         filterFn: multiSelectFilter,
+      },
+      // Upload Date column
+      {
+        id: "created_at",
+        header: "Upload Date",
+        accessorFn: (row) => row.created_at,
+      },
+      // Status column
+      { 
+        accessorKey: 'status', 
+        header: 'Status',
+        filterFn: multiSelectFilter 
+      },
+      // Actions column
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableHiding: false,
       },
     ],
     []
@@ -366,9 +411,28 @@ export function FileManager() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">File Manager</h2>
           <div className="flex gap-2">
-            <Button onClick={() => setIsUploadDialogOpen(true)}>
-              Upload Files
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  New
+                  <Plus className="h-4 w-4 mr-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  File
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Folder className="h-4 w-4 mr-2" />
+                  Collection
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsCreateFolderOpen(true)}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Folder
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -785,6 +849,16 @@ export function FileManager() {
               []
             : []
         }
+      />
+
+      {/* Create Folder Dialog */}
+      <CreateFolderDialog
+        isOpen={isCreateFolderOpen}
+        onClose={() => setIsCreateFolderOpen(false)}
+        onFolderCreated={() => {
+          // Refresh the data to show the new folder
+          fetchData();
+        }}
       />
     </div>
   );

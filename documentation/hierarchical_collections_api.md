@@ -13,7 +13,7 @@ All endpoints require authentication. Use JWT tokens or session authentication.
 ## Collections (Folders) API
 
 ### 1. List Collections (Root Level)
-**GET** `/collections/`
+**GET** `/api/v1/collections/`
 
 Returns a list of root-level collections accessible to the user.
 
@@ -44,7 +44,7 @@ Returns a list of root-level collections accessible to the user.
 ```
 
 ### 2. Get Collection Details
-**GET** `/collections/{id}/`
+**GET** `/api/v1/collections/{id}/`
 
 Returns detailed information about a collection including files and subcollections.
 
@@ -70,7 +70,7 @@ Returns detailed information about a collection including files and subcollectio
 ```
 
 ### 3. Create Folder/Collection
-**POST** `/collections/create-folder/`
+**POST** `/api/collections/create-folder/`
 
 Creates a new folder/collection.
 
@@ -102,7 +102,7 @@ Creates a new folder/collection.
 ```
 
 ### 4. Move Collection
-**POST** `/collections/{id}/move-to/`
+**POST** `/api/collections/{id}/move-to/`
 
 Moves a collection to a different parent collection.
 
@@ -122,7 +122,7 @@ Moves a collection to a different parent collection.
 ```
 
 ### 5. Add Files to Collection
-**POST** `/collections/{id}/add-files/`
+**POST** `/api/collections/{id}/add-files/`
 
 Adds existing files to a collection.
 
@@ -142,7 +142,7 @@ Adds existing files to a collection.
 ```
 
 ### 6. Reorder Files in Collection
-**POST** `/collections/{id}/reorder-files/`
+**POST** `/api/collections/{id}/reorder-files/`
 
 Reorders files within a collection.
 
@@ -164,14 +164,14 @@ Reorders files within a collection.
 ```
 
 ### 7. Get Collection Tree
-**GET** `/collections/tree/`
+**GET** `/api/collections/tree/`
 
 Returns the complete hierarchical tree structure of collections.
 
 ## Files API
 
 ### 1. List Files
-**GET** `/files/`
+**GET** `/api/files/`
 
 Returns a list of files accessible to the user.
 
@@ -200,7 +200,7 @@ Returns a list of files accessible to the user.
 ```
 
 ### 2. Upload Files
-**POST** `/files/`
+**POST** `/api/files/`
 
 Uploads one or more files.
 
@@ -236,7 +236,7 @@ regulation_number: "2001"
 ```
 
 ### 3. Move Files Between Collections
-**POST** `/files/move-to-collection/`
+**POST** `/api/files/move-to-collection/`
 
 Moves files to a different collection.
 
@@ -257,12 +257,12 @@ Moves files to a different collection.
 ```
 
 ### 4. Get File Details
-**GET** `/files/{uuid}/`
+**GET** `/api/files/{uuid}/`
 
 Returns detailed information about a specific file.
 
 ### 5. Update File
-**PUT/PATCH** `/files/{uuid}/`
+**PUT/PATCH** `/api/files/{uuid}/`
 
 Updates file metadata.
 
@@ -276,7 +276,7 @@ Updates file metadata.
 ```
 
 ### 6. Delete File
-**DELETE** `/files/{uuid}/`
+**DELETE** `/api/files/{uuid}/`
 
 Deletes a file.
 
@@ -331,14 +331,14 @@ Error responses include a descriptive message:
 ### Create a Folder Structure
 ```javascript
 // Create root folder
-const rootFolder = await api.post('/collections/create-folder/', {
+const rootFolder = await api.post('/api/collections/create-folder/', {
   name: 'Australian Regulations',
   description: 'Collection of Australian regulatory documents',
   collection_type: 'folder'
 });
 
 // Create subfolder
-const subFolder = await api.post('/collections/create-folder/', {
+const subFolder = await api.post('/api/collections/create-folder/', {
   name: 'Corporate Tax Act 2001',
   parent_id: rootFolder.id,
   collection_type: 'act',
@@ -356,14 +356,14 @@ formData.append('collection_name', 'Tax Documents');
 formData.append('collection_type', 'folder');
 formData.append('jurisdiction', 'Australia');
 
-const response = await api.post('/files/', formData, {
+const response = await api.post('/api/files/', formData, {
   headers: { 'Content-Type': 'multipart/form-data' }
 });
 ```
 
 ### Move Files Between Collections
 ```javascript
-await api.post('/files/move-to-collection/', {
+await api.post('/api/files/move-to-collection/', {
   file_ids: ['uuid1', 'uuid2'],
   target_collection_id: 5
 });
@@ -371,7 +371,7 @@ await api.post('/files/move-to-collection/', {
 
 ### Get Hierarchical Structure
 ```javascript
-const collections = await api.get('/collections/tree/');
+const collections = await api.get('/api/collections/tree/');
 // This returns the complete tree structure
 ```
 
