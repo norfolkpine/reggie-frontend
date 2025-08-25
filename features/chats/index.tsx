@@ -10,6 +10,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { chatStorage } from "@/lib/utils/chat-storage";
 import { useChatSessionContext } from "./ChatSessionContext";
 import { createChatSession, ChatSession } from "@/api/chat-sessions";
+import { useHeader } from "@/contexts/header-context";
 
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
@@ -20,6 +21,7 @@ export default function ChatsComponent() {
   const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
   const params = useParams();
   const sessionId = params.sessionId as string | null; // This is the sessionId from the URL
+  const { setHeaderActions, setHeaderCustomContent } = useHeader();
   
   // Get the refresh function from ChatSessionContext to update chat history
   const { refresh, addSession, updateSessionTitle, updateSessionTitleWithTyping } = useChatSessionContext();
@@ -38,6 +40,38 @@ export default function ChatsComponent() {
     agentId: selectedChat.agentCode || DEFAULT_AGENT_ID,
     sessionId: selectedChat.id || undefined,
   });
+
+  // Set header actions and custom content
+  useEffect(() => {
+    setHeaderActions([
+      {
+        label: "Change Agent",
+        onClick: handleChangeAgent,
+        variant: "outline",
+        size: "sm"
+      },
+      {
+        label: "New Chat",
+        onClick: handleNewChat,
+        icon: <Plus className="h-4 w-4" />,
+        variant: "default",
+        size: "sm"
+      }
+    ]);
+
+    // Set chat title as custom content next to the page title
+    setHeaderCustomContent(
+      <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
+        {currentChatTitle || "Chat"}
+      </div>
+    );
+
+    // Cleanup when component unmounts
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, setHeaderCustomContent, currentChatTitle]);
 
   // Update selectedChat when URL params change
   useEffect(() => {
@@ -159,15 +193,7 @@ export default function ChatsComponent() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="sticky top-0 z-5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b flex items-center justify-between">
-        <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
-          {currentChatTitle || "Chat"}
-        </div>
-        <Button size="sm" variant="outline" onClick={handleChangeAgent}>
-          Change Agent
-        </Button>
-      </div>
+      {/* Header removed - now handled by layout */}
       {/* Content Row */}
       <div className="flex flex-1 overflow-hidden">
         <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat}  />

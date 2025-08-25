@@ -388,7 +388,7 @@ export default function ProjectView({ projectId }: { projectId: number }) {
                   ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
                     {search ? 'No files match your search' : 'No files found in this vault'}
                   </TableCell>
                 </TableRow>

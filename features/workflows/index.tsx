@@ -12,10 +12,11 @@ import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import TypingIndicator from "../chats/components/typing-indicator"
+import { useHeader } from "@/contexts/header-context"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 
-export default function ExploreAgents() {
+export default function ExploreWorkflows() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("All")
   const [agents, setAgents] = useState<Agent[]>([])
@@ -23,6 +24,23 @@ export default function ExploreAgents() {
   const [error, setError] = useState<string | null>(null)
   const {toast} = useToast()
   const router = useRouter()
+  const { setHeaderActions } = useHeader()
+
+  // Set header actions
+  useEffect(() => {
+    setHeaderActions([
+      {
+        label: "Create Workflow",
+        onClick: () => router.push('/workflow/create'),
+        icon: <Plus className="h-4 w-4" />,
+        variant: "default",
+        size: "sm"
+      }
+    ]);
+
+    // Cleanup when component unmounts
+    return () => setHeaderActions([]);
+  }, [setHeaderActions, router]);
 
   const fetchAgents = async () => {
     try {
@@ -62,14 +80,7 @@ export default function ExploreAgents() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-medium">Explore Workflows</h1>
-        <Button onClick={() => router.push('/workflow/create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Workflow
-        </Button>
-      </div>
+      {/* Header removed - now handled by layout */}
 
       {/* Search and filters */}
       <SearchFilter
@@ -84,17 +95,17 @@ export default function ExploreAgents() {
       <div className="flex-1 overflow-auto p-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <p>Loading agents...</p>
+            <p>Loading workflows...</p>
           </div>
         ) : error ? (
           <EmptyState
-            title="Error loading agents"
+            title="Error loading workflows"
             description={error}
             icon={<AlertCircle className="h-10 w-10 text-destructive" />}
           />
         ) : filteredAgents.length === 0 ? (
           <EmptyState
-            title="No agents found"
+            title="No workflows found"
             description="Try adjusting your search or filter to find what you're looking for."
             icon={<Search className="h-10 w-10" />}
             onRefresh={fetchAgents}
@@ -102,7 +113,7 @@ export default function ExploreAgents() {
         ) : (
           <>
             <AgentList
-              title="All Agents"
+              title="All Workflows"
               agents={filteredAgents}
             />
           </>

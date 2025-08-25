@@ -136,9 +136,9 @@ export default function Apps() {
       {/* ===== Content ===== */}
       <Layout.Body className="flex flex-col">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          {/* <h1 className="text-2xl font-bold tracking-tight">
             App Integrations
-          </h1>
+          </h1> */}
           <p className="text-muted-foreground">
             Here&apos;s a list of your apps for the integration!
           </p>
@@ -206,7 +206,7 @@ export default function Apps() {
                 </div>
                 {app.is_connected ? (
   <div className="flex gap-2">
-    <Button variant="success" size="sm" disabled>
+    <Button variant="default" size="sm" disabled>
       Connected
     </Button>
     <Button

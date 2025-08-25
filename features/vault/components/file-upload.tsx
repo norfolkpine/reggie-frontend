@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/auth-context"
 
 interface FileUploadProps {
   onUploadComplete: (files: any[]) => void
-  projectId: number
+  projectId: string
   title?: string
 }
 

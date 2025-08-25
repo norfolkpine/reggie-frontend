@@ -1,119 +1,268 @@
 import { getCSRFToken } from "@/api";
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
+import { TOKEN_KEY } from "../lib/constants";
 
-// Debug: Log env variable at build time
-console.log('BUILD: process.env.NEXT_PUBLIC_API_BASE_URL =', process.env.NEXT_PUBLIC_API_BASE_URL);
+// Environment-based configuration
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Robust BASE_URL logic
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+// Robust BASE_URL logic with environment-specific fallbacks
+export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
+  (isDevelopment ? 'http://127.0.0.1:8000' : '');
 
-// Debug: Log BASE_URL at runtime (both server and client)
-if (typeof window === 'undefined') {
-  console.log('SERVER: BASE_URL =', BASE_URL);
-} else {
-  console.log('CLIENT: BASE_URL =', BASE_URL);
+// Validate BASE_URL in production
+if (isProduction && !process.env.NEXT_PUBLIC_API_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_API_BASE_URL must be set in production');
 }
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
-  // method is already inherited from RequestInit
 }
 
-// Global auth context reference - will be set by the auth provider
-let authContext: { handleTokenExpiration: () => void } | null = null;
+interface AuthContext {
+  handleTokenExpiration: () => void;
+}
+
+// Auth context management with better encapsulation
+class AuthContextManager {
+  private static instance: AuthContextManager;
+  private authContext: AuthContext | null = null;
+
+  private constructor() {}
+
+  static getInstance(): AuthContextManager {
+    if (!AuthContextManager.instance) {
+      AuthContextManager.instance = new AuthContextManager();
+    }
+    return AuthContextManager.instance;
+  }
+
+  setAuthContext(context: AuthContext): void {
+    this.authContext = context;
+  }
+
+  getAuthContext(): AuthContext | null {
+    return this.authContext;
+  }
+
+  clearAuthContext(): void {
+    this.authContext = null;
+  }
+}
+
+const authManager = AuthContextManager.getInstance();
 
 // Function to set the auth context reference
-export function setAuthContext(context: { handleTokenExpiration: () => void }) {
-  authContext = context;
+export function setAuthContext(context: AuthContext): void {
+  authManager.setAuthContext(context);
 }
 
 // Utility function to manually trigger token expiration (for testing)
-export function triggerTokenExpiration() {
-  if (authContext) {
-    authContext.handleTokenExpiration();
+export function triggerTokenExpiration(): void {
+  const context = authManager.getAuthContext();
+  if (context) {
+    context.handleTokenExpiration();
   } else {
     // Fallback if auth context is not available
-    localStorage.clear();
     if (typeof window !== 'undefined') {
+      localStorage.clear();
       window.location.href = "/sign-in";
     }
   }
 }
 
-export async function ensureCSRFToken() {
+// CSRF token management with better security practices
+export async function ensureCSRFToken(): Promise<boolean> {
   try {
-    // First, try to get the CSRF token from cookies
+    // First, try to get the CSRF token from cookies (more secure)
     let csrfToken = getCSRFToken();
     
-    if (!csrfToken) {
-      // If no CSRF token exists, make a request to a Django page that will set it
-      // We'll use the config endpoint but ensure it sets the cookie
-      const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        }
-      });
-      
-      if (response.ok) {
-        // Check if we now have a CSRF token
-        csrfToken = getCSRFToken();
-        console.log('CSRF token retrieved:', csrfToken);
-      }
-      
-      // If still no CSRF token, try to get it from a dedicated endpoint
-      if (!csrfToken) {
-        try {
-          const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/csrf-token`, {
-            method: 'GET',
-            credentials: 'include'
-          });
-          
-          if (csrfResponse.ok) {
-            const csrfData = await csrfResponse.json();
-            csrfToken = csrfData.csrfToken;
-            console.log('CSRF token from endpoint:', csrfToken);
-          }
-        } catch (csrfError) {
-          console.log('CSRF endpoint not available, continuing with cookie method');
-        }
+    if (csrfToken) {
+      return true;
+    }
+    
+    // Only fetch from server if no token exists
+    if (isDevelopment) {
+      console.log('No CSRF token found, attempting to establish Django session...');
+    }
+    
+    // First establish a Django session
+    const sessionEstablished = await establishDjangoSession();
+    if (sessionEstablished) {
+      csrfToken = getCSRFToken();
+      if (csrfToken) {
+        return true;
       }
     }
     
-    return !!csrfToken;
+    // If still no token, try the config endpoint
+    if (isDevelopment) {
+      console.log('Trying config endpoint...');
+    }
+    
+    const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }
+    });
+    
+    if (response.ok) {
+      // Check if we now have a CSRF token
+      csrfToken = getCSRFToken();
+      if (csrfToken) {
+        return true;
+      }
+    }
+    
+    // If still no CSRF token, try dedicated endpoint
+    try {
+      if (isDevelopment) {
+        console.log('Trying dedicated CSRF endpoint...');
+      }
+      
+      const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (csrfResponse.ok) {
+        const csrfData = await csrfResponse.json();
+        csrfToken = csrfData.csrfToken;
+        if (csrfToken) {
+          return true;
+        }
+      }
+    } catch (csrfError) {
+      if (isDevelopment) {
+        console.log('CSRF endpoint not available');
+      }
+    }
+    
+    if (isDevelopment) {
+      console.warn('Failed to retrieve CSRF token from backend');
+    }
+    return false;
+    
   } catch (error) {
-    console.error('Failed to ensure CSRF token:', error);
+    if (isDevelopment) {
+      console.error('Failed to ensure CSRF token:', error);
+    }
     return false;
   }
 }
 
+// Function to establish Django session and get CSRF token
+export async function establishDjangoSession(): Promise<boolean> {
+  if (isDevelopment) {
+    console.log('Establishing Django session...');
+  }
+  
+  try {
+    // Visit a Django page to establish session and get CSRF token
+    const response = await fetch(`${BASE_URL}/`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }
+    });
+    
+    if (response.ok) {
+      const csrfToken = getCSRFToken();
+      if (csrfToken) {
+        if (isDevelopment) {
+          console.log('Django session established, CSRF token obtained');
+        }
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    if (isDevelopment) {
+      console.error('Failed to establish Django session:', error);
+    }
+    return false;
+  }
+}
 
-async function handleResponse(response: Response, httpMethod?: string) {
+// Function to refresh CSRF token when we get a CSRF error
+export async function refreshCSRFToken(): Promise<boolean> {
+  if (isDevelopment) {
+    console.log('Refreshing CSRF token...');
+  }
+  
+  try {
+    // Clear any existing token and fetch a fresh one
+    const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }
+    });
+    
+    if (response.ok) {
+      const csrfToken = getCSRFToken();
+      if (csrfToken) {
+        if (isDevelopment) {
+          console.log('CSRF token refreshed successfully');
+        }
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    if (isDevelopment) {
+      console.error('Failed to refresh CSRF token:', error);
+    }
+    return false;
+  }
+}
+
+// Improved response handling with better error management
+async function handleResponse(response: Response, httpMethod?: string): Promise<unknown> {
   if (!response.ok) {
-    if(response.status === 401 || response.status === 403) {
+    if (response.status === 401 || response.status === 403) {
       // Handle authentication/authorization errors
-      if (authContext) {
-        authContext.handleTokenExpiration();
+      const context = authManager.getAuthContext();
+      if (context) {
+        context.handleTokenExpiration();
       } else {
         // Fallback if auth context is not available
-        localStorage.clear();
         if (typeof window !== 'undefined') {
+          localStorage.clear();
           window.location.href = '/sign-in';
         }
       }
     }
-    throw await response.json();
+    
+    // Try to parse error response, fallback to status text
+    try {
+      const errorData = await response.json();
+      throw errorData;
+    } catch {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
   }
+  
   // If 204 No Content and DELETE, return nothing
-  if (response.status === 204 && (httpMethod?.toUpperCase() === 'DELETE')) {
+  if (response.status === 204 && httpMethod?.toUpperCase() === 'DELETE') {
     return;
   }
-  return response.json();
+  
+  // Try to parse JSON response, fallback to text for non-JSON responses
+  try {
+    return await response.json();
+  } catch {
+    return await response.text();
+  }
 }
 
-async function apiClient(endpoint: string, config: RequestConfig = {}) {
+// Enhanced API client with CSRF retry logic
+async function apiClient(endpoint: string, config: RequestConfig = {}, retryCount = 0): Promise<unknown> {
   const { params, ...requestConfig } = config;
   const token = localStorage.getItem(TOKEN_KEY);
 
@@ -124,16 +273,30 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
     });
   }
 
-  const csrfToken = getCSRFToken();
-  console.log("csrfToken", csrfToken);
+  // Get CSRF token and ensure it exists for non-GET requests
+  let csrfToken = getCSRFToken();
+  
+  // For non-GET requests, ensure we have a CSRF token
+  if (requestConfig.method && requestConfig.method.toUpperCase() !== 'GET' && !csrfToken) {
+    if (isDevelopment) {
+      console.log('No CSRF token found, attempting to retrieve...');
+    }
+    await ensureCSRFToken();
+    csrfToken = getCSRFToken();
+  }
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "credentials": "include",
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(csrfToken && { "X-CSRFToken": csrfToken }),
-    ...config.headers,
+    ...(config.headers as Record<string, string>),
   };
+
+  if (isDevelopment && csrfToken) {
+    console.log('Using CSRF token:', csrfToken.substring(0, 10) + '...');
+    console.log('Token length:', csrfToken.length);
+    console.log('Headers being sent:', headers);
+  }
 
   try {
     const response = await fetch(url.toString(), {
@@ -142,43 +305,82 @@ async function apiClient(endpoint: string, config: RequestConfig = {}) {
       credentials: 'include',
     });
 
-    // Pass HTTP method to handleResponse if available
+    // Check for CSRF errors and retry once with a fresh token
+    if (response.status === 403 && retryCount === 0) {
+      try {
+        const errorData = await response.json();
+        if (errorData.detail && errorData.detail.includes('CSRF')) {
+          if (isDevelopment) {
+            console.log('CSRF error detected:', errorData.detail);
+            console.log('Current CSRF token:', csrfToken);
+            console.log('Attempting to refresh token...');
+          }
+          
+          // Refresh CSRF token and retry once
+          const refreshed = await refreshCSRFToken();
+          if (refreshed) {
+            if (isDevelopment) {
+              console.log('Token refreshed, retrying request...');
+            }
+            return apiClient(endpoint, config, retryCount + 1);
+          } else {
+            if (isDevelopment) {
+              console.log('Failed to refresh token, trying to establish new session...');
+            }
+            // Try to establish a new session
+            const sessionEstablished = await establishDjangoSession();
+            if (sessionEstablished) {
+              if (isDevelopment) {
+                console.log('New session established, retrying request...');
+              }
+              return apiClient(endpoint, config, retryCount + 1);
+            }
+          }
+        }
+      } catch {
+        // If we can't parse the error, continue with normal error handling
+      }
+    }
+
     return handleResponse(response, requestConfig.method);
   } catch (error) {
-    console.error(`Network error when fetching ${url.toString()}:`, error);
+    if (isDevelopment) {
+      console.error(`Network error when fetching ${url.toString()}:`, error);
+    }
     throw error;
   }
 }
 
+// Type-safe API methods
 export const api = {
-  // Base HTTP methods
-  get: (endpoint: string, config?: RequestConfig) =>
+  get: (endpoint: string, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, { ...config, method: "GET" }),
 
-  post: (endpoint: string, data?: any, config?: RequestConfig) =>
+  post: <T = unknown>(endpoint: string, data?: T, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, {
       ...config,
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  put: (endpoint: string, data?: any, config?: RequestConfig) =>
+  put: <T = unknown>(endpoint: string, data?: T, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, {
       ...config,
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
-  patch: (endpoint: string, data?: any, config?: RequestConfig) =>
+  patch: <T = unknown>(endpoint: string, data?: T, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, {
       ...config,
       method: "PATCH",
       body: JSON.stringify(data),
     }),
 
-  delete: (endpoint: string, config?: RequestConfig) =>
+  delete: (endpoint: string, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, { ...config, method: "DELETE" }),
-  options:  (endpoint: string, config?: RequestConfig) =>
+    
+  options: (endpoint: string, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, { ...config, method: "OPTIONS" }),
 };
 

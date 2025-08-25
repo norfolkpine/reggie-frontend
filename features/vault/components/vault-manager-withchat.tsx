@@ -42,10 +42,14 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { isSafeUrl } from '@/lib/utils/url';
+import { CustomChat } from "../../chats/components/chatcn";
+import { ChatForm } from "@/components/ui/chat";
+import { MessageInput } from "@/components/ui/message-input";
+import { useAgentChat } from "@/hooks/use-agent-chat";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useHeader } from "@/contexts/header-context";
+import { InstructionsDialog } from "./instructions-dialog";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -61,7 +65,6 @@ export function VaultManager() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { setHeaderActions, setHeaderCustomContent } = useHeader();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
@@ -88,70 +91,8 @@ export function VaultManager() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-
-  // Set header actions and custom content
-  useEffect(() => {
-    if (loading) {
-      // Show loading state
-      setHeaderActions([]);
-      setHeaderCustomContent(
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-gray-600">
-            <span 
-              className="hover:text-gray-900 cursor-pointer"
-              onClick={() => router.push("/vault")}
-            >
-              Vault
-            </span>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">Loading project...</span>
-          </div>
-          <Loader2 className="h-4 w-4 animate-spin" />
-        </div>
-      );
-    } else if (project) {
-      // Set the back button and project name with edit functionality
-      setHeaderActions([
-        {
-          label: "Back to Vault",
-          onClick: () => router.push("/vault"),
-          variant: "ghost",
-          size: "sm",
-          icon: <ArrowLeft className="h-4 w-4" />
-        }
-      ]);
-
-      // Set project name with edit button as custom content
-      setHeaderCustomContent(
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-gray-600">
-            <span 
-              className="hover:text-gray-900 cursor-pointer"
-              onClick={() => router.push("/vault")}
-            >
-              Vault
-            </span>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{project.name}</span>
-          </div>
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-gray-200 focus:outline-none"
-            title="Edit project name"
-            onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
-          >
-            <Edit className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      );
-    }
-
-    // Cleanup when component unmounts
-    return () => {
-      setHeaderActions([]);
-      setHeaderCustomContent(null);
-    };
-  }, [setHeaderActions, setHeaderCustomContent, project, loading, router]);
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [instructions, setInstructions] = useState("");
 
   // Define table columns for colspan calculation
   const columns = [
@@ -417,7 +358,57 @@ export function VaultManager() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header removed - now handled by layout */}
+      <div className="p-4 border-b flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/vault")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-medium flex items-center gap-2">
+            {loading ? "Loading project..." : project?.name}
+            {!loading && project && (
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-gray-200 focus:outline-none"
+                title="Edit project name"
+                onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+              >
+                <Edit className="h-5 w-5 text-muted-foreground" />
+              </button>
+            )}
+          </h1>
+          {loading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+        </div>
+      </div>
+
+      {/* Chat input only (no chat content), above Tabs, only when project is loaded */}
+      {!loading && project && (
+        <>
+          <ChatInputOnly sessionId={`vault/${projectId}`} agentId="vault-assistant" />
+          <div className="max-w-2xl mx-auto w-full mt-4">
+            <div
+              className="border rounded-md bg-muted/40 p-4 flex flex-col gap-2 cursor-pointer transition hover:shadow-md focus:ring-2 focus:ring-ring outline-none"
+              tabIndex={0}
+              role="button"
+              onClick={() => setShowInstructionsDialog(true)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setShowInstructionsDialog(true); }}
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-muted-foreground" />
+                <span className="font-semibold text-md">Project Instructions</span>
+              </div>
+              <div className="text-muted-foreground text-xs">
+                Grok will follow these instructions for all conversations in this project.
+              </div>
+            </div>
+          </div>
+          <InstructionsDialog
+            open={showInstructionsDialog}
+            onOpenChange={setShowInstructionsDialog}
+            instructions={instructions}
+            setInstructions={setInstructions}
+          />
+        </>
+      )}
 
       <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (
@@ -862,6 +853,68 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function ChatInputOnly({ agentId, sessionId }: { agentId: string; sessionId: string }) {
+  const [input, setInput] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const {
+    handleSubmit,
+    uploadFiles,
+    isLoading,
+    fileUploads,
+    isUploadingFiles,
+  } = useAgentChat({ agentId, sessionId });
+
+  function onSubmit() {
+    if (!input.trim()) return;
+    handleSubmit(input, files);
+    setInput("");
+    setFiles([]);
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto w-full p-4 border rounded-md mt-4 bg-white">
+      <ChatForm
+        isPending={isLoading}
+        handleSubmit={e => {
+          e?.preventDefault?.();
+          onSubmit();
+        }}
+      >
+        {({ setFiles: setFormFiles }) => (
+          <MessageInput
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            allowAttachments
+            files={files}
+            setFiles={newFiles => {
+              if (Array.isArray(newFiles)) {
+                const currentFiles = files || [];
+                const addedFiles = newFiles.filter(newFile =>
+                  !currentFiles.some(existingFile =>
+                    existingFile.name === newFile.name &&
+                    existingFile.size === newFile.size
+                  )
+                );
+                setFiles([...newFiles]);
+                if (addedFiles.length > 0) {
+                  uploadFiles(addedFiles);
+                }
+              } else {
+                setFiles([]);
+              }
+              setFormFiles?.(newFiles);
+            }}
+            stop={() => {}}
+            isGenerating={isLoading || isUploadingFiles}
+            fileUploads={fileUploads}
+            isUploadingFiles={isUploadingFiles}
+          />
+        )}
+      </ChatForm>
     </div>
   );
 }

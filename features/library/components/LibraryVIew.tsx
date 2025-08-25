@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LibraryHeader } from "./LibraryHeader"
 import { LibraryTabs } from "./LibraryTabs"
 import { Document, Collection, Team } from "../types"
+import { useHeader } from "@/contexts/header-context"
 
 interface LibraryProps {
   publicDocuments: Document[]
@@ -22,6 +23,19 @@ export function LibraryView({
   const [activeTab, setActiveTab] = useState("all")
   const [documentType, setDocumentType] = useState("all") // "all", "public", or "private"
   const [teamFilter, setTeamFilter] = useState("all")
+  const { setHeaderCustomContent } = useHeader()
+
+  // Set custom header content
+  useEffect(() => {
+    setHeaderCustomContent(
+      <div className="text-lg font-medium text-gray-900">
+        Australian Corporate & Tax Library
+      </div>
+    );
+
+    // Cleanup when component unmounts
+    return () => setHeaderCustomContent(null);
+  }, [setHeaderCustomContent]);
 
   // Combine documents based on the selected document type
   let documents: Document[] = []
@@ -69,10 +83,7 @@ export function LibraryView({
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b">
-        <h1 className="text-xl font-medium">Australian Corporate & Tax Library</h1>
-      </div>
+      {/* Header removed - now handled by layout */}
 
       <LibraryHeader
         searchQuery={searchQuery}

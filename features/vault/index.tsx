@@ -27,12 +27,14 @@ import { ProjectCard } from "./components/project-card"
 import { Project, getProjectId } from "@/types/api"
 import { formatDateVariants } from "@/lib/utils/date-formatter"
 import { useAuth } from "@/contexts/auth-context"
+import { useHeader } from "@/contexts/header-context"
 import Link from "next/link"
 import SearchInput from "@/components/ui/search-input"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function Projects() {
   const { toast } = useToast()
+  const { setHeaderActions, setHeaderCustomContent } = useHeader()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
@@ -40,6 +42,31 @@ export default function Projects() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<"starred" | "user" | "userProjects">("user")
   const auth = useAuth()
+
+  // Set header actions and custom content
+  useEffect(() => {
+    // Set the "New Project" button as a header action
+    setHeaderActions([
+      {
+        label: "New Project",
+        onClick: () => setCreateProjectOpen(true),
+        icon: <Plus className="h-4 w-4" />,
+        variant: "default",
+        size: "sm"
+      }
+    ]);
+
+    // Set loading indicator as custom content next to the title
+    setHeaderCustomContent(
+      loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null
+    );
+
+    // Cleanup when component unmounts
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, setHeaderCustomContent, loading]);
 
   useEffect(() => {
     fetchProjects()
@@ -70,7 +97,7 @@ export default function Projects() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch projects. Please try again later.",
+        description: "Failed to load projects. Please try again later.",
         variant: "destructive"
       })
     } finally {
@@ -158,11 +185,7 @@ export default function Projects() {
   // Otherwise, show the projects list
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-medium">Projects</h1>
-        {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-      </div>
+      {/* Header removed - now handled by layout */}
 
       {/* Search and filters */}
       <div className="p-4 border-b">
@@ -172,10 +195,10 @@ export default function Projects() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-          <Button onClick={() => setCreateProjectOpen(true)}>
+          {/* <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Project
-          </Button>
+          </Button> */}
         </div>
 
         {/* Tag filters */}
