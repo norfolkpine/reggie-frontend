@@ -340,7 +340,7 @@ export default function Sidebar() {
   return (
     <div
       className={cn(
-        "h-full border-r border-border flex flex-col bg-gray-50 transition-all duration-300",
+        "h-full flex flex-col bg-gray-50 transition-all duration-300",
         isExpanded ? "w-64" : "w-16"
       )}
     >
@@ -573,7 +573,8 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <div className="p-3 border-t border-border">
+          <div className="p-3"> 
+            {/* border-t border-border removed*/}
             <TeamSwitcher />
           </div>
         </div>
@@ -700,9 +701,6 @@ export default function Sidebar() {
                 )
               ))}
 
-              <div className="sidebar-divider sidebar-divider--collapsed"></div>
-
-             
             </div>
 
             {/* Add TeamSwitcher at the bottom of the sidebar */}
