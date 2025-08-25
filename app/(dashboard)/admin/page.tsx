@@ -1,10 +1,22 @@
 "use client"
 import AdminDashboard from "@/features/admin/admin-dashboard";
 import { useAuth } from "@/contexts/auth-context";
+import { useHeader } from "@/contexts/header-context";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
+  const { setHeaderCustomContent } = useHeader();
+
+  // Set the page title in the header
+  useEffect(() => {
+    // setHeaderCustomContent("Admin Dashboard");
+    
+    return () => {
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderCustomContent]);
 
   if (loading) {
     return (

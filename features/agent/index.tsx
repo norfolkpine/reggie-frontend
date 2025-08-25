@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import TypingIndicator from "../chats/components/typing-indicator"
+import { useHeader } from "@/contexts/header-context"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 
@@ -23,6 +24,23 @@ export default function ExploreAgents() {
   const [error, setError] = useState<string | null>(null)
   const {toast} = useToast()
   const router = useRouter()
+  const { setHeaderActions } = useHeader()
+
+  // Set header actions
+  useEffect(() => {
+    setHeaderActions([
+      {
+        label: "Create Agent",
+        onClick: () => router.push('/agent/create'),
+        icon: <Plus className="h-4 w-4" />,
+        variant: "default",
+        size: "sm"
+      }
+    ]);
+
+    // Cleanup when component unmounts
+    return () => setHeaderActions([]);
+  }, [setHeaderActions, router]);
 
   const fetchAgents = async () => {
     try {
@@ -66,14 +84,7 @@ export default function ExploreAgents() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-medium">Explore AI Agents</h1>
-        <Button onClick={() => router.push('/agent/create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Agent
-        </Button>
-      </div>
+      {/* Header removed - now handled by layout */}
 
       {/* Search and filters */}
       <SearchFilter

@@ -42,11 +42,10 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { isSafeUrl } from '@/lib/utils/url';
-
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-
+import { useHeader } from "@/contexts/header-context";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -62,6 +61,7 @@ export function VaultManager() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { setHeaderActions, setHeaderCustomContent } = useHeader();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
@@ -88,6 +88,70 @@ export function VaultManager() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
+
+  // Set header actions and custom content
+  useEffect(() => {
+    if (loading) {
+      // Show loading state
+      setHeaderActions([]);
+      setHeaderCustomContent(
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-gray-600">
+            <span 
+              className="hover:text-gray-900 cursor-pointer"
+              onClick={() => router.push("/vault")}
+            >
+              Vault
+            </span>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-900 font-medium">Loading project...</span>
+          </div>
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      );
+    } else if (project) {
+      // Set the back button and project name with edit functionality
+      setHeaderActions([
+        {
+          label: "Back to Vault",
+          onClick: () => router.push("/vault"),
+          variant: "ghost",
+          size: "sm",
+          icon: <ArrowLeft className="h-4 w-4" />
+        }
+      ]);
+
+      // Set project name with edit button as custom content
+      setHeaderCustomContent(
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-gray-600">
+            <span 
+              className="hover:text-gray-900 cursor-pointer"
+              onClick={() => router.push("/vault")}
+            >
+              Vault
+            </span>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-900 font-medium">{project.name}</span>
+          </div>
+          <button
+            type="button"
+            className="p-1 rounded hover:bg-gray-200 focus:outline-none"
+            title="Edit project name"
+            onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+          >
+            <Edit className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+      );
+    }
+
+    // Cleanup when component unmounts
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, setHeaderCustomContent, project, loading, router]);
 
   // Define table columns for colspan calculation
   const columns = [
@@ -353,29 +417,7 @@ export function VaultManager() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/vault")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-medium flex items-center gap-2">
-            {loading ? "Loading project..." : project?.name}
-            {!loading && project && (
-              <button
-                type="button"
-                className="ml-2 p-1 rounded hover:bg-gray-200 focus:outline-none"
-                title="Edit project name"
-                onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
-              >
-                <Edit className="h-5 w-5 text-muted-foreground" />
-              </button>
-            )}
-          </h1>
-          {loading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-        </div>
-      </div>
-
-
+      {/* Header removed - now handled by layout */}
 
       <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (

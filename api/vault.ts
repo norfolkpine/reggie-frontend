@@ -1,4 +1,5 @@
-import { api, getCSRFToken } from '@/lib/api-client';
+import { api } from '@/lib/api-client';
+import { getCSRFToken } from '@/api';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';

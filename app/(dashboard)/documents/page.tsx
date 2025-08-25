@@ -13,6 +13,7 @@ import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import SearchInput from "@/components/ui/search-input";
+import { useHeader } from "@/contexts/header-context";
 
 export default function DocumentListPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -25,6 +26,32 @@ export default function DocumentListPage() {
   
   const router = useRouter();
   const { toast } = useToast();
+  const { setHeaderActions, setHeaderCustomContent } = useHeader();
+
+  // Set header actions and custom content
+  useEffect(() => {
+    // Set the "New Document" button as a header action
+    setHeaderActions([
+      {
+        label: "New Document",
+        onClick: () => setCreateDocumentOpen(true),
+        icon: <Plus className="h-4 w-4" />,
+        variant: "default",
+        size: "sm"
+      }
+    ]);
+
+    // Set loading indicator as custom content next to the title
+    setHeaderCustomContent(
+      isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : null
+    );
+
+    // Cleanup when component unmounts
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, setHeaderCustomContent, isLoading]);
 
   // Create document mutation
   const createDocMutation = useCreateDoc({
@@ -86,11 +113,7 @@ export default function DocumentListPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-medium">Documents</h1>
-        {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-      </div>
+      {/* Header removed - now handled by layout */}
 
       {/* Search and create */}
       <div className="p-4 border-b">
@@ -100,10 +123,10 @@ export default function DocumentListPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button onClick={() => setCreateDocumentOpen(true)}>
+          {/* <Button onClick={() => setCreateDocumentOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Document
-          </Button>
+          </Button> */}
         </div>
       </div>
 
