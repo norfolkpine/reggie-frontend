@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Trash2,
@@ -39,9 +39,11 @@ import {
 import { FileUpload } from './file-upload';
 import { FilePreview } from './file-preview';
 import { CreateFolderDialog } from './create-folder-dialog';
+import { CreateCollectionDialog } from './create-collection-dialog';
 import { toast } from 'sonner';
 import { LinkFilesModal } from './link-files-modal';
 import { File, FileWithUI, KnowledgeBase } from '@/types/knowledge-base';
+import { Collection, PaginatedCollectionResponse } from '@/api/collections';
 import {
   Table,
   TableHeader,
@@ -71,6 +73,8 @@ import {
   listFilesWithKbs,
   ingestSelectedFiles,
 } from '@/api/files';
+import { listCollections, deleteCollection, getCollectionByUuid } from '@/api/collections';
+import { api } from '@/lib/api-client';
 
 interface ApiResponse {
   uuid: string;
@@ -97,20 +101,39 @@ interface ApiListResponse {
   previous: string | null;
 }
 
+// Unified interface for both files and folders
+interface FileOrFolder {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  file?: FileWithUI;
+  folder?: Collection;
+  created_at: string;
+  updated_at: string;
+  file_size?: number;
+  file_type?: string;
+  collection?: Collection;
+  status?: 'ready' | 'processing' | 'error';
+}
+
 export function FileManager() {
-  const [files, setFiles] = useState<FileWithUI[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<Collection | Collection[] | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<Collection[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  // Only allow 'mine' as the scope
-  const [scope] = useState<'mine'>('mine');
+
+  const [currentCollectionUuid, setCurrentCollectionUuid] = useState<string | undefined>(undefined);
   // TanStack column filters
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const statusOptions = ['ready', 'processing', 'error'];
   const typeOptions = ['pdf', 'docx', 'csv', 'xlsx', 'txt', 'jpeg', 'png'];
   const collectionOptions = useMemo(
-    () => Array.from(new Set(files.map((f) => f.collection?.name).filter(Boolean))) as string[],
-    [files]
+    () => {
+      if (!currentLocation) return [];
+      const location = Array.isArray(currentLocation) ? currentLocation[0] : currentLocation;
+      return Array.from(new Set(location?.children?.map((c: Collection) => c.name) || [])) as string[];
+    },
+    [currentLocation]
   );
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,77 +142,156 @@ export function FileManager() {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [fileToLink, setFileToLink] = useState<string | null>(null);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
+  const [isEditCollectionOpen, setIsEditCollectionOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [filesCount, setFilesCount] = useState(0);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [itemsCount, setItemsCount] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
+
+  // Combined items for display
+  const combinedItems = useMemo<FileOrFolder[]>(() => {
+    if (!currentLocation) return [];
+
+    // Handle both single collection and array of collections
+    const location = Array.isArray(currentLocation) ? currentLocation[0] : currentLocation;
+    if (!location) return [];
+
+    const fileItems: FileOrFolder[] = (location.files || []).map((file: any) => ({
+      id: file.uuid,
+      name: file.title,
+      type: 'file' as const,
+      file: {
+        uuid: file.uuid,
+        title: file.title,
+        description: file.description,
+        file_type: file.file_type,
+        file: '', // API file path not provided in this response
+        storage_path: '',
+        visibility: 'private' as const,
+        is_global: false,
+        created_at: file.created_at,
+        updated_at: file.created_at, // files from API don't have updated_at
+        file_size: file.file_size,
+        linkedKnowledgeBases: [],
+        status: 'ready' as const,
+        folderId: null,
+      } as FileWithUI,
+      folder: undefined,
+      created_at: file.created_at,
+      updated_at: file.created_at, // files from API don't have updated_at
+      file_size: file.file_size,
+      file_type: file.file_type,
+      collection: location,
+      status: 'ready' as const,
+    }));
+
+    const folderItems: FileOrFolder[] = (location.children || []).map((collection: Collection) => ({
+      id: `folder-${collection.uuid}`,
+      name: collection.name,
+      type: 'folder' as const,
+      file: undefined,
+      folder: collection,
+      created_at: collection.created_at,
+      updated_at: collection.created_at, // collections don't have updated_at
+      file_size: undefined,
+      file_type: undefined,
+      collection: undefined,
+      status: undefined,
+    }));
+
+    // Add "Go Up" entry if we're inside a collection
+    const goUpItem: FileOrFolder | null = currentCollectionUuid ? {
+      id: 'go-up',
+      name: '..',
+      type: 'folder' as const,
+      file: undefined,
+      folder: undefined,
+      created_at: '',
+      updated_at: '',
+      file_size: undefined,
+      file_type: undefined,
+      collection: undefined,
+      status: undefined,
+    } : null;
+
+    // Sort: folders first, then files, both by name
+    const sortedItems = [...folderItems, ...fileItems].sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Add go up item at the beginning if it exists
+    return goUpItem ? [goUpItem, ...sortedItems] : sortedItems;
+  }, [currentLocation, currentCollectionUuid]);
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, itemsPerPage, searchQuery]); // scope is fixed
+  }, [currentCollectionUuid, currentPage, itemsPerPage]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, string> = {
-        page: currentPage.toString(),
-        page_size: itemsPerPage.toString(),
-        scope: 'mine', // always use mine
-      };
+      if (currentCollectionUuid) {
+        // We're inside a collection, get that specific collection with its children and files
+        const collection = await getCollectionByUuid(currentCollectionUuid);
+        setCurrentLocation(collection);
+        setItemsCount(1);
+        setHasNextPage(false);
+        updateBreadcrumbs(collection);
+      } else {
+        // We're at root, get the list of collections
+        const params: Record<string, string> = {
+          page: currentPage.toString(),
+          page_size: itemsPerPage.toString(),
+        };
 
-      if (searchQuery) {
-        params.search = searchQuery;
-      }
-
-      // NOTE: If getFiles does not support page_size, update the API call accordingly
-      const response = await listFiles(params);
-
-      // Convert API response to FileWithUI format
-      const convertedFiles: FileWithUI[] = response.results.map(
-        (apiResponse) => {
-          const file: File = {
-            uuid: apiResponse.uuid,
-            title: apiResponse.title,
-            description: apiResponse.description || undefined,
-            file_type: apiResponse.file_type,
-            file: apiResponse.file,
-            storage_bucket: apiResponse.storage_bucket || undefined,
-            storage_path: apiResponse.storage_path,
-            original_path: apiResponse.original_path || undefined,
-            uploaded_by: apiResponse.uploaded_by || undefined,
-            team: apiResponse.team || undefined,
-            source: apiResponse.source || undefined,
-            visibility: apiResponse.visibility || 'private',
-            is_global: !!apiResponse.is_global,
-            created_at: apiResponse.created_at,
-            updated_at: apiResponse.updated_at,
-            collection: apiResponse.collection || undefined,
-            file_size: apiResponse.filesize || undefined,
-          };
-          return {
-            ...file,
-            status: 'ready' as const,
-            folderId: null,
-            thumbnailUrl: getThumbnailUrl(file.file_type),
-            linkedKnowledgeBases: [],
-          };
+        // Get search query from table column filter
+        const searchFilter = table.getColumn('name')?.getFilterValue() as string;
+        if (searchFilter) {
+          params.search = searchFilter;
         }
-      );
 
-      setFiles(convertedFiles);
-      setFilesCount(response.count || 0);
-      setHasNextPage(!!response.next);
+        const data = await api.get(`/reggie/api/v1/collections/?${new URLSearchParams(params)}`) as PaginatedCollectionResponse | Collection;
+        
+        // Handle paginated response
+        if ('results' in data) {
+          // Paginated response
+          setCurrentLocation(data.results);
+          setItemsCount(data.count || 0);
+          setHasNextPage(!!data.next);
+        } else {
+          // Single collection response
+          setCurrentLocation(data);
+          setItemsCount(1);
+          setHasNextPage(false);
+        }
+        
+        setBreadcrumbs([]);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast.error('Failed to load files');
+      toast.error('Failed to load files and folders');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const updateBreadcrumbs = (collection: Collection | Collection[]) => {
+    // For now, we'll just show the current collection
+    // In the future, you can implement a proper breadcrumb trail
+    if (Array.isArray(collection)) {
+      setBreadcrumbs(collection);
+    } else {
+      setBreadcrumbs([collection]);
+    }
+  };
+
   const handleUploadComplete = (uploadedFiles: FileWithUI[]) => {
-    setFiles((prevFiles) => [...uploadedFiles, ...prevFiles]);
     setIsUploadDialogOpen(false);
     toast.success(
       `${uploadedFiles.length} file${
@@ -202,11 +304,22 @@ export function FileManager() {
   const handleDeleteFile = async (uuid: string) => {
     try {
       await deleteFile(uuid);
-      setFiles((prevFiles) => prevFiles.filter((file) => file.uuid !== uuid));
       toast.success('File deleted successfully');
+      fetchData(); // Refresh the list
     } catch (error) {
       console.error('Failed to delete file:', error);
       toast.error('Failed to delete file');
+    }
+  };
+
+  const handleDeleteFolder = async (collectionUuid: string) => {
+    try {
+      await deleteCollection(collectionUuid);
+      toast.success('Folder deleted successfully');
+      fetchData(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+      toast.error('Failed to delete folder');
     }
   };
 
@@ -256,24 +369,32 @@ export function FileManager() {
 
   const handleBulkDelete = async () => {
     try {
-      await Promise.all(selectedFiles.map((fileId) => deleteFile(fileId)));
-      toast.success(`${selectedFiles.length} files deleted successfully`);
-      setSelectedFiles([]);
+      const filesToDelete = selectedItems.filter(id => !id.startsWith('folder-'));
+      const foldersToDelete = selectedItems.filter(id => id.startsWith('folder-')).map(id => id.replace('folder-', ''));
+
+      // Delete files
+      await Promise.all(filesToDelete.map((fileId) => deleteFile(fileId)));
+      
+      // Delete folders
+      await Promise.all(foldersToDelete.map((folderUuid) => handleDeleteFolder(folderUuid)));
+
+      toast.success(`${selectedItems.length} items deleted successfully`);
+      setSelectedItems([]);
       fetchData();
     } catch (error) {
-      console.error('Failed to delete files:', error);
-      toast.error('Failed to delete selected files');
+      console.error('Failed to delete items:', error);
+      toast.error('Failed to delete selected items');
     }
   };
 
   // TanStack table setup
-  const multiSelectFilter: ColumnDef<FileWithUI>["filterFn"] = (row, id, value) => {
+  const multiSelectFilter: ColumnDef<FileOrFolder>["filterFn"] = (row, id, value) => {
     if (!Array.isArray(value) || value.length === 0) return true;
     const cellValue = row.getValue<string>(id);
     return value.includes(cellValue);
   };
 
-  const columns = useMemo<ColumnDef<FileWithUI>[]>(
+  const columns = useMemo<ColumnDef<FileOrFolder>[]>(
     () => [
       // Checkbox column
       {
@@ -284,7 +405,7 @@ export function FileManager() {
       },
       // Name column
       { 
-        accessorKey: 'title',
+        accessorKey: 'name',
         header: 'Name'
       },
       // File Size column
@@ -294,9 +415,10 @@ export function FileManager() {
         accessorFn: (row) => row.file_size,
       },
       // Type column
-      { 
-        accessorKey: 'file_type',
-        header: 'Type'
+      {
+        id: "type",
+        header: 'Type',
+        accessorFn: (row) => row.type === 'folder' ? 'Folder' : (row.file_type || 'Unknown'),
       },
       // Collection column
       {
@@ -308,7 +430,7 @@ export function FileManager() {
       // Upload Date column
       {
         id: "created_at",
-        header: "Upload Date",
+        header: "Created Date",
         accessorFn: (row) => row.created_at,
       },
       // Status column
@@ -328,8 +450,8 @@ export function FileManager() {
     []
   );
 
-  const table = useReactTable<FileWithUI>({
-    data: files,
+  const table = useReactTable<FileOrFolder>({
+    data: combinedItems,
     columns,
     state: { columnFilters },
     onColumnFiltersChange: setColumnFilters,
@@ -337,7 +459,7 @@ export function FileManager() {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const filteredFiles = table.getRowModel().rows.map((r) => r.original);
+  const filteredItems = table.getRowModel().rows.map((r) => r.original);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -354,12 +476,16 @@ export function FileManager() {
     });
   };
 
-  const getFileIcon = (fileType: string) => {
-    // You could expand this to show different icons for different file types
+  const getItemIcon = (item: FileOrFolder) => {
+    if (item.type === 'folder') {
+      return <Folder className="h-5 w-5 text-blue-500" />;
+    }
     return <FileText className="h-5 w-5" />;
   };
 
-  const getStatusBadge = (status: FileWithUI['status']) => {
+  const getStatusBadge = (status: FileOrFolder['status']) => {
+    if (!status) return null;
+    
     switch (status) {
       case 'ready':
         return (
@@ -399,15 +525,6 @@ export function FileManager() {
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64"
-          />
-          {/* No scope filter UI, always mine */}
-        </div>
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">File Manager</h2>
           <div className="flex gap-2">
@@ -423,7 +540,7 @@ export function FileManager() {
                   <FileText className="h-4 w-4 mr-2" />
                   File
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsCreateCollectionOpen(true)}>
                   <Folder className="h-4 w-4 mr-2" />
                   Collection
                 </DropdownMenuItem>
@@ -442,11 +559,16 @@ export function FileManager() {
         <div className="flex items-center gap-2 w-full max-w-md">
           <Input
             type="text"
-            placeholder="Search files..."
-            value={(table.getColumn('title')?.getFilterValue() as string) ?? ''}
+            placeholder="Search files and folders..."
+            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
             onChange={(e) =>
-              table.getColumn('title')?.setFilterValue(e.target.value)
+              table.getColumn('name')?.setFilterValue(e.target.value)
             }
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                fetchData();
+              }
+            }}
             className="pl-10"
           />
 
@@ -458,6 +580,29 @@ export function FileManager() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
+              {/* Type filter */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Type</p>
+                <DropdownMenuCheckboxItem
+                  checked={true}
+                  onCheckedChange={() => {}}
+                >
+                  All
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={true}
+                  onCheckedChange={() => {}}
+                >
+                  Folders
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={true}
+                  onCheckedChange={() => {}}
+                >
+                  Files
+                </DropdownMenuCheckboxItem>
+              </div>
+              <DropdownMenuSeparator />
               {/* Status filter */}
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
@@ -488,14 +633,14 @@ export function FileManager() {
                 <p className="text-xs font-medium text-muted-foreground mb-1">Collection</p>
                 {collectionOptions.map((col) => {
                   const current: string[] =
-                    (table.getColumn('collection_name')?.getFilterValue() as string[]) ?? [];
+                    (table.getColumn('collection')?.getFilterValue() as string[]) ?? [];
                   const checked = current.includes(col);
                   return (
                     <DropdownMenuCheckboxItem
                       key={col}
                       checked={checked}
                       onCheckedChange={(chk) => {
-                        const column = table.getColumn('collection_name');
+                        const column = table.getColumn('collection');
                         const prev: string[] = (column?.getFilterValue() as string[]) ?? [];
                         const updated = chk ? [...prev, col] : prev.filter((c) => c !== col);
                         column?.setFilterValue(updated.length ? updated : undefined);
@@ -510,20 +655,47 @@ export function FileManager() {
               <DropdownMenuItem
                 onClick={() => {
                   table.getColumn('status')?.setFilterValue(undefined);
-                  table.getColumn('collection_name')?.setFilterValue(undefined);
+                  table.getColumn('collection')?.setFilterValue(undefined);
                 }}
               >
-                Clear Filters
+                Clear All Filters
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Bulk actions bar for selected files */}
-      {selectedFiles.length > 0 && (
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 mb-4 text-sm">
+        <span 
+          className={`${!currentCollectionUuid ? 'text-gray-900 font-semibold' : 'text-blue-600 hover:text-blue-800 cursor-pointer font-medium'}`}
+          onClick={!currentCollectionUuid ? undefined : () => {
+            setCurrentCollectionUuid(undefined);
+            fetchData();
+          }}
+        >
+          Root
+        </span>
+        {breadcrumbs.map((crumb, index) => (
+          <React.Fragment key={crumb.uuid || index}>
+            <span className="text-gray-400">/</span>
+            <span 
+              className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium"
+              onClick={() => {
+                setCurrentCollectionUuid(crumb.uuid);
+                fetchData();
+              }}
+            >
+              {crumb.name}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Bulk actions bar for selected items */}
+      {selectedItems.length > 0 && (
         <div className="flex items-center justify-between bg-muted p-2 rounded-md mb-2">
-          <span className="text-sm">{selectedFiles.length} files selected</span>
+          <span className="text-sm">{selectedItems.length} items selected</span>
           <div className="space-x-2">
             <Button
               variant="default"
@@ -532,13 +704,14 @@ export function FileManager() {
                 setFileToLink(null); // distinguish from single
                 setIsLinkModalOpen(true);
               }}
+              disabled={selectedItems.every(id => id.startsWith('folder-'))}
             >
               Bulk Link to KB
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => setSelectedFiles([])}
+              onClick={() => setSelectedItems([])}
             >
               Cancel
             </Button>
@@ -556,14 +729,14 @@ export function FileManager() {
               <TableHead className="w-12">
                 <Checkbox
                   checked={
-                    selectedFiles.length === filteredFiles.length &&
-                    filteredFiles.length > 0
+                    selectedItems.length === filteredItems.length &&
+                    filteredItems.length > 0
                   }
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      setSelectedFiles(filteredFiles.map((file) => file.uuid));
+                      setSelectedItems(filteredItems.map((item) => item.id));
                     } else {
-                      setSelectedFiles([]);
+                      setSelectedItems([]);
                     }
                   }}
                 />
@@ -572,7 +745,7 @@ export function FileManager() {
               <TableHead>File Size</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Collection</TableHead>
-              <TableHead>Upload Date</TableHead>
+              <TableHead>Created Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -586,29 +759,29 @@ export function FileManager() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredFiles.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  {searchQuery
-                    ? 'No files match your search'
-                    : 'No files found'}
+                  {(table.getColumn('name')?.getFilterValue() as string)
+                    ? 'No files or folders match your search'
+                    : 'No files or folders found'}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFiles.map((file) => (
-                <TableRow key={file.uuid}>
+              filteredItems.map((item) => (
+                <TableRow key={item.id}>
                   <TableCell>
                     <Checkbox
-                      checked={selectedFiles.includes(file.uuid)}
+                      checked={selectedItems.includes(item.id)}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setSelectedFiles([...selectedFiles, file.uuid]);
+                          setSelectedItems([...selectedItems, item.id]);
                         } else {
-                          setSelectedFiles(
-                            selectedFiles.filter((id) => id !== file.uuid)
+                          setSelectedItems(
+                            selectedItems.filter((id) => id !== item.id)
                           );
                         }
                       }}
@@ -616,71 +789,144 @@ export function FileManager() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="font-medium">{file.title}</span>
+                      {getItemIcon(item)}
+                      <span 
+                        className={`font-medium ml-2 ${
+                          item.id === 'go-up' 
+                            ? 'text-gray-500 hover:text-gray-700 cursor-pointer italic' 
+                            : item.type === 'folder' 
+                              ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
+                              : ''
+                        }`}
+                        onClick={item.type === 'folder' ? () => {
+                          if (item.id === 'go-up') {
+                            // Go up to parent directory
+                            setCurrentCollectionUuid(undefined);
+                          } else {
+                            // Navigate into folder
+                            setCurrentCollectionUuid(item.folder!.uuid);
+                          }
+                          fetchData();
+                        } : undefined}
+                      >
+                        {item.name}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    {file.file_size ? formatFileSize(file.file_size) : '--'}
+                    {item.file_size ? formatFileSize(item.file_size) : '--'}
                   </TableCell>
                   <TableCell className="text-xs uppercase text-muted-foreground">
-                    {file.file_type}
+                    {item.type === 'folder' ? 'Folder' : (item.file_type || 'Unknown')}
                   </TableCell>
-                  <TableCell>{file.collection?.name || '-'}</TableCell>
-                  <TableCell>{formatDate(file.created_at)}</TableCell>
-                  <TableCell>{getStatusBadge(file.status)}</TableCell>
+                  <TableCell>{item.collection?.name || '-'}</TableCell>
+                  <TableCell>{formatDate(item.created_at)}</TableCell>
+                  <TableCell>{getStatusBadge(item.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={() => handleOpenLinkModal(file.uuid)}
-                      >
-                        <Link className="h-3 w-3 mr-1" />
-                        Link
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      {item.type === 'file' && item.file && (
+                        <>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0"
+                            className="h-6 text-xs"
+                            onClick={() => handleOpenLinkModal(item.file!.uuid)}
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Link className="h-3 w-3 mr-1" />
+                            Link
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handlePreviewFile(file)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <a
-                              href={file.file}
-                              download={file.title}
-                              className="flex items-center"
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handlePreviewFile(item.file!)}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <a
+                                  href={item.file!.file}
+                                  download={item.file!.title}
+                                  className="flex items-center"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenLinkModal(item.file!.uuid)}
+                              >
+                                <Link className="h-4 w-4 mr-2" />
+                                Link to KB
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteFile(item.file!.uuid)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                      {item.type === 'folder' && item.folder && item.id !== 'go-up' && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
                             >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </a>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenLinkModal(file.uuid)}
-                          >
-                            <Link className="h-4 w-4 mr-2" />
-                            Link to KB
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteFile(file.uuid)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (item.id === 'go-up') {
+                                  // Go up to parent directory
+                                  setCurrentCollectionUuid(undefined);
+                                } else {
+                                  // Navigate into folder
+                                  setCurrentCollectionUuid(item.folder!.uuid);
+                                }
+                                fetchData();
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Open Folder
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingCollection(item.folder!);
+                                setIsEditCollectionOpen(true);
+                              }}
+                            >
+                              <Folder className="h-4 w-4 mr-2" />
+                              Manage
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (item.folder?.uuid) {
+                                  handleDeleteFolder(item.folder.uuid);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -690,11 +936,11 @@ export function FileManager() {
         </Table>
       </div>
 
-      {/* Pagination - match knowledge-base-detail.tsx exactly */}
-      {filesCount > 0 && (
+            {/* Pagination */}
+      {itemsCount > 0 && (
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
-            Total {filesCount} files
+            Total {itemsCount} items
           </div>
           <Pagination>
             <PaginationContent>
@@ -713,7 +959,7 @@ export function FileManager() {
               {(() => {
                 const totalPages = Math.max(
                   1,
-                  Math.ceil(filesCount / itemsPerPage)
+                  Math.ceil(itemsCount / itemsPerPage)
                 );
                 return Array.from({ length: Math.min(totalPages, 5) }).map(
                   (_, i) => {
@@ -746,7 +992,7 @@ export function FileManager() {
               {(() => {
                 const totalPages = Math.max(
                   1,
-                  Math.ceil(filesCount / itemsPerPage)
+                  Math.ceil(itemsCount / itemsPerPage)
                 );
                 return totalPages > 5 && currentPage < totalPages - 2 ? (
                   <PaginationItem>
@@ -762,12 +1008,12 @@ export function FileManager() {
                     setCurrentPage((prev) =>
                       Math.min(
                         prev + 1,
-                        Math.max(1, Math.ceil(filesCount / itemsPerPage))
+                        Math.max(1, Math.ceil(itemsCount / itemsPerPage))
                       )
                     )
                   }
                   disabled={
-                    currentPage >= Math.ceil(filesCount / itemsPerPage) ||
+                    currentPage >= Math.ceil(itemsCount / itemsPerPage) ||
                     !hasNextPage
                   }
                 >
@@ -840,12 +1086,12 @@ export function FileManager() {
         }}
         fileId={fileToLink}
         fileIds={
-          fileToLink === null ? selectedFiles : fileToLink ? [fileToLink] : []
+          fileToLink === null ? selectedItems.filter(id => !id.startsWith('folder-')) : fileToLink ? [fileToLink] : []
         }
         onLinkFiles={handleLinkFilesToKnowledgeBase}
         existingLinks={
           fileToLink
-            ? files.find((f) => f.uuid === fileToLink)?.linkedKnowledgeBases ||
+            ? combinedItems.find((item) => item.id === fileToLink)?.file?.linkedKnowledgeBases ||
               []
             : []
         }
@@ -859,6 +1105,33 @@ export function FileManager() {
           // Refresh the data to show the new folder
           fetchData();
         }}
+        parentCollectionUuid={currentCollectionUuid}
+      />
+
+      {/* Create Collection Dialog */}
+      <CreateCollectionDialog
+        isOpen={isCreateCollectionOpen}
+        onClose={() => setIsCreateCollectionOpen(false)}
+        onCollectionCreated={() => {
+          // Refresh the data to show the new collection
+          fetchData();
+        }}
+        parentCollectionUuid={currentCollectionUuid}
+      />
+
+      {/* Edit Collection Dialog */}
+      <CreateCollectionDialog
+        isOpen={isEditCollectionOpen}
+        onClose={() => {
+          setIsEditCollectionOpen(false);
+          setEditingCollection(null);
+        }}
+        onCollectionCreated={() => {
+          // Refresh the data to show the updated collection
+          fetchData();
+        }}
+        mode="edit"
+        collection={editingCollection || undefined}
       />
     </div>
   );

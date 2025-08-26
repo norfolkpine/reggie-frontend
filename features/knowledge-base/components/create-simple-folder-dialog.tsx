@@ -15,31 +15,33 @@ import { createFolder } from '@/api/collections';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 
-interface CreateFolderDialogProps {
+interface CreateSimpleFolderDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onFolderCreated: () => void;
-  parentCollectionUuid?: string;
 }
 
-export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCollectionUuid }: CreateFolderDialogProps) {
-  const [folderName, setFolderName] = useState('');
+export function CreateSimpleFolderDialog({ 
+  isOpen, 
+  onClose, 
+  onFolderCreated 
+}: CreateSimpleFolderDialogProps) {
+  const [name, setName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!folderName.trim()) return;
+    if (!name.trim()) return;
 
     setIsCreating(true);
     try {
       await createFolder({
-        name: folderName.trim(),
-        description: undefined,
-        parent_uuid: parentCollectionUuid,
+        name: name.trim(),
+        description: '',
         collection_type: 'folder',
-        jurisdiction: undefined,
-        regulation_number: undefined,
-        effective_date: undefined,
+        jurisdiction: '',
+        regulation_number: '',
+        effective_date: '',
         sort_order: 0,
       });
       
@@ -56,7 +58,7 @@ export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCol
   };
 
   const resetForm = () => {
-    setFolderName('');
+    setName('');
   };
 
   const handleClose = () => {
@@ -79,13 +81,13 @@ export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCol
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2">
-                Folder Name *
+                Name *
               </label>
               <Input
                 id="name"
-                placeholder="Enter folder name"
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="Folder Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
                 disabled={isCreating}
                 autoFocus
@@ -102,7 +104,7 @@ export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCol
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!folderName.trim() || isCreating}>
+            <Button type="submit" disabled={!name.trim() || isCreating}>
               <Plus className="h-4 w-4 mr-2" />
               {isCreating ? 'Creating...' : 'Create Folder'}
             </Button>

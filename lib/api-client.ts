@@ -5,9 +5,8 @@ import { TOKEN_KEY } from "../lib/constants";
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Robust BASE_URL logic with environment-specific fallbacks
-export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
-  (isDevelopment ? 'http://127.0.0.1:8000' : '');
+// Use relative URLs since we're using Next.js rewrites to proxy to Django backend
+export const BASE_URL = '';
 
 // Validate BASE_URL in production
 if (isProduction && !process.env.NEXT_PUBLIC_API_BASE_URL) {
