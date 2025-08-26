@@ -155,52 +155,40 @@ export function FileManager() {
   const combinedItems = useMemo<FileOrFolder[]>(() => {
     if (!currentLocation) return [];
 
-    // Handle both single collection and array of collections
-    const location = Array.isArray(currentLocation) ? currentLocation[0] : currentLocation;
-    if (!location) return [];
+    // Handle the new API response format where currentLocation is an array of results
+    const results = Array.isArray(currentLocation) ? currentLocation : [currentLocation];
+    if (!results.length) return [];
 
-    const fileItems: FileOrFolder[] = (location.files || []).map((file: any) => ({
-      id: file.uuid,
-      name: file.title,
-      type: 'file' as const,
-      file: {
-        uuid: file.uuid,
-        title: file.title,
-        description: file.description,
-        file_type: file.file_type,
-        file: '', // API file path not provided in this response
-        storage_path: '',
-        visibility: 'private' as const,
-        is_global: false,
-        created_at: file.created_at,
-        updated_at: file.created_at, // files from API don't have updated_at
-        file_size: file.file_size,
-        linkedKnowledgeBases: [],
-        status: 'ready' as const,
-        folderId: null,
-      } as FileWithUI,
-      folder: undefined,
-      created_at: file.created_at,
-      updated_at: file.created_at, // files from API don't have updated_at
-      file_size: file.file_size,
-      file_type: file.file_type,
-      collection: location,
-      status: 'ready' as const,
-    }));
-
-    const folderItems: FileOrFolder[] = (location.children || []).map((collection: Collection) => ({
-      id: `folder-${collection.uuid}`,
-      name: collection.name,
-      type: 'folder' as const,
-      file: undefined,
-      folder: collection,
-      created_at: collection.created_at,
-      updated_at: collection.created_at, // collections don't have updated_at
-      file_size: undefined,
-      file_type: undefined,
-      collection: undefined,
-      status: undefined,
-    }));
+    // Since the API response only contains collections/folders for now,
+    // we'll treat all items as folders. In the future, when files are included,
+    // we can distinguish them by checking for file-specific properties
+    const folderItems: FileOrFolder[] = results.map((collection: any) => ({
+        id: `folder-${collection.uuid}`,
+        name: collection.name || collection.title || 'Untitled',
+        type: 'folder' as const,
+        file: undefined,
+        folder: {
+          uuid: collection.uuid,
+          id: undefined,
+          name: collection.name || collection.title || 'Untitled',
+          description: collection.description,
+          collection_type: collection.collection_type || 'folder',
+          jurisdiction: undefined,
+          regulation_number: undefined,
+          effective_date: undefined,
+          sort_order: 0,
+          children: [],
+          files: [],
+          full_path: '',
+          created_at: collection.created_at,
+        } as Collection,
+        created_at: collection.created_at,
+        updated_at: collection.created_at, // collections don't have updated_at
+        file_size: undefined,
+        file_type: undefined,
+        collection: undefined,
+        status: undefined,
+      }));
 
     // Add "Go Up" entry if we're inside a collection
     const goUpItem: FileOrFolder | null = currentCollectionUuid ? {
@@ -217,13 +205,8 @@ export function FileManager() {
       status: undefined,
     } : null;
 
-    // Sort: folders first, then files, both by name
-    const sortedItems = [...folderItems, ...fileItems].sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === 'folder' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+    // Sort folders by name
+    const sortedItems = folderItems.sort((a, b) => a.name.localeCompare(b.name));
 
     // Add go up item at the beginning if it exists
     return goUpItem ? [goUpItem, ...sortedItems] : sortedItems;
