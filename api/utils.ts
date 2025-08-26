@@ -27,6 +27,11 @@ export function getCSRFToken(): string | null {
     return null;
   }
   
+  // Debug: Log all cookies to see what's available
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 All cookies:', document.cookie);
+  }
+  
   // Try the standard Django CSRF cookie name first
   const csrfCookie = document.cookie
     .split(';')
@@ -34,6 +39,9 @@ export function getCSRFToken(): string | null {
   
   if (csrfCookie) {
     const token = csrfCookie.split('=')[1];
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Found csrftoken cookie:', token.substring(0, 10) + '...');
+    }
     return token;
   }
   
@@ -45,8 +53,17 @@ export function getCSRFToken(): string | null {
       .find((cookie) => cookie.trim().startsWith(`${name}=`));
     if (altCookie) {
       const token = altCookie.split('=')[1];
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Found ${name} cookie:`, token.substring(0, 10) + '...');
+      }
       return token;
     }
+  }
+  
+  // Debug: Log what we were looking for
+  if (process.env.NODE_ENV === 'development') {
+    console.log('❌ No CSRF token found. Looked for:', ['csrftoken', ...alternativeNames]);
+    console.log('🔍 Cookie names found:', document.cookie.split(';').map(c => c.trim().split('=')[0]));
   }
   
   // No CSRF token found

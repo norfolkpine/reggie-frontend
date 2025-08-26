@@ -117,7 +117,7 @@ interface FileOrFolder {
 }
 
 export function FileManager() {
-  const [currentLocation, setCurrentLocation] = useState<Collection | Collection[] | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<any[] | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<Collection[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
 
@@ -236,46 +236,78 @@ export function FileManager() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      // Get search query from table column filter
+      const searchFilter = table.getColumn('name')?.getFilterValue() as string;
+      
+      // Build query parameters for the file manager endpoint
+      const params: Record<string, string> = {
+        file_manager: 'true',
+        page: currentPage.toString(),
+        page_size: itemsPerPage.toString(),
+      };
+
+      // Add collection UUID if we're inside a collection
       if (currentCollectionUuid) {
-        // We're inside a collection, get that specific collection with its children and files
-        const collection = await getCollectionByUuid(currentCollectionUuid);
-        setCurrentLocation(collection);
-        setItemsCount(1);
-        setHasNextPage(false);
-        updateBreadcrumbs(collection);
-      } else {
-        // We're at root, get the list of collections
-        const params: Record<string, string> = {
-          page: currentPage.toString(),
-          page_size: itemsPerPage.toString(),
+        params.collection_uuid = currentCollectionUuid;
+      }
+
+      // Add search if provided
+      if (searchFilter) {
+        params.search = searchFilter;
+      }
+
+      // Use the new file manager endpoint
+      const response = await api.get(`/reggie/api/v1/files/?${new URLSearchParams(params)}`);
+      
+      if (response && typeof response === 'object' && 'results' in response) {
+        // File manager response with pagination
+        const data = response as {
+          count: number;
+          next: string | null;
+          previous: string | null;
+          results: Array<{
+            type: 'collection' | 'file';
+            uuid: string;
+            name?: string;
+            title?: string;
+            description?: string;
+            collection_type?: string;
+            file_type?: string;
+            created_at: string;
+            file_size?: number;
+          }>;
         };
 
-        // Get search query from table column filter
-        const searchFilter = table.getColumn('name')?.getFilterValue() as string;
-        if (searchFilter) {
-          params.search = searchFilter;
-        }
-
-        const data = await api.get(`/reggie/api/v1/collections/?${new URLSearchParams(params)}`) as PaginatedCollectionResponse | Collection;
+        setCurrentLocation(data.results);
+        setItemsCount(data.count || 0);
+        setHasNextPage(!!data.next);
         
-        // Handle paginated response
-        if ('results' in data) {
-          // Paginated response
-          setCurrentLocation(data.results);
-          setItemsCount(data.count || 0);
-          setHasNextPage(!!data.next);
+        // Update breadcrumbs if we're inside a collection
+        if (currentCollectionUuid) {
+          // For now, we'll need to fetch the collection details to get the name
+          try {
+            const collection = await getCollectionByUuid(currentCollectionUuid);
+            updateBreadcrumbs([collection]);
+          } catch (error) {
+            console.error('Failed to fetch collection details for breadcrumbs:', error);
+            updateBreadcrumbs([]);
+          }
         } else {
-          // Single collection response
-          setCurrentLocation(data);
-          setItemsCount(1);
-          setHasNextPage(false);
+          setBreadcrumbs([]);
         }
-        
+      } else {
+        // Fallback to empty state
+        setCurrentLocation([]);
+        setItemsCount(0);
+        setHasNextPage(false);
         setBreadcrumbs([]);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load files and folders');
+      setCurrentLocation([]);
+      setItemsCount(0);
+      setHasNextPage(false);
     } finally {
       setIsLoading(false);
     }

@@ -77,15 +77,20 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
       router.replace(search.get('redirect') || '/')
     } catch (error: any) {
+      console.log('Login error received:', error) // Debug logging
+      
       // Handle the specific error structure
       if (error.errors && Array.isArray(error.errors)) {
+        console.log('Processing errors array:', error.errors) // Debug logging
         let hasFieldErrors = false
         
         error.errors.forEach((err: AuthErrorResponse['errors'][0]) => {
+          console.log('Processing error:', err) // Debug logging
           if (err.param && err.message) {
             // Map the param to the form field name
             const fieldName = err.param === 'password' ? 'password' : 
                             err.param === 'email' ? 'email' : err.param
+            console.log('Setting form error for field:', fieldName, 'with message:', err.message) // Debug logging
             form.setError(fieldName as any, { 
               message: err.message 
             })
@@ -97,6 +102,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         if (!hasFieldErrors) {
           const firstError = error.errors[0]
           if (firstError && firstError.message) {
+            console.log('Setting general error:', firstError.message) // Debug logging
             setGeneralError(firstError.message)
           }
         }
@@ -110,7 +116,26 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             description: firstError.message,
           })
         }
+      } else if (error.message) {
+        // Handle case where error has a direct message property
+        console.log('Error has direct message property:', error.message)
+        setGeneralError(error.message)
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error.message,
+        })
+      } else if (error.detail) {
+        // Handle case where error has a detail property
+        console.log('Error has detail property:', error.detail)
+        setGeneralError(error.detail)
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error.detail,
+        })
       } else {
+        console.log('No errors array found, using fallback error handling') // Debug logging
         // Fallback to existing error handling
         const { hasFieldErrors, message } = handleApiError(error, form.setError)
         

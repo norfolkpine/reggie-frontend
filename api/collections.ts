@@ -47,11 +47,24 @@ export interface PaginatedCollectionResponse {
 export type CollectionDetail = Collection;
 
 export async function createFolder(data: CreateFolderRequest): Promise<Collection> {
-  return api.post('/reggie/api/v1/collections/', data) as Promise<Collection>;
+  return api.post('/reggie/api/v1/collections/create-folder/', data) as Promise<Collection>;
 }
 
 export async function listCollections(): Promise<Collection[]> {
   return api.get('/reggie/api/v1/collections/') as Promise<Collection[]>;
+}
+
+export async function listCollectionsPaginated(page: number = 1, pageSize: number = 10, search?: string): Promise<PaginatedCollectionResponse> {
+  const params: Record<string, string> = {
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  };
+  
+  if (search) {
+    params.search = search;
+  }
+  
+  return api.get('/reggie/api/v1/collections/', { params }) as Promise<PaginatedCollectionResponse>;
 }
 
 export async function getCollectionTree(): Promise<Collection[]> {

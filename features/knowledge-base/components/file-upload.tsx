@@ -18,6 +18,7 @@ interface FileUploadProps {
   onUploadComplete: (files: FileWithUI[]) => void
   folders: Folder[]
   currentFolderId: string | null
+  currentCollectionUuid?: string // Add support for current collection context
   knowledgeBaseId?: string
 }
 
@@ -45,7 +46,7 @@ interface ApiResponse {
   updated_at: string
 }
 
-export function FileUpload({ onUploadComplete, folders, currentFolderId, knowledgeBaseId }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, folders, currentFolderId, currentCollectionUuid, knowledgeBaseId }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
   const [uploading, setUploading] = useState(false)
@@ -124,6 +125,9 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, knowled
               ...(knowledgeBaseId && {
                 knowledgebase_id: knowledgeBaseId,
                 auto_ingest: true
+              }),
+              ...(currentCollectionUuid && {
+                collection_uuid: currentCollectionUuid
               }),
               is_global: isGlobal
             });

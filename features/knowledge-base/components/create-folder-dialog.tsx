@@ -72,7 +72,10 @@ export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCol
         <DialogHeader>
           <DialogTitle>Create New Folder</DialogTitle>
           <DialogDescription>
-            Create a new folder to organize your files.
+            {parentCollectionUuid 
+              ? 'Create a new sub-folder in the current collection.'
+              : 'Create a new folder at the root level.'
+            }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

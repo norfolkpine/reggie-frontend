@@ -68,6 +68,7 @@ interface FileUploadOptions {
   knowledgebase_id?: string;
   is_ephemeral?: boolean;
   session_id?: string;
+  collection_uuid?: string; // Add support for uploading to specific collections
 }
 
 export const uploadFiles = async (files: globalThis.File[], options?: FileUploadOptions) => {
@@ -198,7 +199,7 @@ interface BulkFileUploadRequest {
 
 export const bulkUploadFiles = async (data: BulkFileUploadRequest) => {
   const response = await api.post('/reggie/api/v1/files/bulk-upload/', data);
-  return response.data;
+  return response as any;
 };
 
 export const uploadFilesWithFormData = async (files: globalThis.File[], options?: { title?: string; description?: string; team?: number }) => {
@@ -226,5 +227,5 @@ export const uploadFilesWithFormData = async (files: globalThis.File[], options?
     },
   });
   
-  return response.data;
+  return response as any;
 }; 
