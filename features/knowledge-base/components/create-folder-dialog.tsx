@@ -37,10 +37,6 @@ export function CreateFolderDialog({ isOpen, onClose, onFolderCreated, parentCol
         description: undefined,
         parent_uuid: parentCollectionUuid,
         collection_type: 'folder',
-        jurisdiction: undefined,
-        regulation_number: undefined,
-        effective_date: undefined,
-        sort_order: 0,
       });
       
       toast.success('Folder created successfully');

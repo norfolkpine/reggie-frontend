@@ -5,10 +5,6 @@ export interface CreateFolderRequest {
   description?: string;
   parent_uuid?: string;
   collection_type?: 'folder' | 'regulation' | 'act' | 'guideline' | 'manual';
-  jurisdiction?: string;
-  regulation_number?: string;
-  effective_date?: string;
-  sort_order?: number;
 }
 
 export interface Collection {

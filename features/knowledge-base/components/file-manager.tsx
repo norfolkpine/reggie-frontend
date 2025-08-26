@@ -120,8 +120,14 @@ export function FileManager() {
   const [currentLocation, setCurrentLocation] = useState<any[] | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<Collection[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [collectionPathCache, setCollectionPathCache] = useState<Map<string, Collection>>(new Map());
 
   const [currentCollectionUuid, setCurrentCollectionUuid] = useState<string | undefined>(undefined);
+  // Add navigation path tracking
+  const [navigationPath, setNavigationPath] = useState<string[]>([]);
+  // Add flag to prevent breadcrumb rebuilding when going to root
+  const [isNavigatingToRoot, setIsNavigatingToRoot] = useState(false);
+  
   // TanStack column filters
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -216,7 +222,21 @@ export function FileManager() {
     fetchData();
   }, [currentCollectionUuid, currentPage, itemsPerPage]);
 
+  // Rebuild breadcrumbs when navigation path changes
+  useEffect(() => {
+    console.log('useEffect triggered:', { navigationPathLength: navigationPath.length, currentCollectionUuid, isNavigatingToRoot });
+    if (navigationPath.length > 0 && currentCollectionUuid && !isNavigatingToRoot) {
+      console.log('Calling rebuildBreadcrumbsFromPath');
+      rebuildBreadcrumbsFromPath();
+    } else if (navigationPath.length === 0) {
+      // Clear breadcrumbs when at root
+      console.log('Clearing breadcrumbs in useEffect');
+      setBreadcrumbsWithLogging([]);
+    }
+  }, [navigationPath, currentCollectionUuid, isNavigatingToRoot]);
+
   const fetchData = async () => {
+    console.log('fetchData called with:', { currentCollectionUuid, currentPage, itemsPerPage });
     setIsLoading(true);
     try {
       // Get search query from table column filter
@@ -238,6 +258,8 @@ export function FileManager() {
       if (searchFilter) {
         params.search = searchFilter;
       }
+
+      console.log('Fetching data with params:', params);
 
       // Use the new file manager endpoint
       const response = await api.get(`/reggie/api/v1/files/?${new URLSearchParams(params)}`);
@@ -261,29 +283,63 @@ export function FileManager() {
           }>;
         };
 
+        console.log('Received data:', { count: data.count, resultsCount: data.results.length });
+
         setCurrentLocation(data.results);
         setItemsCount(data.count || 0);
         setHasNextPage(!!data.next);
         
         // Update breadcrumbs if we're inside a collection
-        if (currentCollectionUuid) {
-          // For now, we'll need to fetch the collection details to get the name
+        if (currentCollectionUuid && !isNavigatingToRoot) {
           try {
             const collection = await getCollectionByUuid(currentCollectionUuid);
-            updateBreadcrumbs([collection]);
+            const breadcrumbTrail = await buildBreadcrumbTrail(collection);
+            updateBreadcrumbs(breadcrumbTrail);
+            console.log('Updated breadcrumbs for collection:', breadcrumbTrail);
           } catch (error) {
             console.error('Failed to fetch collection details for breadcrumbs:', error);
             updateBreadcrumbs([]);
           }
         } else {
-          setBreadcrumbs([]);
+          // At root level, populate the cache with all collections for future breadcrumb use
+          if (data.results && data.results.length > 0) {
+            const collections = data.results.filter((item: any) => item.type === 'collection');
+            collections.forEach((col: any) => {
+              if (col.full_path) {
+                const collectionObj = {
+                  uuid: col.uuid,
+                  name: col.name,
+                  description: col.description,
+                  collection_type: col.collection_type,
+                  sort_order: col.sort_order || 0,
+                  children: col.children || [],
+                  files: col.files || [],
+                  full_path: col.full_path,
+                  created_at: col.created_at,
+                } as Collection;
+                setCollectionPathCache(prev => new Map(prev).set(col.full_path, collectionObj));
+                
+                // Also cache by UUID for reverse lookup
+                setCollectionPathCache(prev => new Map(prev).set(`uuid-${col.uuid}`, collectionObj));
+              }
+            });
+            console.log('Populated collection cache with', collections.length, 'collections');
+          }
+          // Ensure breadcrumbs are cleared at root level
+          console.log('Setting breadcrumbs to empty array in fetchData root block');
+          setBreadcrumbsWithLogging([]);
+          // Reset navigation path when at root
+          setNavigationPath([]);
+          // Reset the navigation flag
+          setIsNavigatingToRoot(false);
+          console.log('Reset breadcrumbs and navigation path at root, navigation flag reset');
         }
       } else {
         // Fallback to empty state
         setCurrentLocation([]);
         setItemsCount(0);
         setHasNextPage(false);
-        setBreadcrumbs([]);
+        setBreadcrumbsWithLogging([]);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -297,13 +353,185 @@ export function FileManager() {
   };
 
   const updateBreadcrumbs = (collection: Collection | Collection[]) => {
-    // For now, we'll just show the current collection
-    // In the future, you can implement a proper breadcrumb trail
     if (Array.isArray(collection)) {
-      setBreadcrumbs(collection);
+      console.log('updateBreadcrumbs called with array:', collection.map(c => ({ name: c.name, uuid: c.uuid })));
+      console.log('isNavigatingToRoot flag:', isNavigatingToRoot);
+      if (!isNavigatingToRoot) {
+        setBreadcrumbsWithLogging(collection);
+      } else {
+        console.log('Skipping breadcrumb update due to navigation flag');
+      }
     } else {
-      setBreadcrumbs([collection]);
+      console.log('updateBreadcrumbs called with single:', { name: collection.name, uuid: collection.uuid });
+      console.log('isNavigatingToRoot flag:', isNavigatingToRoot);
+      if (!isNavigatingToRoot) {
+        setBreadcrumbsWithLogging([collection]);
+      } else {
+        console.log('Skipping breadcrumb update due to navigation flag');
+      }
     }
+  };
+
+  // Override setBreadcrumbs to catch any direct calls
+  const setBreadcrumbsWithLogging = (breadcrumbs: Collection[]) => {
+    console.log('setBreadcrumbs called directly with:', breadcrumbs.map(c => ({ name: c.name, uuid: c.uuid })));
+    console.log('isNavigatingToRoot flag:', isNavigatingToRoot);
+    if (!isNavigatingToRoot) {
+      setBreadcrumbs(breadcrumbs);
+    } else {
+      console.log('Skipping direct breadcrumb set due to navigation flag');
+    }
+  };
+
+  // Function to build breadcrumb trail from full_path using cache
+  const buildBreadcrumbTrail = async (collection: Collection): Promise<Collection[]> => {
+    if (!collection.full_path) {
+      console.log('No full_path found for collection:', collection);
+      return [collection];
+    }
+
+    console.log('Building breadcrumb trail for:', collection.full_path);
+    const pathParts = collection.full_path.split('/');
+    console.log('Path parts:', pathParts);
+    
+    const breadcrumbTrail: Collection[] = [];
+    
+    // For each path part, check cache first, then search if needed
+    for (let i = 0; i < pathParts.length; i++) {
+      const pathPart = pathParts[i];
+      const currentPath = pathParts.slice(0, i + 1).join('/');
+      console.log(`Processing path part ${i}: "${pathPart}", current path: "${currentPath}"`);
+      
+      if (i === pathParts.length - 1) {
+        // This is the current collection, use the full details
+        console.log('Adding current collection to breadcrumb trail');
+        breadcrumbTrail.push(collection);
+      } else {
+        // Check cache first
+        const cachedCollection = collectionPathCache.get(currentPath);
+        if (cachedCollection) {
+          console.log('Found parent collection in cache:', cachedCollection);
+          breadcrumbTrail.push(cachedCollection);
+        } else {
+          // Not in cache, search for it more aggressively
+          try {
+            console.log(`Searching for parent collection with path: "${currentPath}"`);
+            
+            // First try to find by exact path match
+            let response = await api.get('/reggie/api/v1/files/?file_manager=true&page_size=1000');
+            if (response && typeof response === 'object' && 'results' in response) {
+              const data = response as any;
+              console.log('Search results:', data.results);
+              
+              let parentCollection = data.results.find((item: any) => {
+                const matches = item.type === 'collection' && item.full_path === currentPath;
+                console.log(`Checking item: type=${item.type}, full_path="${item.full_path}", matches=${matches}`);
+                return matches;
+              });
+              
+              // If not found by exact path, try to find by name at the same level
+              if (!parentCollection && i > 0) {
+                const parentPath = pathParts.slice(0, i).join('/');
+                console.log(`Trying to find by name "${pathPart}" in parent path "${parentPath}"`);
+                
+                const parentResponse = await api.get(`/reggie/api/v1/files/?file_manager=true&page_size=1000&collection_uuid=${breadcrumbTrail[i-1]?.uuid || ''}`);
+                if (parentResponse && typeof parentResponse === 'object' && 'results' in parentResponse) {
+                  const parentData = parentResponse as any;
+                  parentCollection = parentData.results.find((item: any) => 
+                    item.type === 'collection' && item.name === pathPart
+                  );
+                  console.log('Found by name search:', parentCollection);
+                }
+              }
+              
+              if (parentCollection) {
+                console.log('Found parent collection:', parentCollection);
+                // Create collection object and cache it
+                const collectionObj = {
+                  uuid: parentCollection.uuid,
+                  name: parentCollection.name,
+                  description: parentCollection.description,
+                  collection_type: parentCollection.collection_type,
+                  sort_order: parentCollection.sort_order || 0,
+                  children: parentCollection.children || [],
+                  files: parentCollection.files || [],
+                  full_path: parentCollection.full_path,
+                  created_at: parentCollection.created_at,
+                } as Collection;
+                
+                // Cache this collection for future use
+                setCollectionPathCache(prev => new Map(prev).set(currentPath, collectionObj));
+                
+                breadcrumbTrail.push(collectionObj);
+              } else {
+                console.warn(`Could not find parent collection for path: "${currentPath}"`);
+                // Try to get the UUID from the navigation path if available
+                if (navigationPath[i]) {
+                  console.log(`Using navigation path UUID for level ${i}:`, navigationPath[i]);
+                  breadcrumbTrail.push({
+                    uuid: navigationPath[i],
+                    name: pathPart,
+                    description: '',
+                    collection_type: 'folder' as any,
+                    sort_order: 0,
+                    children: [],
+                    files: [],
+                    full_path: currentPath,
+                    created_at: '',
+                  } as Collection);
+                } else {
+                  // Create a placeholder as last resort
+                  breadcrumbTrail.push({
+                    uuid: `placeholder-${i}`,
+                    name: pathPart,
+                    description: '',
+                    collection_type: 'folder' as any,
+                    sort_order: 0,
+                    children: [],
+                    files: [],
+                    full_path: currentPath,
+                    created_at: '',
+                  } as Collection);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to find parent collection:', error);
+            // Try to get the UUID from the navigation path if available
+            if (navigationPath[i]) {
+              console.log(`Using navigation path UUID for level ${i}:`, navigationPath[i]);
+              breadcrumbTrail.push({
+                uuid: navigationPath[i],
+                name: pathPart,
+                description: '',
+                collection_type: 'folder' as any,
+                sort_order: 0,
+                children: [],
+                files: [],
+                full_path: currentPath,
+                created_at: '',
+              } as Collection);
+            } else {
+              // Create a placeholder as last resort
+              breadcrumbTrail.push({
+                uuid: `placeholder-${i}`,
+                name: pathPart,
+                description: '',
+                collection_type: 'folder' as any,
+                sort_order: 0,
+                children: [],
+                files: [],
+                full_path: currentPath,
+                created_at: '',
+              } as Collection);
+            }
+          }
+        }
+      }
+    }
+    
+    console.log('Final breadcrumb trail:', breadcrumbTrail);
+    return breadcrumbTrail;
   };
 
   const handleUploadComplete = (uploadedFiles: FileWithUI[]) => {
@@ -433,7 +661,7 @@ export function FileManager() {
       {
         id: "type",
         header: 'Type',
-        accessorFn: (row) => row.type === 'folder' ? 'Folder' : (row.file_type || 'Unknown'),
+        accessorFn: (row) => row.type === 'folder' ? (row.folder?.collection_type || 'Folder') : (row.file_type || 'Unknown'),
       },
       // Collection column
       {
@@ -535,6 +763,131 @@ export function FileManager() {
       default:
         return null;
     }
+  };
+
+  // Function to navigate to a specific collection
+  const navigateToCollection = async (collectionUuid: string, breadcrumbIndex?: number) => {
+    try {
+      console.log('navigateToCollection called with:', { collectionUuid, breadcrumbIndex, currentNavigationPath: navigationPath });
+      
+      setCurrentCollectionUuid(collectionUuid);
+      setCurrentPage(1); // Reset to first page when navigating
+      
+      // Fetch data for the new collection
+      const response = await api.get(`/reggie/api/v1/files/?file_manager=true&page=1&page_size=${itemsPerPage}&collection_uuid=${collectionUuid}`);
+      if (response && typeof response === 'object' && 'results' in response) {
+        const data = response as any;
+        setCurrentLocation(data.results);
+        setItemsCount(data.count || 0);
+        setHasNextPage(!!data.next);
+        
+        // Update breadcrumbs for the new location
+        const collection = await getCollectionByUuid(collectionUuid);
+        const breadcrumbTrail = await buildBreadcrumbTrail(collection);
+        updateBreadcrumbs(breadcrumbTrail);
+        
+        // Pre-populate cache with collections from this level for better breadcrumb building
+        if (data.results && data.results.length > 0) {
+          const collections = data.results.filter((item: any) => item.type === 'collection');
+          collections.forEach((col: any) => {
+            if (col.full_path) {
+              const collectionObj = {
+                uuid: col.uuid,
+                name: col.name,
+                description: col.description,
+                collection_type: col.collection_type,
+                sort_order: col.sort_order || 0,
+                children: col.children || [],
+                files: col.files || [],
+                full_path: col.full_path,
+                created_at: col.created_at,
+              } as Collection;
+              setCollectionPathCache(prev => new Map(prev).set(col.full_path, collectionObj));
+              setCollectionPathCache(prev => new Map(prev).set(`uuid-${col.uuid}`, collectionObj));
+            }
+          });
+          console.log('Pre-populated cache with', collections.length, 'collections from current level');
+        }
+        
+        // Update navigation path based on breadcrumb trail
+        if (breadcrumbIndex !== undefined) {
+          // If navigating via breadcrumb, truncate the path
+          const newPath = breadcrumbTrail.slice(0, breadcrumbIndex + 1).map(c => c.uuid).filter((uuid): uuid is string => uuid !== undefined && !uuid.startsWith('placeholder-'));
+          console.log('Truncating navigation path from', navigationPath, 'to', newPath);
+          setNavigationPath(newPath);
+        } else {
+          // If navigating into a new collection, add to the path
+          if (!navigationPath.includes(collectionUuid)) {
+            const newPath = [...navigationPath, collectionUuid];
+            console.log('Adding to navigation path:', newPath);
+            setNavigationPath(newPath);
+          }
+        }
+        
+        console.log('Navigation complete. New breadcrumbs:', breadcrumbTrail);
+        console.log('Updated navigation path:', navigationPath);
+      }
+    } catch (error) {
+      console.error('Failed to navigate to collection:', error);
+      toast.error('Failed to navigate to collection');
+    }
+  };
+
+  // Function to navigate back to root
+  const navigateToRoot = () => {
+    console.log('navigateToRoot called. Resetting navigation path from:', navigationPath);
+    console.log('Current breadcrumbs before reset:', breadcrumbs);
+    setIsNavigatingToRoot(true);
+    setCurrentCollectionUuid(undefined);
+    setCurrentPage(1);
+    setNavigationPath([]);
+    // Clear breadcrumbs immediately
+    setBreadcrumbs([]);
+    console.log('Breadcrumbs cleared, calling fetchData');
+    fetchData();
+  };
+
+  // Function to rebuild breadcrumbs from navigation path
+  const rebuildBreadcrumbsFromPath = async () => {
+    console.log('rebuildBreadcrumbsFromPath called with:', { navigationPath, currentCollectionUuid, isNavigatingToRoot });
+    if (navigationPath.length === 0 || !currentCollectionUuid) {
+      console.log('Not rebuilding breadcrumbs - at root level');
+      setBreadcrumbsWithLogging([]);
+      return;
+    }
+
+    if (isNavigatingToRoot) {
+      console.log('Skipping breadcrumb rebuild due to navigation flag');
+      return;
+    }
+
+    console.log('Rebuilding breadcrumbs from navigation path:', navigationPath);
+    const breadcrumbTrail: Collection[] = [];
+    
+    for (let i = 0; i < navigationPath.length; i++) {
+      const uuid = navigationPath[i];
+      try {
+        const collection = await getCollectionByUuid(uuid);
+        breadcrumbTrail.push(collection);
+      } catch (error) {
+        console.error(`Failed to fetch collection ${uuid} for breadcrumb:`, error);
+        // Use placeholder if we can't fetch the collection
+        breadcrumbTrail.push({
+          uuid: uuid,
+          name: `Collection ${i + 1}`,
+          description: '',
+          collection_type: 'folder' as any,
+          sort_order: 0,
+          children: [],
+          files: [],
+          full_path: '',
+          created_at: '',
+        } as Collection);
+      }
+    }
+    
+    console.log('Rebuilt breadcrumb trail:', breadcrumbTrail);
+    updateBreadcrumbs(breadcrumbTrail);
   };
 
   return (
@@ -684,10 +1037,7 @@ export function FileManager() {
       <div className="flex items-center gap-2 mb-4 text-sm">
         <span 
           className={`${!currentCollectionUuid ? 'text-gray-900 font-semibold' : 'text-blue-600 hover:text-blue-800 cursor-pointer font-medium'}`}
-          onClick={!currentCollectionUuid ? undefined : () => {
-            setCurrentCollectionUuid(undefined);
-            fetchData();
-          }}
+          onClick={!currentCollectionUuid ? undefined : navigateToRoot}
         >
           Root
         </span>
@@ -695,16 +1045,34 @@ export function FileManager() {
           <React.Fragment key={crumb.uuid || index}>
             <span className="text-gray-400">/</span>
             <span 
-              className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium"
-              onClick={() => {
-                setCurrentCollectionUuid(crumb.uuid);
-                fetchData();
+              className={`text-blue-600 hover:text-blue-800 cursor-pointer font-medium ${
+                index === breadcrumbs.length - 1 ? 'font-semibold' : ''
+              }`}
+              onClick={async () => {
+                // Navigate to the clicked breadcrumb
+                if (crumb.uuid && !crumb.uuid.startsWith('placeholder-')) {
+                  console.log('Navigating to breadcrumb:', crumb.name, 'with UUID:', crumb.uuid, 'at index:', index);
+                  console.log('Current navigation path:', navigationPath);
+                  console.log('Current breadcrumbs:', breadcrumbs.map(c => ({ name: c.name, uuid: c.uuid })));
+                  await navigateToCollection(crumb.uuid, index);
+                } else {
+                  // This is a placeholder, we can't navigate to it
+                  console.warn('Cannot navigate to placeholder breadcrumb:', crumb);
+                  return;
+                }
               }}
             >
               {crumb.name}
             </span>
           </React.Fragment>
         ))}
+        {/* Debug info - remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="ml-4 text-xs text-gray-500">
+            <div>Nav Path: [{navigationPath.join(' → ')}]</div>
+            <div>Breadcrumbs: [{breadcrumbs.map(c => c.uuid || 'placeholder').join(' → ')}]</div>
+          </div>
+        )}
       </div>
 
       {/* Bulk actions bar for selected items */}
@@ -813,16 +1181,15 @@ export function FileManager() {
                               ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
                               : ''
                         }`}
-                        onClick={item.type === 'folder' ? () => {
+                        onClick={() => {
                           if (item.id === 'go-up') {
                             // Go up to parent directory
-                            setCurrentCollectionUuid(undefined);
-                          } else {
+                            navigateToRoot();
+                          } else if (item.type === 'folder' && item.folder?.uuid) {
                             // Navigate into folder
-                            setCurrentCollectionUuid(item.folder!.uuid);
+                            navigateToCollection(item.folder.uuid);
                           }
-                          fetchData();
-                        } : undefined}
+                        }}
                       >
                         {item.name}
                       </span>
@@ -832,7 +1199,7 @@ export function FileManager() {
                     {item.file_size ? formatFileSize(item.file_size) : '--'}
                   </TableCell>
                   <TableCell className="text-xs uppercase text-muted-foreground">
-                    {item.type === 'folder' ? 'Folder' : (item.file_type || 'Unknown')}
+                    {item.type === 'folder' ? (item.folder?.collection_type || 'Folder') : (item.file_type || 'Unknown')}
                   </TableCell>
                   <TableCell>{item.collection?.name || '-'}</TableCell>
                   <TableCell>{formatDate(item.created_at)}</TableCell>
@@ -909,12 +1276,11 @@ export function FileManager() {
                               onClick={() => {
                                 if (item.id === 'go-up') {
                                   // Go up to parent directory
-                                  setCurrentCollectionUuid(undefined);
-                                } else {
+                                  navigateToRoot();
+                                } else if (item.folder?.uuid) {
                                   // Navigate into folder
-                                  setCurrentCollectionUuid(item.folder!.uuid);
+                                  navigateToCollection(item.folder.uuid);
                                 }
-                                fetchData();
                               }}
                             >
                               <Eye className="h-4 w-4 mr-2" />

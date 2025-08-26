@@ -77,9 +77,9 @@ export default function KnowledgeManagement() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
+      {/* <div className="p-4 border-b flex items-center justify-between">
         <h1 className="text-xl font-medium">Knowledge Management</h1>
-      </div>
+      </div> */}
 
       <div className="flex-1 overflow-auto p-4">
         <Tabs defaultValue="files" value={activeTab} onValueChange={(value) => {
