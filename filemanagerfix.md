@@ -206,6 +206,25 @@ Consolidate the multiple useEffect hooks into fewer, more focused ones that don'
   - Adding safety checks in `rebuildBreadcrumbsFromPath` function
   - Added comprehensive debugging with stack traces to identify future issues
 
+**Major Simplification Applied:**
+- **Completely removed `getCollectionByUuid` dependency** since the file manager API now handles all collection details
+- **Simplified breadcrumb rebuilding** to use only cached data from file manager responses
+- **Eliminated all external collection API calls** - now everything goes through the single file manager endpoint
+- **Cleaner architecture** with the file manager as the single source of truth for collection data
+- **Reduced API complexity** from multiple endpoints to just one optimized endpoint
+
+**Expected Result:**
+- **Single API call** when opening collections: `files/?file_manager=true&page=1&page_size=10&collection_uuid=...`
+- **No more duplicate calls** to collection detail endpoints
+- **Faster navigation** with all data coming from one optimized endpoint
+- **Simplified codebase** with fewer dependencies and cleaner logic
+
+**Backend Integration Complete:**
+- **Updated frontend** to use new backend response structure with `current_collection` and `breadcrumb_path`
+- **Real collection names** now displayed in breadcrumbs instead of "Collection 1"
+- **Enhanced caching** of current collection and breadcrumb path data
+- **Single source of truth** - all collection data comes from file manager API response
+
 **Task 4.3: Add Debouncing (Optional)** ✅
 - [x] Implement debounced search
 - [x] Add navigation debouncing if needed

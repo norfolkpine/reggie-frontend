@@ -73,7 +73,7 @@ import {
   listFilesWithKbs,
   ingestSelectedFiles,
 } from '@/api/files';
-import { listCollections, deleteCollection, getCollectionByUuid } from '@/api/collections';
+import { listCollections, deleteCollection } from '@/api/collections';
 import { api } from '@/lib/api-client';
 
 interface ApiResponse {
@@ -387,11 +387,22 @@ export function FileManager() {
       );
       
       if (response && typeof response === 'object' && 'results' in response) {
-        // File manager response with pagination
+        // File manager response with pagination and collection details
         const data = response as {
           count: number;
           next: string | null;
           previous: string | null;
+          current_collection?: {
+            uuid: string;
+            name: string;
+            description: string;
+            collection_type: string;
+            created_at: string;
+          };
+          breadcrumb_path?: Array<{
+            uuid: string;
+            name: string;
+          }>;
           results: Array<{
             type: 'collection' | 'file';
             uuid: string;
@@ -435,9 +446,69 @@ export function FileManager() {
           console.log('Populated collection cache with', collections.length, 'collections');
         }
         
+        // Cache the current collection details from the response
+        if (data.current_collection) {
+          const currentCollection = {
+            uuid: data.current_collection.uuid,
+            name: data.current_collection.name,
+            description: data.current_collection.description,
+            collection_type: data.current_collection.collection_type,
+            sort_order: 0,
+            children: [],
+            files: [],
+            full_path: '',
+            created_at: data.current_collection.created_at,
+          } as Collection;
+          
+          cacheCollection(currentCollection);
+          console.log('Cached current collection:', currentCollection.name);
+        }
+        
+        // Cache breadcrumb path collections
+        if (data.breadcrumb_path && data.breadcrumb_path.length > 0) {
+          data.breadcrumb_path.forEach((breadcrumbItem, index) => {
+            const breadcrumbCollection = {
+              uuid: breadcrumbItem.uuid,
+              name: breadcrumbItem.name,
+              description: '',
+              collection_type: 'folder' as any,
+              sort_order: index,
+              children: [],
+              files: [],
+              full_path: '',
+              created_at: '',
+            } as Collection;
+            
+            cacheCollection(breadcrumbCollection);
+          });
+          console.log('Cached breadcrumb path with', data.breadcrumb_path.length, 'collections');
+        }
+        
         // Handle breadcrumbs based on current location
         if (currentCollectionUuid) {
           console.log('Inside collection, breadcrumbs will be built from navigation path');
+          
+          // If we have breadcrumb path from the backend, use it directly
+          if (data.breadcrumb_path && data.breadcrumb_path.length > 0) {
+            console.log('Using breadcrumb path from backend response');
+            // Convert breadcrumb path to Collection objects for breadcrumb display
+            const breadcrumbCollections = data.breadcrumb_path.map((item, index) => ({
+              uuid: item.uuid,
+              name: item.name,
+              description: '',
+              collection_type: 'folder' as any,
+              sort_order: index,
+              children: [],
+              files: [],
+              full_path: '',
+              created_at: '',
+            } as Collection));
+            
+            updateBreadcrumbs(breadcrumbCollections);
+          } else {
+            // Fallback to rebuilding breadcrumbs from navigation path
+            console.log('No breadcrumb path from backend, rebuilding from navigation path');
+          }
         } else {
           // At root level, clear breadcrumbs and navigation path
           console.log('At root level, clearing breadcrumbs and navigation path');
@@ -787,16 +858,9 @@ export function FileManager() {
       
       // Note: fetchData will be called automatically by useEffect when currentCollectionUuid changes
       // This prevents duplicate API calls
-        
-        // Cache the current collection for breadcrumb building
-        try {
-          const collection = await getCollectionByUuid(collectionUuid);
-          // Cache by UUID for breadcrumb lookup
-          cacheCollection(collection);
-          console.log('Cached collection for breadcrumbs:', collection.name);
-        } catch (error) {
-          console.error('Failed to fetch collection details for caching:', error);
-        }
+      
+      // The collection details will be cached when fetchData runs and populates the cache
+      // No need to make a separate API call here - backend will provide current collection details
         
         // Simple navigation stack management
         if (breadcrumbIndex !== undefined) {
@@ -866,7 +930,7 @@ export function FileManager() {
 
     console.log('Rebuilding breadcrumbs from navigation path:', navigationPath);
     
-    // Build breadcrumbs from navigation path, fetching collection details if needed
+    // Build breadcrumbs from navigation path using cached data
     const breadcrumbTrail: Collection[] = [];
     
     for (let i = 0; i < navigationPath.length; i++) {
@@ -875,28 +939,22 @@ export function FileManager() {
       // Check cache first
       let collection: Collection | undefined = getCachedCollection(uuid);
       if (!collection) {
-        // If not in cache, fetch the collection details
-        try {
-          console.log('Fetching collection details for breadcrumb:', uuid);
-          const fetchedCollection = await getCollectionByUuid(uuid);
-          // Cache it for future use
-          cacheCollection(fetchedCollection);
-          collection = fetchedCollection;
-        } catch (error) {
-          console.error(`Failed to fetch collection ${uuid} for breadcrumb:`, error);
-          // Create a minimal collection object as fallback
-          collection = {
-            uuid: uuid,
-            name: `Collection ${i + 1}`,
-            description: '',
-            collection_type: 'folder' as any,
-            sort_order: 0,
-            children: [],
-            files: [],
-            full_path: '',
-            created_at: '',
-          } as Collection;
-        }
+        // If not in cache, create a minimal collection object
+        // The file manager API will populate the cache with real data when available
+        collection = {
+          uuid: uuid,
+          name: `Collection ${i + 1}`,
+          description: '',
+          collection_type: 'folder' as any,
+          sort_order: 0,
+          children: [],
+          files: [],
+          full_path: '',
+          created_at: '',
+        } as Collection;
+        
+        // Cache the minimal collection to avoid recreating it
+        cacheCollection(collection);
       }
       
       // At this point, collection is guaranteed to be defined
