@@ -113,7 +113,7 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                       <DropdownMenuItem>Open</DropdownMenuItem>
                       <DropdownMenuItem>Rename</DropdownMenuItem>
                       <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardFooter>
@@ -166,7 +166,7 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                       <DropdownMenuItem>Open</DropdownMenuItem>
                       <DropdownMenuItem>Rename</DropdownMenuItem>
                       <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
