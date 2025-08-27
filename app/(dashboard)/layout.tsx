@@ -46,7 +46,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           customContent={headerCustomContent}
         />
       </div>
-      <div className={isScrolled ? 'pt-0' : 'pt-4'}>
+      <div className={isScrolled ? 'pt-0' : 'pt-0'}>
         {children}
       </div>
     </div>
