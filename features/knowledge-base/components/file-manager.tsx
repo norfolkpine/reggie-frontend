@@ -17,6 +17,7 @@ import {
   Plus,
   Folder,
   FolderOpen,
+  Cloud,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -710,6 +711,11 @@ export function FileManager() {
     }
   };
 
+  const handleGoogleDriveClick = () => {
+    // TODO: Implement Google Drive integration
+    toast.info('Google Drive integration coming soon!');
+  };
+
   // TanStack table setup
   const multiSelectFilter: ColumnDef<FileOrFolder>["filterFn"] = (row, id, value) => {
     if (!Array.isArray(value) || value.length === 0) return true;
@@ -990,6 +996,10 @@ export function FileManager() {
                 <DropdownMenuItem onClick={() => setIsCreateFolderOpen(true)}>
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Folder
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleGoogleDriveClick()}>
+                  <Cloud className="h-4 w-4 mr-2" />
+                  Google Drive
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

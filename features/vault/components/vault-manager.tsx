@@ -256,6 +256,15 @@ export function VaultManager() {
     fetchFiles(); // Refresh the file list
   };
 
+  const handleGoogleDriveClick = () => {
+    // TODO: Implement Google Drive integration
+    toast({
+      title: "Google Drive Integration",
+      description: "Google Drive integration coming soon!",
+      duration: 3000,
+    });
+  };
+
   const handleFileDownload = (file: VaultFile) => {
     // Direct download through URL
     if (file.file && isSafeUrl(file.file)) {
@@ -563,9 +572,24 @@ export function VaultManager() {
                           )}
                         </Button>
                       )}
-                      <Button onClick={() => setIsUploadDialogOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Upload Files
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button>
+                            Upload
+                            <Plus className="h-4 w-4 mr-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            File
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleGoogleDriveClick()}>
+                            <UploadCloud className="h-4 w-4 mr-2" />
+                            Google Drive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
