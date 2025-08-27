@@ -302,7 +302,7 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full relative">
+    <div className="flex-1 flex flex-col relative">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 p-4 border-b flex items-center justify-between">
         <h1 className="text-xl font-medium">ChatGPT 4o</h1>

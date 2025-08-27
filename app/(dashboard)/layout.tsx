@@ -27,15 +27,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // If custom header is provided, use it; otherwise use PageHeader with actions/content
   if (customHeader) {
     return (
-      <div className="bg-white rounded-xl border shadow-sm h-full overflow-auto">
+      <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden">
         {customHeader}
-        {children}
+        <div className="flex-1 overflow-auto px-1">
+          {children}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm h-full overflow-auto" ref={scrollContainerRef}>
+    <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden" ref={scrollContainerRef}>
       <div className={`transition-all duration-200 ${
         isScrolled 
           ? 'sticky top-0 z-50 rounded-none shadow-md bg-white' 
@@ -46,7 +48,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           customContent={headerCustomContent}
         />
       </div>
-      <div className={isScrolled ? 'pt-0' : 'pt-0'}>
+      <div className="flex-1 overflow-auto px-1">
         {children}
       </div>
     </div>
