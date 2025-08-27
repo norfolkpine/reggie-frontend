@@ -119,7 +119,40 @@ interface FileOrFolder {
 export function FileManager() {
   const [currentLocation, setCurrentLocation] = useState<any[] | null>(null);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [collectionPathCache, setCollectionPathCache] = useState<Map<string, Collection>>(new Map());
+  // Improved collection cache with better key management
+  const [collectionCache, setCollectionCache] = useState<Map<string, Collection>>(new Map());
+  
+  // Cache helper functions
+  const cacheCollection = (collection: Collection) => {
+    if (collection.uuid) {
+      setCollectionCache(prev => new Map(prev).set(collection.uuid!, collection));
+    }
+  };
+  
+  const getCachedCollection = (uuid: string): Collection | undefined => {
+    return collectionCache.get(uuid);
+  };
+  
+  const clearCache = () => {
+    setCollectionCache(new Map());
+  };
+  
+  // Cache invalidation logic
+  const invalidateCollectionCache = (uuid?: string) => {
+    if (uuid) {
+      // Remove specific collection from cache
+      setCollectionCache(prev => {
+        const newCache = new Map(prev);
+        newCache.delete(uuid);
+        return newCache;
+      });
+      console.log('Invalidated cache for collection:', uuid);
+    } else {
+      // Clear entire cache
+      clearCache();
+      console.log('Cleared entire collection cache');
+    }
+  };
 
   // Consolidated navigation state
   const [navigationState, setNavigationState] = useState({
@@ -165,8 +198,35 @@ export function FileManager() {
     }
   };
   
+  // Cancel all pending requests (useful when navigating)
+  const cancelPendingRequests = () => {
+    setPendingRequests(new Map());
+    console.log('Cancelled all pending requests');
+  };
+  
+  // Debounced search hook
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+      
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+    
+    return debouncedValue;
+  };
+  
   // TanStack column filters
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  
+  // Debounced search state
+  const [searchValue, setSearchValue] = useState('');
+  const debouncedSearchValue = useDebounce(searchValue, 500); // 500ms delay
 
   const statusOptions = ['ready', 'processing', 'error'];
   const typeOptions = ['pdf', 'docx', 'csv', 'xlsx', 'txt', 'jpeg', 'png'];
@@ -257,11 +317,20 @@ export function FileManager() {
 
   useEffect(() => {
     fetchData();
-  }, [currentCollectionUuid, currentPage, itemsPerPage]);
+  }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue]);
 
   // Rebuild breadcrumbs when navigation path changes
   useEffect(() => {
     console.log('useEffect triggered:', { navigationPathLength: navigationPath.length, currentCollectionUuid });
+    
+    // Don't run breadcrumb logic if we're at root level
+    if (!currentCollectionUuid) {
+      if (breadcrumbs.length > 0) {
+        console.log('At root level, clearing breadcrumbs');
+        updateNavigationState({ breadcrumbs: [] });
+      }
+      return;
+    }
     
     if (navigationPath.length > 0 && currentCollectionUuid) {
       console.log('Calling rebuildBreadcrumbsFromPath');
@@ -276,11 +345,21 @@ export function FileManager() {
 
 
   const fetchData = async () => {
-    console.log('fetchData called with:', { currentCollectionUuid, currentPage, itemsPerPage });
+    console.log('fetchData called with:', { 
+      currentCollectionUuid, 
+      currentPage, 
+      itemsPerPage, 
+      debouncedSearchValue,
+      searchValue,
+      navigationPath: navigationPath.length 
+    });
+    
+    // Add stack trace to see where fetchData is being called from
+    console.trace('fetchData call stack');
     setIsLoading(true);
     try {
-      // Get search query from table column filter
-      const searchFilter = table.getColumn('name')?.getFilterValue() as string;
+      // Use debounced search value to prevent rapid API calls
+      const searchFilter = debouncedSearchValue;
       
       // Build query parameters for the file manager endpoint
       const params: Record<string, string> = {
@@ -336,7 +415,7 @@ export function FileManager() {
         if (data.results && data.results.length > 0) {
           const collections = data.results.filter((item: any) => item.type === 'collection');
           collections.forEach((col: any) => {
-            if (col.full_path) {
+            if (col.uuid) {
               const collectionObj = {
                 uuid: col.uuid,
                 name: col.name,
@@ -345,13 +424,12 @@ export function FileManager() {
                 sort_order: col.sort_order || 0,
                 children: col.children || [],
                 files: col.files || [],
-                full_path: col.full_path,
+                full_path: col.full_path || '',
                 created_at: col.created_at,
               } as Collection;
-              setCollectionPathCache(prev => new Map(prev).set(col.full_path, collectionObj));
               
-              // Also cache by UUID for reverse lookup
-              setCollectionPathCache(prev => new Map(prev).set(`uuid-${col.uuid}`, collectionObj));
+              // Cache by UUID for easy lookup
+              cacheCollection(collectionObj);
             }
           });
           console.log('Populated collection cache with', collections.length, 'collections');
@@ -430,7 +508,7 @@ export function FileManager() {
         const uuid = navigationPath[i];
         
         // Check cache first
-        const cachedCollection = collectionPathCache.get(`uuid-${uuid}`);
+        const cachedCollection = getCachedCollection(uuid);
         if (cachedCollection) {
           console.log('Found collection in cache:', cachedCollection.name);
           breadcrumbTrail.push(cachedCollection);
@@ -487,6 +565,8 @@ export function FileManager() {
   const handleDeleteFolder = async (collectionUuid: string) => {
     try {
       await deleteCollection(collectionUuid);
+      // Invalidate cache for deleted collection
+      invalidateCollectionCache(collectionUuid);
       toast.success('Folder deleted successfully');
       fetchData(); // Refresh the list
     } catch (error) {
@@ -699,6 +779,9 @@ export function FileManager() {
     try {
       console.log('navigateToCollection called with:', { collectionUuid, breadcrumbIndex, currentNavigationPath: navigationPath });
       
+      // Cancel any pending requests when navigating
+      cancelPendingRequests();
+      
       updateNavigationState({ currentCollectionUuid: collectionUuid });
       setCurrentPage(1); // Reset to first page when navigating
       
@@ -709,7 +792,7 @@ export function FileManager() {
         try {
           const collection = await getCollectionByUuid(collectionUuid);
           // Cache by UUID for breadcrumb lookup
-          setCollectionPathCache(prev => new Map(prev).set(`uuid-${collectionUuid}`, collection));
+          cacheCollection(collection);
           console.log('Cached collection for breadcrumbs:', collection.name);
         } catch (error) {
           console.error('Failed to fetch collection details for caching:', error);
@@ -741,18 +824,27 @@ export function FileManager() {
   const navigateToRoot = () => {
     console.log('navigateToRoot called. Resetting navigation path from:', navigationPath);
     console.log('Current breadcrumbs before reset:', breadcrumbs);
-    updateNavigationState({ currentCollectionUuid: undefined });
+    
+    // Clear cache when navigating to root to free up memory
+    clearCache();
+    
+    // Cancel any pending requests when navigating to root
+    cancelPendingRequests();
+    
+    // Clear search value to prevent debounced search from triggering additional API calls
+    setSearchValue('');
+    
+    // Update all navigation state at once to prevent useEffect from running multiple times
     updateNavigationState({ 
       currentCollectionUuid: undefined,
       navigationPath: [],
       breadcrumbs: []
     });
-    console.log('Breadcrumbs cleared, calling fetchData');
     
-    // Use setTimeout to ensure state updates are processed before fetchData
-    setTimeout(() => {
-      fetchData();
-    }, 0);
+    console.log('Navigation state reset, search cleared, fetchData will be triggered by useEffect');
+    
+    // Remove the manual fetchData call - let useEffect handle it
+    // The useEffect will automatically trigger when currentCollectionUuid changes to undefined
   };
 
   // Function to rebuild breadcrumbs from navigation path
@@ -765,6 +857,12 @@ export function FileManager() {
       updateNavigationState({ breadcrumbs: [] });
       return;
     }
+    
+    // Additional safety check - if we're at root, don't proceed
+    if (!currentCollectionUuid) {
+      console.log('Safety check: currentCollectionUuid is undefined, aborting breadcrumb rebuild');
+      return;
+    }
 
     console.log('Rebuilding breadcrumbs from navigation path:', navigationPath);
     
@@ -775,14 +873,14 @@ export function FileManager() {
       const uuid = navigationPath[i];
       
       // Check cache first
-      let collection: Collection | undefined = collectionPathCache.get(`uuid-${uuid}`);
+      let collection: Collection | undefined = getCachedCollection(uuid);
       if (!collection) {
         // If not in cache, fetch the collection details
         try {
           console.log('Fetching collection details for breadcrumb:', uuid);
           const fetchedCollection = await getCollectionByUuid(uuid);
           // Cache it for future use
-          setCollectionPathCache(prev => new Map(prev).set(`uuid-${uuid}`, fetchedCollection));
+          cacheCollection(fetchedCollection);
           collection = fetchedCollection;
         } catch (error) {
           console.error(`Failed to fetch collection ${uuid} for breadcrumb:`, error);
@@ -847,10 +945,12 @@ export function FileManager() {
           <Input
             type="text"
             placeholder="Search files and folders..."
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-            onChange={(e) =>
-              table.getColumn('name')?.setFilterValue(e.target.value)
-            }
+            value={searchValue}
+            onChange={(e) => {
+              setSearchValue(e.target.value);
+              // Update table filter for immediate UI feedback
+              table.getColumn('name')?.setFilterValue(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 fetchData();

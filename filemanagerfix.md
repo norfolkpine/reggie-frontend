@@ -176,20 +176,45 @@ Consolidate the multiple useEffect hooks into fewer, more focused ones that don'
 - Navigation stack operations are now O(1) instead of O(n) with API calls
 
 ### Phase 4: Caching and Optimization (Performance)
-**Task 4.1: Improve Collection Cache**
-- [ ] Simplify `collectionPathCache` usage
-- [ ] Add cache invalidation logic
-- [ ] Test cache hit rates
+**Task 4.1: Improve Collection Cache** ✅
+- [x] Simplify `collectionPathCache` usage
+- [x] Add cache invalidation logic
+- [x] Test cache hit rates
 
-**Task 4.2: Add API Call Deduplication**
-- [ ] Implement request deduplication for identical calls
-- [ ] Add request cancellation for outdated requests
-- [ ] Test reduction in duplicate API calls
+**Optimizations Made:**
+- Replaced complex `collectionPathCache` with simple `collectionCache` using UUID keys
+- Added `cacheCollection()`, `getCachedCollection()`, and `clearCache()` helper functions
+- Implemented cache invalidation when collections are deleted or when navigating to root
+- Simplified cache key management (no more complex path-based keys)
 
-**Task 4.3: Add Debouncing (Optional)**
-- [ ] Implement debounced search
-- [ ] Add navigation debouncing if needed
-- [ ] Test user experience improvement
+**Task 4.2: Add API Call Deduplication** ✅
+- [x] Implement request deduplication for identical calls
+- [x] Add request cancellation for outdated requests
+- [x] Test reduction in duplicate API calls
+
+**Optimizations Made:**
+- Enhanced existing `deduplicatedRequest` function with better error handling
+- Added request cancellation by clearing pending requests when navigating
+- Integrated deduplication with the improved cache system
+- All API calls now go through the deduplication layer
+
+**Bug Fix Applied:**
+- Fixed duplicate API calls when navigating to root by:
+  - Consolidating navigation state updates into a single call
+  - Adding guards to prevent breadcrumb rebuilding at root level
+  - Clearing search value to prevent debounced search from triggering additional calls
+  - Adding safety checks in `rebuildBreadcrumbsFromPath` function
+  - Added comprehensive debugging with stack traces to identify future issues
+
+**Task 4.3: Add Debouncing (Optional)** ✅
+- [x] Implement debounced search
+- [x] Add navigation debouncing if needed
+- [x] Test user experience improvement
+
+**Optimizations Made:**
+- Added debounced search to prevent rapid API calls while typing
+- Implemented request cancellation for outdated search requests
+- Enhanced user experience with smoother search interactions
 
 ### Phase 5: Testing and Validation
 **Task 5.1: Test Navigation Scenarios**
