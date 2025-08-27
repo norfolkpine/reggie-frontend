@@ -9,7 +9,7 @@ import {
   IconBrandGithub,
   IconBrandGoogle,
   IconMail,
-  CheckCircle,
+  IconCheck,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
           title: "Error",
           description: message || "Failed to create account. Please try again.",
         });
-      }else if(error.errors && error.errors.length > 0){
+      } else if (error.errors && error.errors.length > 0) {
         toast({
           variant: "destructive",
           title: "Error",
@@ -118,7 +118,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     return (
       <div className={cn("grid gap-6 text-center", className)} {...props}>
         <div className="flex flex-col items-center gap-4">
-          <CheckCircle className="h-16 w-16 text-green-500" />
+          <IconCheck className="h-16 w-16 text-green-500" />
           <h2 className="text-2xl font-semibold">Account Created Successfully!</h2>
           <p className="text-muted-foreground">
             Please check your email to verify your account. You will be redirected to the sign-in page shortly.
@@ -224,7 +224,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 href={"/sign-in"}
               >
                 <IconMail className="h-4 w-4" /> Mail
-              </Button>
+              </LinkButton>
             </div>
           </div>
         </form>
