@@ -424,10 +424,15 @@ export default function ChatInterface() {
           <DropdownMenuSubContent>
             <DropdownMenuItem
               onSelect={() => {
-                alert('Upload from Drive clicked (placeholder)');
+                // TODO: Implement Google Drive integration
+                toast({
+                  title: "Google Drive Integration",
+                  description: "Google Drive integration coming soon!",
+                  duration: 3000,
+                });
               }}
             >
-              Upload from drive
+              Google Drive
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

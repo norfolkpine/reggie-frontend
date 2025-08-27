@@ -86,7 +86,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
   const { handleTokenExpiration } = useAuth();
 
   useEffect(() => {
-    if (!BASE_URL || BASE_URL === "undefined") {
+    if (BASE_URL === "undefined") {
       console.error("API Base URL is not defined. Check your environment variables.");
       setError("API configuration error. Please check your environment settings.");
     }

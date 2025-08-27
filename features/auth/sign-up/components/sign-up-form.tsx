@@ -9,6 +9,7 @@ import {
   IconBrandGithub,
   IconBrandGoogle,
   IconMail,
+  CheckCircle,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ const formSchema = z
 
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -81,7 +83,15 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
         title: "Success",
         description: "Account created successfully! Please verify your email.",
       });
-      window.location.reload();
+      
+      // Show success state instead of page refresh
+      setIsSuccess(true);
+      
+      // Optionally redirect to sign-in page after a delay
+      setTimeout(() => {
+        router.push("/sign-in");
+      }, 3000);
+      
     } catch (error: any) {
       const { hasFieldErrors, message } = handleApiError(error, form.setError);
 
@@ -101,6 +111,27 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  // Show success state if account creation was successful
+  if (isSuccess) {
+    return (
+      <div className={cn("grid gap-6 text-center", className)} {...props}>
+        <div className="flex flex-col items-center gap-4">
+          <CheckCircle className="h-16 w-16 text-green-500" />
+          <h2 className="text-2xl font-semibold">Account Created Successfully!</h2>
+          <p className="text-muted-foreground">
+            Please check your email to verify your account. You will be redirected to the sign-in page shortly.
+          </p>
+          <Button 
+            onClick={() => router.push("/sign-in")}
+            variant="outline"
+          >
+            Go to Sign In
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -161,7 +192,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               )}
             />
             <Button className="mt-2" disabled={isLoading}>
-              Create Account
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
 
             <div className="relative my-2">
@@ -193,7 +224,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 href={"/sign-in"}
               >
                 <IconMail className="h-4 w-4" /> Mail
-              </LinkButton>
+              </Button>
             </div>
           </div>
         </form>

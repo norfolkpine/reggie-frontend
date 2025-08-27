@@ -160,16 +160,61 @@ export function KnowledgeBaseDetail({
 
   const columns = useMemo<ColumnDef<KnowledgeBaseFile>[]>(
     () => [
-      { accessorKey: "title" },
+      // Checkbox column
       {
-        accessorKey: "status",
-        filterFn: multiSelectFilter,
+        id: "select",
+        header: "",
+        enableSorting: false,
+        enableHiding: false,
       },
+      // Name column
+      { 
+        accessorKey: "title",
+        header: "Name"
+      },
+      // Collection column
       {
         id: "collection",
         header: "Collection",
         accessorFn: (row) => row.collection?.name ?? "",
         filterFn: multiSelectFilter,
+      },
+      // File Size column
+      {
+        id: "filesize",
+        header: "File Size",
+        accessorFn: (row) => row.filesize,
+      },
+      // Chunk Size column
+      {
+        id: "chunk_size",
+        header: "Chunk Size",
+        accessorFn: (row) => row.chunk_size,
+      },
+      // Uploaded At column
+      {
+        id: "created_at",
+        header: "Uploaded At",
+        accessorFn: (row) => row.created_at,
+      },
+      // Status column
+      {
+        accessorKey: "status",
+        header: "Status",
+        filterFn: multiSelectFilter,
+      },
+      // Progress column
+      {
+        id: "progress",
+        header: "Progress",
+        accessorFn: (row) => row.progress,
+      },
+      // Actions column
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableHiding: false,
       },
     ],
     []
@@ -711,7 +756,7 @@ export function KnowledgeBaseDetail({
               <TableBody>
                 {isLoading ? (
                   <TableRow key="loading">
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={columns.length} className="text-center py-8">
                       <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
@@ -720,7 +765,7 @@ export function KnowledgeBaseDetail({
                 ) : filteredFiles.length === 0 ? (
                   <TableRow key="empty">
                     <TableCell
-                      colSpan={6}
+                      colSpan={columns.length}
                       className="text-center py-8 text-muted-foreground"
                     >
                       {searchQuery

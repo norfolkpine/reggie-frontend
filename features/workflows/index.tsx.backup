@@ -16,7 +16,7 @@ import { useHeader } from "@/contexts/header-context"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 
-export default function ExploreAgents() {
+export default function ExploreWorkflows() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("All")
   const [agents, setAgents] = useState<Agent[]>([])
@@ -29,8 +29,8 @@ export default function ExploreAgents() {
   // Memoized header actions
   const headerActions = useMemo(() => [
     {
-      label: "Create Agent",
-      onClick: () => router.push('/agent/create'),
+      label: "Create Workflow",
+      onClick: () => router.push('/workflow/create'),
       icon: <Plus className="h-4 w-4" />,
       variant: "default" as const,
       size: "sm" as const
@@ -55,7 +55,7 @@ export default function ExploreAgents() {
      const { message } = handleApiError(err)
      if(message) {
       toast({
-        title: "Error fetching agents",
+        title: "Error fetching workflows",
         description: message,
         variant: "destructive",
       })
@@ -64,10 +64,6 @@ export default function ExploreAgents() {
       setIsLoading(false)
     }
   }, [toast]);
-
-  const handleDeleteAgent = useCallback(async () => {
-    await fetchAgents();
-  }, [fetchAgents]);
 
   useEffect(() => {
     fetchAgents()
@@ -104,17 +100,17 @@ export default function ExploreAgents() {
       <div className="flex-1 overflow-auto p-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <p>Loading agents...</p>
+            <p>Loading workflows...</p>
           </div>
         ) : error ? (
           <EmptyState
-            title="Error loading agents"
+            title="Error loading workflows"
             description={error}
             icon={<AlertCircle className="h-10 w-10 text-destructive" />}
           />
         ) : filteredAgents.length === 0 ? (
           <EmptyState
-            title="No agents found"
+            title="No workflows found"
             description="Try adjusting your search or filter to find what you're looking for."
             icon={<Search className="h-10 w-10" />}
             onRefresh={fetchAgents}
@@ -122,9 +118,8 @@ export default function ExploreAgents() {
         ) : (
           <>
             <AgentList
-              title="All Agents"
+              title="All Workflows"
               agents={filteredAgents}
-              onDelete={handleDeleteAgent}
             />
           </>
         )}

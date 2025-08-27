@@ -3,11 +3,47 @@ import { TOKEN_KEY } from "../lib/constants";
 
 // Environment-based configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'development';
 
-// Robust BASE_URL logic with environment-specific fallbacks
-export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
-  (isDevelopment ? 'http://127.0.0.1:8000' : '');
+// Smart hostname detection for development
+function getSmartBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  
+  if (envUrl) {
+    return envUrl;
+  }
+  
+  // In development, try to match the current hostname
+  if (typeof window !== 'undefined' && isDevelopment) {
+    const currentHost = window.location.hostname;
+    const currentPort = window.location.port;
+    
+    // If frontend is on localhost, use localhost for backend
+    if (currentHost === 'localhost') {
+      return `http://localhost:8000`;
+    }
+    
+    // If frontend is on 127.0.0.1, use 127.0.0.1 for backend
+    if (currentHost === '127.0.0.1') {
+      return `http://127.0.0.1:8000`;
+    }
+  }
+  
+  // Fallback to environment variable or empty string
+  return envUrl || '';
+}
+
+// Use smart hostname detection for API base URL
+export const BASE_URL = getSmartBaseUrl();
+
+// Debug logging in development
+if (isDevelopment) {
+  console.log('🔧 API Client Configuration:');
+  console.log('  - Environment:', process.env.NODE_ENV);
+  console.log('  - NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+  console.log('  - Current window hostname:', typeof window !== 'undefined' ? window.location.hostname : 'SSR');
+  console.log('  - Final BASE_URL:', BASE_URL);
+}
 
 // Validate BASE_URL in production
 if (isProduction && !process.env.NEXT_PUBLIC_API_BASE_URL) {
@@ -62,10 +98,11 @@ export function triggerTokenExpiration(): void {
   if (context) {
     context.handleTokenExpiration();
   } else {
-    // Fallback if auth context is not available
+    // Fallback if auth context is not available - clear storage but don't hard redirect
     if (typeof window !== 'undefined') {
       localStorage.clear();
-      window.location.href = "/sign-in";
+      console.warn('Auth context not available for token expiration handling');
+      // Don't use window.location.href - let the auth context handle navigation
     }
   }
 }
@@ -73,69 +110,48 @@ export function triggerTokenExpiration(): void {
 // CSRF token management with better security practices
 export async function ensureCSRFToken(): Promise<boolean> {
   try {
-    // First, try to get the CSRF token from cookies (more secure)
+    if (isDevelopment) {
+      console.log('🔍 ensureCSRFToken: Starting CSRF token check...');
+    }
+    
+    // First, try to get the CSRF token from cookies (most efficient)
     let csrfToken = getCSRFToken();
     
     if (csrfToken) {
+      if (isDevelopment) {
+        console.log('✅ CSRF token found in cookies, length:', csrfToken.length);
+      }
       return true;
     }
     
-    // Only fetch from server if no token exists
     if (isDevelopment) {
-      console.log('No CSRF token found, attempting to establish Django session...');
+      console.log('❌ No CSRF token found in cookies, trying to get from backend...');
     }
     
-    // First establish a Django session
-    const sessionEstablished = await establishDjangoSession();
-    if (sessionEstablished) {
-      csrfToken = getCSRFToken();
-      if (csrfToken) {
-        return true;
-      }
-    }
-    
-    // If still no token, try the config endpoint
-    if (isDevelopment) {
-      console.log('Trying config endpoint...');
-    }
-    
-    const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      }
-    });
-    
-    if (response.ok) {
-      // Check if we now have a CSRF token
-      csrfToken = getCSRFToken();
-      if (csrfToken) {
-        return true;
-      }
-    }
-    
-    // If still no CSRF token, try dedicated endpoint
+    // Try to get CSRF token from Django Allauth config endpoint
     try {
-      if (isDevelopment) {
-        console.log('Trying dedicated CSRF endpoint...');
-      }
-      
-      const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/csrf-token`, {
+      const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
         method: 'GET',
         credentials: 'include'
       });
       
       if (csrfResponse.ok) {
-        const csrfData = await csrfResponse.json();
-        csrfToken = csrfData.csrfToken;
+        // Check if we now have a CSRF token in cookies
+        csrfToken = getCSRFToken();
         if (csrfToken) {
+          if (isDevelopment) {
+            console.log('CSRF token retrieved from Django Allauth config endpoint');
+          }
           return true;
+        }
+      } else {
+        if (isDevelopment) {
+          console.log(`Django Allauth config endpoint returned status: ${csrfResponse.status}`);
         }
       }
     } catch (csrfError) {
       if (isDevelopment) {
-        console.log('CSRF endpoint not available');
+        console.log('Django Allauth config endpoint not available or failed:', csrfError);
       }
     }
     
@@ -152,40 +168,7 @@ export async function ensureCSRFToken(): Promise<boolean> {
   }
 }
 
-// Function to establish Django session and get CSRF token
-export async function establishDjangoSession(): Promise<boolean> {
-  if (isDevelopment) {
-    console.log('Establishing Django session...');
-  }
-  
-  try {
-    // Visit a Django page to establish session and get CSRF token
-    const response = await fetch(`${BASE_URL}/`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      }
-    });
-    
-    if (response.ok) {
-      const csrfToken = getCSRFToken();
-      if (csrfToken) {
-        if (isDevelopment) {
-          console.log('Django session established, CSRF token obtained');
-        }
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    if (isDevelopment) {
-      console.error('Failed to establish Django session:', error);
-    }
-    return false;
-  }
-}
+
 
 // Function to refresh CSRF token when we get a CSRF error
 export async function refreshCSRFToken(): Promise<boolean> {
@@ -194,13 +177,10 @@ export async function refreshCSRFToken(): Promise<boolean> {
   }
   
   try {
-    // Clear any existing token and fetch a fresh one
+    // Get a fresh CSRF token from Django Allauth config endpoint
     const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      }
+      credentials: 'include'
     });
     
     if (response.ok) {
@@ -231,10 +211,11 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
       if (context) {
         context.handleTokenExpiration();
       } else {
-        // Fallback if auth context is not available
+        // Fallback if auth context is not available - clear storage but don't hard redirect
         if (typeof window !== 'undefined') {
           localStorage.clear();
-          window.location.href = '/sign-in';
+          console.warn('Auth context not available for authentication error handling');
+          // Don't use window.location.href - let the auth context handle navigation
         }
       }
     }
@@ -325,13 +306,13 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
             return apiClient(endpoint, config, retryCount + 1);
           } else {
             if (isDevelopment) {
-              console.log('Failed to refresh token, trying to establish new session...');
+              console.log('Failed to refresh token, trying to get new CSRF token...');
             }
-            // Try to establish a new session
-            const sessionEstablished = await establishDjangoSession();
-            if (sessionEstablished) {
+            // Try to get a new CSRF token
+            const newToken = await ensureCSRFToken();
+            if (newToken) {
               if (isDevelopment) {
-                console.log('New session established, retrying request...');
+                console.log('New CSRF token obtained, retrying request...');
               }
               return apiClient(endpoint, config, retryCount + 1);
             }

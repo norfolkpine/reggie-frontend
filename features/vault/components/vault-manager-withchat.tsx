@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,6 +94,49 @@ export function VaultManager() {
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
   const [instructions, setInstructions] = useState("");
 
+  // Memoize filtered files to prevent unnecessary re-computations
+  const filteredFiles = useMemo(() => {
+    return vaultFiles.filter(file => {
+      // Apply file type filters
+      const fileType = file.file_type || '';
+      const matchesType = showAllFiles || 
+        (activeFilters.length === 0) || 
+        activeFilters.some((filter: string) => fileType.includes(filter));
+      
+      // Apply search filter
+      const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        false;
+      
+      return matchesType && matchesSearch;
+    });
+  }, [vaultFiles, showAllFiles, activeFilters, searchQuery]);
+
+  // Memoize the select all checkbox state
+  const selectAllChecked = useMemo(() => {
+    return selectedFiles.length > 0 && selectedFiles.length === filteredFiles.length;
+  }, [selectedFiles.length, filteredFiles.length]);
+
+  // Memoize pagination calculations
+  const paginationData = useMemo(() => {
+    const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (currentPage <= 3) {
+      endPage = Math.min(5, totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      startPage = Math.max(1, totalPages - 4);
+    }
+    
+    const pageNums = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNums.push(i);
+    }
+    
+    return { totalPages, startPage, endPage, pageNums };
+  }, [filesCount, itemsPerPage, currentPage]);
+
   // Define table columns for colspan calculation
   const columns = [
     { id: 'select', header: 'Select' },
@@ -184,7 +227,7 @@ export function VaultManager() {
     }
   };
 
-  const handleFileUpload = async (uploadedFiles: any[]) => {
+  const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
     
     // Close the upload dialog
@@ -195,9 +238,51 @@ export function VaultManager() {
       description: `${uploadedFiles.length} file(s) uploaded successfully`,
     });
     fetchFiles(); // Refresh the file list
+  }, [toast]);
+
+  const handleGoogleDriveClick = () => {
+    // TODO: Implement Google Drive integration
+    toast({
+      title: "Google Drive Integration",
+      description: "Google Drive integration coming soon!",
+      duration: 3000,
+    });
   };
 
-  const handleFileDownload = (file: VaultFile) => {
+  // Memoized event handlers for pagination and interactions
+  const handlePageChange = useCallback((pageNum: number) => {
+    setCurrentPage(pageNum);
+  }, []);
+
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((prev) => 
+      Math.min(prev + 1, paginationData.totalPages)
+    );
+  }, [paginationData.totalPages]);
+
+  const handleItemsPerPageChange = useCallback((value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilePreview = useCallback((file: VaultFile) => {
+    // Open file in new tab for preview
+    if (file.file && isSafeUrl(file.file)) {
+      window.open(file.file, '_blank');
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid or unsafe file URL.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const handleFileDownload = useCallback((file: VaultFile) => {
     // Direct download through URL
     if (file.file && isSafeUrl(file.file)) {
       const a = document.createElement('a');
@@ -213,22 +298,9 @@ export function VaultManager() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const handleFilePreview = (file: VaultFile) => {
-    // Open file in new tab for preview
-    if (file.file && isSafeUrl(file.file)) {
-      window.open(file.file, '_blank');
-    } else {
-      toast({
-        title: "Error",
-        description: "Invalid or unsafe file URL.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFileDelete = async (fileId: number) => {
+  const handleFileDelete = useCallback(async (fileId: number) => {
     try {
       await deleteVaultFile(fileId);
       toast({
@@ -246,9 +318,9 @@ export function VaultManager() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
   
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = useCallback(async () => {
     if (selectedFiles.length === 0) return;
     
     setIsDeleting(true);
@@ -296,38 +368,26 @@ export function VaultManager() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [selectedFiles, toast]);
   
-  const toggleSelectAll = (checked: boolean) => {
+  const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
-      const filteredFiles = vaultFiles
-        .filter(file => {
-          const fileType = file.file_type || '';
-          const matchesType = showAllFiles || 
-            (activeFilters.length === 0) || 
-            activeFilters.some((filter: string) => fileType.includes(filter));
-            
-          const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            false;
-          return matchesType && matchesSearch;
-        });
       setSelectedFiles(filteredFiles.map(file => file.id));
     } else {
       setSelectedFiles([]);
     }
-  };
-  
-  const toggleSelectFile = (fileId: number, checked: boolean) => {
+  }, [filteredFiles]);
+
+  const toggleSelectFile = useCallback((fileId: number, checked: boolean) => {
     setSelectedFiles(prev => 
       checked 
         ? [...prev, fileId] 
         : prev.filter(id => id !== fileId)
     );
-  };
+  }, []);
 
   // Add a function to handle rename
-  const handleRename = async () => {
+  const handleRename = useCallback(async () => {
     if (!project || !project.id) return;
     setIsRenaming(true);
     try {
@@ -342,7 +402,7 @@ export function VaultManager() {
     } finally {
       setIsRenaming(false);
     }
-  };
+  }, [project, newName, toast]);
 
   if (!project && !loading) {
     return (
@@ -554,9 +614,24 @@ export function VaultManager() {
                           )}
                         </Button>
                       )}
-                      <Button onClick={() => setIsUploadDialogOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Upload Files
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button>
+                            New
+                            <Plus className="h-4 w-4 mr-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            File
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleGoogleDriveClick()}>
+                            <UploadCloud className="h-4 w-4 mr-2" />
+                            Google Drive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
@@ -567,17 +642,7 @@ export function VaultManager() {
                       <TableRow>
                         <TableHead className="w-[50px]">
                             <Checkbox 
-                            checked={selectedFiles.length > 0 && selectedFiles.length === vaultFiles.filter((file) => {
-                              const fileType = file.file_type || '';
-                              const matchesType = showAllFiles || 
-                                (activeFilters.length === 0) || 
-                                activeFilters.some((filter: string) => fileType.includes(filter));
-                                
-                              const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                false;
-                              return matchesType && matchesSearch;
-                            }).length}
+                            checked={selectAllChecked}
                             onCheckedChange={toggleSelectAll}
                             aria-label="Select all files"
                           />
@@ -590,22 +655,8 @@ export function VaultManager() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vaultFiles.length > 0 ? (
-                        vaultFiles
-                          .filter(file => {
-                            // Apply file type filters
-                            const fileType = file.file_type || '';
-                            const matchesType = showAllFiles || 
-                              (activeFilters.length === 0) || 
-                              activeFilters.some((filter: string) => fileType.includes(filter));
-                            
-                            // Apply search filter
-                            const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              false;
-                            
-                            return matchesType && matchesSearch;
-                          })
+                      {filteredFiles.length > 0 ? (
+                        filteredFiles
                           .map((file) => (
                           <TableRow key={file.id}>
                             <TableCell>
@@ -692,71 +743,46 @@ export function VaultManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        onClick={handlePreviousPage}
                         disabled={currentPage === 1 || !hasPreviousPage}
                       >
                         Previous
                       </Button>
                     </PaginationItem>
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      return totalPages > 5 && currentPage > 3 ? (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : null;
-                    })()}
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      const pageNums = [];
-                      let startPage = Math.max(1, currentPage - 2);
-                      let endPage = Math.min(totalPages, currentPage + 2);
-                      
-                      if (currentPage <= 3) {
-                        endPage = Math.min(5, totalPages);
-                      } else if (currentPage >= totalPages - 2) {
-                        startPage = Math.max(1, totalPages - 4);
-                      }
-                      
-                      for (let i = startPage; i <= endPage; i++) {
-                        pageNums.push(i);
-                      }
-                      
-                      return pageNums.map((pageNum) => {
-                        if (pageNum >= 1 && pageNum <= totalPages) {
-                          return (
-                            <PaginationItem key={pageNum}>
-                              <Button
-                                variant={currentPage === pageNum ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setCurrentPage(pageNum)}
-                              >
-                                {pageNum}
-                              </Button>
-                            </PaginationItem>
-                          );
-                        }
-                        return null;
-                      });
-                    })()}
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      return totalPages > 5 && currentPage < totalPages - 2 ? (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : null;
-                    })()}
+                    
+                    {/* Show ellipsis before page numbers if needed */}
+                    {paginationData.totalPages > 5 && currentPage > 3 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
+                    {/* Page numbers */}
+                    {paginationData.pageNums.map((pageNum) => (
+                      <PaginationItem key={pageNum}>
+                        <Button
+                          variant={currentPage === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      </PaginationItem>
+                    ))}
+                    
+                    {/* Show ellipsis after page numbers if needed */}
+                    {paginationData.totalPages > 5 && currentPage < paginationData.totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
                     <PaginationItem>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => 
-                          setCurrentPage((prev) => 
-                            Math.min(prev + 1, Math.max(1, Math.ceil(filesCount / itemsPerPage)))
-                          )
-                        }
-                        disabled={currentPage >= Math.ceil(filesCount / itemsPerPage) || !hasNextPage}
+                        onClick={handleNextPage}
+                        disabled={currentPage >= paginationData.totalPages || !hasNextPage}
                       >
                         Next
                       </Button>
@@ -778,10 +804,7 @@ export function VaultManager() {
                       {[5, 10, 20, 50].map((value) => (
                         <DropdownMenuItem
                           key={value}
-                          onClick={() => {
-                            setItemsPerPage(value);
-                            setCurrentPage(1);
-                          }}
+                          onClick={() => handleItemsPerPageChange(value)}
                         >
                           {value}
                         </DropdownMenuItem>

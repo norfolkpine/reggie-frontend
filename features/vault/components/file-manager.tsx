@@ -504,7 +504,7 @@ export function KBFileManager() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={columns.length} className="text-center py-8">
                   <div className="flex justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
@@ -513,7 +513,7 @@ export function KBFileManager() {
             ) : filteredFiles.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={columns.length}
                   className="text-center py-8 text-muted-foreground"
                 >
                   {searchQuery

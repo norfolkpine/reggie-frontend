@@ -62,7 +62,7 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
   const [activeTab, setActiveTab] = React.useState("my-teams");
   const { user } = useAuth()
 
-  const fetchTeams = async () => {
+  const fetchTeams = React.useCallback(async () => {
     if (!open) return;
 
     setLoading(true);
@@ -89,13 +89,13 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [open, toast]);
 
   React.useEffect(() => {
     fetchTeams();
-  }, [open, toast]);
+  }, [fetchTeams]);
 
-  const handleCreateTeam = async (teamName: string) => {
+  const handleCreateTeam = React.useCallback(async (teamName: string) => {
     setLoading(true);
     try {
       const newTeam = await createTeam({ name: teamName });
@@ -113,9 +113,9 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchTeams, toast]);
 
-  const handleUpdateTeam = async (teamId: number, teamName: string) => {
+  const handleUpdateTeam = React.useCallback(async (teamId: number, teamName: string) => {
     setLoading(true);
     try {
       const updatedTeam = await updateTeam(teamId, { name: teamName });
@@ -135,9 +135,9 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchTeams, toast]);
 
-  const handleDeleteTeam = async (teamId: number) => {
+  const handleDeleteTeam = React.useCallback(async (teamId: number) => {
     setLoading(true);
     try {
       await deleteTeam(teamId);
@@ -152,9 +152,9 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
       fetchTeams();
       setSelectedTeam(null);
     }
-  };
+  }, [fetchTeams]);
 
-  const handleInviteMember = async (
+  const handleInviteMember = React.useCallback(async (
     teamId: number,
     teamSlug: string,
     email: string
@@ -187,9 +187,9 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const handleRemoveInvitation = async (
+  const handleRemoveInvitation = React.useCallback(async (
     teamSlug: string,
     teamId: number,
     invitationId: string
@@ -210,7 +210,41 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
       );
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Memoized event handlers
+  const handleFormSubmit = React.useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const teamName = formData.get("team-name") as string;
+    await handleCreateTeam(teamName);
+    // Clear form and switch tab
+    (e.target as HTMLFormElement).reset();
+    setActiveTab("my-teams");
+  }, [handleCreateTeam]);
+
+  const handleBackToTeams = React.useCallback(() => {
+    setSelectedTeam(null);
+  }, []);
+
+  const handleSelectTeam = React.useCallback((team: Team) => {
+    setSelectedTeam(team);
+  }, []);
+
+  const handleDeleteTeamClick = React.useCallback((team: Team) => {
+    setTeamToDelete(team);
+  }, []);
+
+  const handleClearTeamToDelete = React.useCallback(() => {
+    setTeamToDelete(null);
+  }, []);
+
+  const handleConfirmDelete = React.useCallback(() => {
+    if (teamToDelete) {
+      handleDeleteTeam(teamToDelete.id);
+    }
+    setTeamToDelete(null);
+  }, [teamToDelete, handleDeleteTeam]);
 
   return (
     <>
@@ -223,7 +257,7 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedTeam(null)}
+                    onClick={handleBackToTeams}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -269,7 +303,7 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
                   variant="destructive"
                   size="sm"
                   disabled={selectedTeam.is_current}
-                  onClick={() => setTeamToDelete(selectedTeam)}
+                  onClick={() => handleDeleteTeamClick(selectedTeam)}
                 >
                   Delete Team
                 </Button>
@@ -437,7 +471,7 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setSelectedTeam(team)}
+                            onClick={() => handleSelectTeam(team)}
                           >
                             Manage
                           </Button>
@@ -473,15 +507,7 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
               <TabsContent value="create" className="mt-4">
                 <form
                   className="grid gap-4"
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const teamName = formData.get("team-name") as string;
-                    await handleCreateTeam(teamName);
-                    // Clear form and switch tab
-                    (e.target as HTMLFormElement).reset();
-                    setActiveTab("my-teams");
-                  }}
+                  onSubmit={handleFormSubmit}
                 >
                   <div className="grid gap-2">
                     <Label htmlFor="team-name">Team Name</Label>
@@ -514,17 +540,12 @@ export function TeamDialog({ open, onOpenChange }: TeamDialogProps) {
 
       <ConfirmationDialog
         open={!!teamToDelete && !teamToDelete.is_current}
-        onOpenChange={(open) => !open && setTeamToDelete(null)}
+        onOpenChange={(open) => !open && handleClearTeamToDelete()}
         title="Delete Team"
         description="Are you sure you want to delete this team? This action cannot be undone and all team data will be permanently lost."
         confirmText="Delete"
         variant="destructive"
-        onConfirm={() => {
-          if (teamToDelete) {
-            handleDeleteTeam(teamToDelete.id);
-          }
-          setTeamToDelete(null);
-        }}
+        onConfirm={handleConfirmDelete}
       />
     </>
   );

@@ -93,8 +93,9 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
         setUser(response.data.user);
       });
     } catch (error) {
-
       console.error("Login failed:", error);
+      console.log("Error type:", typeof error);
+      console.log("Error structure:", JSON.stringify(error, null, 2));
       throw error;
     }
   };

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebouncedCallback } from 'use-debounce';
 import {
@@ -114,11 +114,55 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
     setUserQuery(str);
   }, 700);
 
-  const onSelect = (user: User) => {
+  const onSelect = useCallback((user: User) => {
     setUserQuery(''); // Reset searchUsers by clearing the query
     setInputValue(user.email);
     setSelectedUser(user);
-  };
+  }, []);
+
+  // Memoized event handlers
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    onFilter(e.target.value); // Use debounced function for user search
+    setSelectedUser(null);
+  }, [onFilter]);
+
+  const handleRoleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRole(e.target.value as Role);
+  }, []);
+
+  const handleAddUser = useCallback(() => {
+    if (selectedUser) {
+      createDocAccess.mutate(
+        {
+          memberId: selectedUser.id,
+          role: selectedRole,
+          docId: doc.id,
+        },
+        {
+          onSuccess: () => {
+            setInputValue('');
+            setSelectedUser(null);
+          },
+        }
+      );
+    } else {
+      createDocInvitation.mutate(
+        {
+          email: inputValue,
+          role: selectedRole,
+          docId: doc.id,
+        },
+        {
+          onSuccess: () => {
+            setInputValue('');
+          },
+        }
+      );
+    }
+
+    setUserQuery('');
+  }, [selectedUser, selectedRole, doc.id, createDocAccess, createDocInvitation, inputValue]);
 
   // Create derived data for the UI
   const members =
@@ -162,7 +206,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
   ];
 
   // Handle updates
-  const handleUpdateLink = (
+  const handleUpdateLink = useCallback((
     newVisibility: LinkReach = linkVisibility,
     newPermission: LinkRole = linkPermission
   ) => {
@@ -171,19 +215,20 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
       link_reach: newVisibility,
       link_role: newPermission,
     });
-  };
+  }, [updateDocLink, doc.id, linkVisibility, linkPermission]);
 
-  const handleVisibilityChange = (value: LinkReach) => {
+  const handleVisibilityChange = useCallback((value: LinkReach) => {
     setLinkVisibility(value);
     handleUpdateLink(value, linkPermission);
-  };
-  const handlePermissionChange = (value: LinkRole) => {
+  }, [handleUpdateLink, linkPermission]);
+
+  const handlePermissionChange = useCallback((value: LinkRole) => {
     setLinkPermission(value);
     handleUpdateLink(linkVisibility, value);
-  };
+  }, [handleUpdateLink, linkVisibility]);
 
   // Generate description text based on selected permissions
-  const getLinkDescription = () => {
+  const getLinkDescription = useCallback(() => {
     if (linkVisibility === LinkReach.RESTRICTED) {
       return linkPermission === LinkRole.EDITOR
         ? t('People with the link can edit')
@@ -199,7 +244,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
     } else {
       return t('Only specific people can access');
     }
-  };
+  }, [linkVisibility, linkPermission, t]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -232,11 +277,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                     placeholder="Enter email address"
                     className="flex-1 border border-gray-300 rounded-md px-3 py-2 h-10 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                     value={inputValue}
-                    onChange={(e) => {
-                      setInputValue(e.target.value);
-                      onFilter(e.target.value); // Use debounced function for user search
-                      setSelectedUser(null);
-                    }}
+                    onChange={handleInputChange}
                     autoComplete="off"
                     aria-label="Invite user by email"
                   />
@@ -244,7 +285,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                     id="invite-role-select"
                     className="border border-gray-300 rounded-md px-2 py-2 text-sm bg-background min-w-[100px] h-10"
                     value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value as Role)}
+                    onChange={handleRoleChange}
                     data-testid="invite-role-select"
                     aria-label="Select role"
                   >
@@ -255,38 +296,7 @@ export const DocShareModal = ({ doc, onClose, open }: Props) => {
                   <Button
                     type="button"
                     className="flex items-center gap-1 min-w-[72px] h-10 px-4"
-                    onClick={() => {
-                      if (selectedUser) {
-                        createDocAccess.mutate(
-                          {
-                            memberId: selectedUser.id,
-                            role: selectedRole,
-                            docId: doc.id,
-                          },
-                          {
-                            onSuccess: () => {
-                              setInputValue('');
-                              setSelectedUser(null);
-                            },
-                          }
-                        );
-                      } else {
-                        createDocInvitation.mutate(
-                          {
-                            email: inputValue,
-                            role: selectedRole,
-                            docId: doc.id,
-                          },
-                          {
-                            onSuccess: () => {
-                              setInputValue('');
-                            },
-                          }
-                        );
-                      }
-
-                      setUserQuery('');
-                    }}
+                    onClick={handleAddUser}
                     data-testid="invite-add-btn"
                   >
                     {createDocInvitation.isPending ||

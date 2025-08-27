@@ -1,393 +1,923 @@
-`# Hierarchical Collections API Documentation
+# Hierarchical Collections System
 
-This document describes the API endpoints for managing hierarchical collections (folders) and files in the Reggie system.
+This document explains how to use the new hierarchical collection system for organizing files into folders and subfolders, specifically designed for regulatory document management.
 
-## Base URL
+## Overview
+
+The hierarchical collection system allows you to:
+- Create nested folder structures (collections within collections)
+- Organize regulatory documents by jurisdiction, type, and hierarchy
+- Maintain logical relationships between related documents
+- Support multi-volume documents with proper ordering
+- Provide intuitive folder navigation
+
+## Key Features
+
+### 1. **Hierarchical Structure**
+- Collections can have parent-child relationships
+- Unlimited nesting levels
+- Automatic path generation (e.g., "Australian Regulations/Corporate Tax Act 2001/Volume 1")
+
+### 2. **Collection Types**
+- `folder`: General organizational folder
+- `regulation`: Regulatory document collection
+- `act`: Legislative act collection
+- `guideline`: Guideline document collection
+- `manual`: Manual or handbook collection
+
+### 3. **Regulatory Metadata**
+- `jurisdiction`: Geographic scope (e.g., "Australia", "NSW")
+- `regulation_number`: Regulation identifier (e.g., "2001", "No. 123")
+- `effective_date`: When the regulation takes effect
+- `sort_order`: Ordering within parent collection
+
+### 4. **File Organization**
+- Files maintain order within collections
+- Support for volume numbers and part numbers
+- Automatic ordering by collection, volume, part, and title
+
+## API Endpoints
+
+### Unified Collections API
+
+#### Get Root Contents (Files + Folders)
+```http
+GET /api/collections/
 ```
-/api/v1/
-```
-
-## Authentication
-All endpoints require authentication. Use JWT tokens or session authentication.
-
-## Collections (Folders) API
-
-### 1. List Collections (Root Level)
-**GET** `/collections/`
-
-Returns a list of root-level collections accessible to the user.
-
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Australian Regulations",
-    "description": "Collection of Australian regulatory documents",
-    "collection_type": "folder",
-    "jurisdiction": null,
-    "regulation_number": null,
-    "effective_date": null,
-    "sort_order": 0,
-    "children": [
-      {
-        "id": 2,
-        "name": "Corporate Tax Act 2001",
-        "collection_type": "act",
-        "children": []
-      }
-    ],
-    "full_path": "Australian Regulations",
-    "created_at": "2024-01-15T10:30:00Z"
-  }
-]
-```
-
-### 2. Get Collection Details
-**GET** `/collections/{id}/`
-
-Returns detailed information about a collection including files and subcollections.
+Returns root-level collections and files accessible to the user.
 
 **Response:**
 ```json
 {
-  "id": 1,
-  "name": "Australian Regulations",
-  "description": "Collection of Australian regulatory documents",
+  "uuid": null,
+  "id": null,
+  "name": "Root",
+  "description": "Root directory",
   "collection_type": "folder",
-  "children": [...],
-  "files": [
+  "children": [
     {
       "uuid": "123e4567-e89b-12d3-a456-426614174000",
-      "title": "Tax Guide 2024",
-      "description": "Comprehensive tax guide",
-      "file_type": "pdf",
-      "collection_order": 1
+      "name": "Australian Regulations",
+      "collection_type": "folder"
+    }
+  ],
+  "files": [
+    {
+      "uuid": "987fcdeb-51a2-43d1-b789-123456789abc",
+      "title": "Root File.pdf",
+      "file_type": "pdf"
+    }
+  ],
+  "full_path": "Root"
+}
+```
+
+#### Get Collection Contents by UUID
+```http
+GET /api/collections/?collection_uuid={uuid}
+```
+Returns contents of a specific collection using UUID parameter.
+
+**Response:**
+```json
+{
+  "uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "Australian Regulations",
+  "collection_type": "folder",
+  "children": [
+    {
+      "uuid": "456e4567-e89b-12d3-a456-426614174000",
+      "name": "Corporate Tax Act 2001",
+      "collection_type": "act"
+    }
+  ],
+  "files": [
+    {
+      "uuid": "789fcdeb-51a2-43d1-b789-123456789abc",
+      "title": "Tax Guide.pdf",
+      "file_type": "pdf"
     }
   ],
   "full_path": "Australian Regulations"
 }
 ```
 
-### 3. Create Folder/Collection
-**POST** `/collections/create-folder/`
+#### Get Collection Details
+```http
+GET /api/collections/{uuid}/
+```
+Returns detailed collection information including files and subcollections.
 
-Creates a new folder/collection.
-
-**Request Body:**
+#### Create Folder
+```http
+POST /api/collections/create-folder/
+```
 ```json
 {
-  "name": "New Folder",
-  "description": "Optional description",
-  "parent_id": 1,  // Optional - ID of parent collection
-  "collection_type": "folder",  // folder, regulation, act, guideline, manual
-  "jurisdiction": "Australia",  // Optional
-  "regulation_number": "2024",  // Optional
-  "effective_date": "2024-01-01",  // Optional
-  "sort_order": 0  // Optional
+    "name": "New Folder",
+    "parent_uuid": "123e4567-e89b-12d3-a456-426614174000",  // Optional
+    "description": "Folder description",
+    "collection_type": "folder"
 }
 ```
 
-**Response:** `201 Created`
+#### Move Collection
+```http
+POST /api/collections/{uuid}/move-to/
+```
 ```json
 {
-  "id": 3,
-  "name": "New Folder",
-  "description": "Optional description",
-  "collection_type": "folder",
-  "parent": 1,
-  "children": [],
-  "full_path": "Australian Regulations/New Folder"
+    "new_parent_uuid": "456e4567-e89b-12d3-a456-426614174000"  // null to move to root
 }
 ```
 
-### 4. Move Collection
-**POST** `/collections/{id}/move-to/`
-
-Moves a collection to a different parent collection.
-
-**Request Body:**
+#### Add Files to Collection
+```http
+POST /api/collections/{uuid}/add-files/
+```
 ```json
 {
-  "new_parent_id": 2  // null to move to root level
+    "file_uuids": ["123e4567-e89b-12d3-a456-426614174000", "987fcdeb-51a2-43d1-b789-123456789abc"]
 }
 ```
 
-**Response:** `200 OK`
+#### Reorder Files
+```http
+POST /api/collections/{uuid}/reorder-files/
+```
 ```json
 {
-  "message": "Collection \"New Folder\" moved successfully",
-  "new_parent": "Corporate Tax Act 2001"
+    "file_orders": [
+        {"file_uuid": "123e4567-e89b-12d3-a456-426614174000", "order": 0},
+        {"file_uuid": "987fcdeb-51a2-43d1-b789-123456789abc", "order": 1}
+    ]
 }
 ```
 
-### 5. Add Files to Collection
-**POST** `/collections/{id}/add-files/`
-
-Adds existing files to a collection.
-
-**Request Body:**
-```json
-{
-  "file_ids": ["123e4567-e89b-12d3-a456-426614174000", "987fcdeb-51a2-43d1-b789-123456789abc"]
-}
+#### Get Collection Tree
+```http
+GET /api/collections/tree/
 ```
+Returns the complete hierarchical structure.
 
-**Response:** `200 OK`
-```json
-{
-  "message": "Added 2 files to collection \"New Folder\"",
-  "added_count": 2
-}
-```
+### File Upload with Collections
 
-### 6. Reorder Files in Collection
-**POST** `/collections/{id}/reorder-files/`
+#### Upload to Specific Collection
+```http
+POST /api/files/
+Content-Type: multipart/form-data
 
-Reorders files within a collection.
-
-**Request Body:**
-```json
-{
-  "file_orders": [
-    {"file_id": "123e4567-e89b-12d3-a456-426614174000", "order": 1},
-    {"file_id": "987fcdeb-51a2-43d1-b789-123456789abc", "order": 2}
-  ]
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Files reordered successfully"
-}
-```
-
-### 7. Get Collection Tree
-**GET** `/collections/tree/`
-
-Returns the complete hierarchical tree structure of collections.
-
-## Files API
-
-### 1. List Files
-**GET** `/files/`
-
-Returns a list of files accessible to the user.
-
-**Query Parameters:**
-- `scope`: `mine`, `global`, `team`, `all` (default: `all`)
-- `user_id`: Required if `scope=user`
-- `collection_id`: Filter by collection
-
-**Response:**
-```json
-[
-  {
-    "uuid": "123e4567-e89b-12d3-a456-426614174000",
-    "title": "Tax Guide 2024",
-    "description": "Comprehensive tax guide",
-    "file_type": "pdf",
-    "collection": {
-      "id": 1,
-      "name": "Australian Regulations"
-    },
-    "collection_order": 1,
-    "volume_number": 1,
-    "part_number": "Part A"
-  }
-]
-```
-
-### 2. Upload Files
-**POST** `/files/`
-
-Uploads one or more files.
-
-**Request Body (multipart/form-data):**
-```
-files: [file1.pdf, file2.docx]
-title: "Optional title"
-description: "Optional description"
-team: 1
-auto_ingest: false
-knowledgebase_id: "kb_123"
-is_global: false
-collection_name: "Optional collection name"
-collection_description: "Optional collection description"
-collection_type: "folder"
-folder_path: "Australian Regulations/Corporate Tax Act 2001"
+files: [file1.pdf, file2.pdf]
+collection_name: "Corporate Tax Act 2001"
+collection_description: "Australian corporate tax legislation"
+collection_type: "act"
 jurisdiction: "Australia"
 regulation_number: "2001"
 ```
 
-**Response:** `201 Created`
-```json
-{
-  "message": "Successfully uploaded 2 files",
-  "files": [
-    {
-      "uuid": "123e4567-e89b-12d3-a456-426614174000",
-      "title": "Tax Guide 2024",
-      "status": "uploaded"
+#### Upload to Nested Folder Structure
+```http
+POST /api/files/
+Content-Type: multipart/form-data
+
+files: [volume1.pdf, volume2.pdf, volume3.pdf]
+folder_path: "Australian Regulations/Corporate Tax Act 2001"
+collection_description: "Australian corporate tax legislation"
+collection_type: "act"
+jurisdiction: "Australia"
+regulation_number: "2001"
+volume_numbers: [1, 2, 3]
+```
+
+## Usage Examples
+
+### Example 1: Australian Regulations Structure
+
+```python
+# Create the main structure
+root = Collection.objects.create(
+    name="Australian Regulations",
+    collection_type="folder"
+)
+
+# Create Corporate Tax Act collection
+tax_act = Collection.objects.create(
+    name="Corporate Tax Act 2001",
+    parent=root,
+    collection_type="act",
+    jurisdiction="Australia",
+    regulation_number="2001"
+)
+
+# Upload files with volume numbers
+files = [volume1_pdf, volume2_pdf, volume3_pdf]
+for i, file in enumerate(files):
+    File.objects.create(
+        file=file,
+        title=f"Volume {i+1}",
+        collection=tax_act,
+        volume_number=i+1,
+        collection_order=i
+    )
+```
+
+### Example 2: AUSTRAC Guidelines
+
+```python
+# Create AUSTRAC collection
+austrac = Collection.objects.create(
+    name="AUSTRAC Guidelines",
+    parent=root,
+    collection_type="guideline",
+    jurisdiction="Australia"
+)
+
+# Create sub-collections for specific topics
+aml = Collection.objects.create(
+    name="AML Guidelines",
+    parent=austrac,
+    collection_type="guideline"
+)
+
+kyc = Collection.objects.create(
+    name="KYC Requirements",
+    parent=austrac,
+    collection_type="guideline"
+)
+```
+
+## Frontend Integration
+
+### Unified File Manager Implementation
+
+The new unified API allows you to build a Google Drive-style file manager with minimal API calls. Here's a complete implementation:
+
+#### TypeScript Interfaces
+
+```typescript
+interface Collection {
+  uuid: string;
+  id: number;
+  name: string;
+  description?: string;
+  collection_type: 'folder' | 'regulation' | 'act' | 'guideline' | 'manual';
+  children: Collection[];
+  files: File[];
+  full_path: string;
+  created_at: string;
+}
+
+interface File {
+  uuid: string;
+  title: string;
+  description?: string;
+  file_type: string;
+  collection?: Collection;
+  collection_order: number;
+  volume_number?: number;
+  part_number?: string;
+  created_at: string;
+}
+```
+
+#### File Manager Class
+
+```typescript
+class FileManager {
+  private baseUrl = '/api/collections/';
+
+  // Get contents of any location (root or collection)
+  async getContents(collectionUuid?: string): Promise<Collection> {
+    const params = collectionUuid ? `?collection_uuid=${collectionUuid}` : '';
+    const response = await fetch(`${this.baseUrl}${params}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get contents: ${response.statusText}`);
     }
-  ]
+    
+    return response.json();
+  }
+
+  // Get root contents
+  async getRootContents(): Promise<Collection> {
+    return await this.getContents();
+  }
+
+  // Get collection contents
+  async getCollectionContents(collectionUuid: string): Promise<Collection> {
+    return await this.getContents(collectionUuid);
+  }
+
+  // Create new folder
+  async createFolder(name: string, parentUuid?: string, description?: string): Promise<Collection> {
+    const response = await fetch(`${this.baseUrl}create-folder/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        parent_uuid: parentUuid,
+        description,
+        collection_type: 'folder'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create folder: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  // Move files to collection
+  async moveFilesToCollection(fileUuids: string[], targetCollectionUuid: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${targetCollectionUuid}/add-files/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        file_uuids: fileUuids
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to move files: ${response.statusText}`);
+    }
+  }
+
+  private getAuthToken(): string {
+    // Implement your auth token retrieval logic
+    return localStorage.getItem('auth_token') || '';
+  }
 }
 ```
 
-### 3. Move Files Between Collections
-**POST** `/files/move-to-collection/`
+#### React Component - Google Drive Style
 
-Moves files to a different collection.
+```typescript
+import React, { useState, useEffect } from 'react';
 
-**Request Body:**
-```json
-{
-  "file_ids": ["123e4567-e89b-12d3-a456-426614174000", "987fcdeb-51a2-43d1-b789-123456789abc"],
-  "target_collection_id": 2  // null to move to root level
+interface FileManagerProps {
+  initialCollectionUuid?: string;
+}
+
+const FileManager: React.FC<FileManagerProps> = ({ initialCollectionUuid }) => {
+  const [currentLocation, setCurrentLocation] = useState<Collection | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fileManager = new FileManager();
+
+  // Load initial contents
+  useEffect(() => {
+    loadContents(initialCollectionUuid);
+  }, [initialCollectionUuid]);
+
+  const loadContents = async (collectionUuid?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const contents = await fileManager.getContents(collectionUuid);
+      setCurrentLocation(contents);
+      
+      // Update breadcrumbs
+      if (collectionUuid) {
+        updateBreadcrumbs(contents);
+      } else {
+        setBreadcrumbs([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load contents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateBreadcrumbs = (collection: Collection) => {
+    const ancestors: Collection[] = [];
+    let current: Collection | null = collection;
+    
+    while (current) {
+      ancestors.unshift(current);
+      // Note: You'll need to implement getParent() or modify the API
+      // to get parent collections for breadcrumb navigation
+      current = null; // Placeholder
+    }
+    
+    setBreadcrumbs(ancestors);
+  };
+
+  const handleFolderClick = (collection: Collection) => {
+    loadContents(collection.uuid);
+  };
+
+  const handleBreadcrumbClick = (collection: Collection) => {
+    loadContents(collection.uuid);
+  };
+
+  const handleCreateFolder = async () => {
+    const name = prompt('Enter folder name:');
+    if (!name) return;
+
+    try {
+      const newFolder = await fileManager.createFolder(
+        name, 
+        currentLocation?.uuid, 
+        'New folder'
+      );
+      
+      // Refresh current view
+      await loadContents(currentLocation?.uuid);
+    } catch (err) {
+      alert('Failed to create folder');
+    }
+  };
+
+  if (loading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
+  if (!currentLocation) return <div>No contents found</div>;
+
+  return (
+    <div className="file-manager">
+      {/* Top Bar */}
+      <div className="top-bar">
+        <div className="breadcrumbs">
+          <span 
+            className="breadcrumb-item root"
+            onClick={() => loadContents()}
+          >
+            Root
+          </span>
+          {breadcrumbs.map((crumb, index) => (
+            <React.Fragment key={crumb.uuid}>
+              <span className="breadcrumb-separator">/</span>
+              <span 
+                className="breadcrumb-item"
+                onClick={() => handleBreadcrumbClick(crumb)}
+              >
+                {crumb.name}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+        
+        <div className="actions">
+          <button onClick={handleCreateFolder} className="btn-create-folder">
+            + New Folder
+          </button>
+        </div>
+      </div>
+
+      {/* Current Location Header */}
+      <div className="location-header">
+        <h1>{currentLocation.name}</h1>
+        <p className="location-path">{currentLocation.full_path}</p>
+      </div>
+
+      {/* Contents Grid */}
+      <div className="contents-grid">
+        {/* Folders */}
+        {currentLocation.children.length > 0 && (
+          <div className="folders-section">
+            <h2>Folders</h2>
+            <div className="folders-grid">
+              {currentLocation.children.map(folder => (
+                <div 
+                  key={folder.uuid} 
+                  className="folder-item"
+                  onClick={() => handleFolderClick(folder)}
+                >
+                  <div className="folder-icon">📁</div>
+                  <div className="folder-name">{folder.name}</div>
+                  <div className="folder-type">{folder.collection_type}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Files */}
+        {currentLocation.files.length > 0 && (
+          <div className="files-section">
+            <h2>Files</h2>
+            <div className="files-grid">
+              {currentLocation.files.map(file => (
+                <div key={file.uuid} className="file-item">
+                  <div className="file-icon">📄</div>
+                  <div className="file-name">{file.title}</div>
+                  <div className="file-type">{file.file_type}</div>
+                  {file.volume_number && (
+                    <div className="file-volume">Vol {file.volume_number}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {currentLocation.children.length === 0 && currentLocation.files.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-icon">📁</div>
+            <h3>This folder is empty</h3>
+            <p>Upload files or create subfolders to get started</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default FileManager;
+```
+
+#### CSS Styling
+
+```css
+.file-manager {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #e1e5e9;
+  margin-bottom: 24px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumb-item {
+  color: #1a73e8;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.breadcrumb-item:hover {
+  background-color: #f1f3f4;
+}
+
+.breadcrumb-item.root {
+  font-weight: 500;
+}
+
+.breadcrumb-separator {
+  color: #5f6368;
+}
+
+.btn-create-folder {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-create-folder:hover {
+  background-color: #1557b0;
+}
+
+.location-header {
+  margin-bottom: 24px;
+}
+
+.location-header h1 {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.location-path {
+  margin: 0;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.contents-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.folders-section h2,
+.files-section h2 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.folders-grid,
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.folder-item,
+.file-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.folder-item:hover,
+.file-item:hover {
+  border-color: #1a73e8;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
+}
+
+.folder-icon,
+.file-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.folder-name,
+.file-name {
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.folder-type,
+.file-type {
+  font-size: 12px;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.file-volume {
+  font-size: 12px;
+  color: #5f6368;
+  margin-top: 4px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #5f6368;
+}
+
+.empty-state .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #5f6368;
+}
+
+.error {
+  text-align: center;
+  padding: 60px 20px;
+  color: #d93025;
+  background-color: #fce8e6;
+  border-radius: 8px;
 }
 ```
 
-**Response:** `200 OK`
-```json
-{
-  "message": "Moved 2 files to collection \"Corporate Tax Act 2001\"",
-  "moved_count": 2
+#### Usage Example
+
+```typescript
+// App.tsx
+import React from 'react';
+import FileManager from './components/FileManager';
+
+function App() {
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>File Manager</h1>
+      </header>
+      <main>
+        <FileManager />
+      </main>
+    </div>
+  );
+}
+
+export default App;
+```
+
+### File Upload Component
+
+```typescript
+function FileUploadWithCollections() {
+  const [folderPath, setFolderPath] = useState('');
+  const [collectionType, setCollectionType] = useState('folder');
+  const [jurisdiction, setJurisdiction] = useState('');
+  const [regulationNumber, setRegulationNumber] = useState('');
+  
+  const handleUpload = async (files: File[]) => {
+    const formData = new FormData();
+    
+    files.forEach(file => formData.append('files', file));
+    
+    if (folderPath) {
+      formData.append('folder_path', folderPath);
+    }
+    
+    formData.append('collection_type', collectionType);
+    formData.append('jurisdiction', jurisdiction);
+    formData.append('regulation_number', regulationNumber);
+    
+    const response = await fetch('/api/files/', {
+      method: 'POST',
+      body: formData
+    });
+    
+    return response.json();
+  };
+  
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Folder path (e.g., Australian Regulations/Corporate Tax Act 2001)"
+        value={folderPath}
+        onChange={(e) => setFolderPath(e.target.value)}
+      />
+      
+      <select value={collectionType} onChange={(e) => setCollectionType(e.target.value)}>
+        <option value="folder">Folder</option>
+        <option value="regulation">Regulation</option>
+        <option value="act">Act</option>
+        <option value="guideline">Guideline</option>
+      </select>
+      
+      <input
+        type="text"
+        placeholder="Jurisdiction (e.g., Australia)"
+        value={jurisdiction}
+        onChange={(e) => setJurisdiction(e.target.value)}
+      />
+      
+      <input
+        type="text"
+        placeholder="Regulation Number (e.g., 2001)"
+        value={regulationNumber}
+        onChange={(e) => setRegulationNumber(e.target.value)}
+      />
+    </div>
+  );
 }
 ```
 
-### 4. Get File Details
-**GET** `/files/{uuid}/`
+## Database Schema
 
-Returns detailed information about a specific file.
-
-### 5. Update File
-**PUT/PATCH** `/files/{uuid}/`
-
-Updates file metadata.
-
-**Request Body:**
-```json
-{
-  "title": "Updated Title",
-  "description": "Updated description",
-  "collection_order": 2
-}
+### Collection Model
+```python
+class Collection(BaseModel):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    collection_type = models.CharField(max_length=50, choices=COLLECTION_TYPE_CHOICES)
+    jurisdiction = models.CharField(max_length=100, blank=True, null=True)
+    regulation_number = models.CharField(max_length=50, blank=True, null=True)
+    effective_date = models.DateField(blank=True, null=True)
+    sort_order = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['name', 'parent']
+        ordering = ['sort_order', 'name']
 ```
 
-### 6. Delete File
-**DELETE** `/files/{uuid}/`
-
-Deletes a file.
-
-## Collection Types
-
-The system supports the following collection types:
-
-- **`folder`**: General purpose folder
-- **`regulation`**: Regulatory document collection
-- **`act`**: Legislative act collection
-- **`guideline`**: Guideline document collection
-- **`manual`**: Manual or handbook collection
-
-## File Organization Features
-
-### Hierarchical Structure
-- Collections can have unlimited nesting levels
-- Each collection can contain both files and subcollections
-- Files maintain order within collections via `collection_order`
-
-### Multi-Volume Support
-- Files support `volume_number` for multi-volume documents
-- Files support `part_number` for document sections
-- Automatic ordering by volume, part, and collection order
-
-### Metadata Support
-- Collections can have jurisdiction, regulation number, and effective date
-- Files maintain ownership, team, and visibility settings
-- Support for global files accessible to all users
-
-## Error Handling
-
-All endpoints return appropriate HTTP status codes:
-
-- `200 OK`: Success
-- `201 Created`: Resource created
-- `400 Bad Request`: Invalid input
-- `401 Unauthorized`: Authentication required
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server error
-
-Error responses include a descriptive message:
-```json
-{
-  "error": "Description of the error"
-}
+### File Model (Updated)
+```python
+class File(models.Model):
+    # ... existing fields ...
+    collection = models.ForeignKey(Collection, null=True, blank=True)
+    volume_number = models.IntegerField(blank=True, null=True)
+    part_number = models.CharField(max_length=20, blank=True, null=True)
+    collection_order = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['collection', 'collection_order', 'volume_number', 'part_number', 'title']
 ```
 
-## Frontend Integration Examples
+## Migration
 
-### Create a Folder Structure
-```javascript
-// Create root folder
-const rootFolder = await api.post('/collections/create-folder/', {
-  name: 'Australian Regulations',
-  description: 'Collection of Australian regulatory documents',
-  collection_type: 'folder'
-});
+To apply the database changes:
 
-// Create subfolder
-const subFolder = await api.post('/collections/create-folder/', {
-  name: 'Corporate Tax Act 2001',
-  parent_id: rootFolder.id,
-  collection_type: 'act',
-  jurisdiction: 'Australia',
-  regulation_number: '2001'
-});
+```bash
+python manage.py migrate reggie
 ```
 
-### Upload Files to Collection
-```javascript
-const formData = new FormData();
-formData.append('files', file1);
-formData.append('files', file2);
-formData.append('collection_name', 'Tax Documents');
-formData.append('collection_type', 'folder');
-formData.append('jurisdiction', 'Australia');
+## **New Unified API Usage** 🚀
 
-const response = await api.post('/files/', formData, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-});
+### **Get Root Contents (Files + Folders):**
+```bash
+curl -X GET "http://localhost:8000/api/collections/" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### Move Files Between Collections
-```javascript
-await api.post('/files/move-to-collection/', {
-  file_ids: ['uuid1', 'uuid2'],
-  target_collection_id: 5
-});
+### **Get Collection Contents by UUID:**
+```bash
+curl -X GET "http://localhost:8000/api/collections/?collection_uuid=123e4567-e89b-12d3-a456-426614174000" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### Get Hierarchical Structure
-```javascript
-const collections = await api.get('/collections/tree/');
-// This returns the complete tree structure
+### **Get Specific Collection:**
+```bash
+curl -X GET "http://localhost:8000/api/collections/123e4567-e89b-12d3-a456-426614174000/" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-## Best Practices
+### **Frontend Implementation:**
+```typescript
+// Get contents of any location (root or collection)
+const getContents = async (collectionUuid?: string) => {
+  const params = collectionUuid ? `?collection_uuid=${collectionUuid}` : '';
+  const response = await api.get(`/collections/${params}`);
+  return response.data;
+};
 
-1. **Use the tree endpoint** for displaying the full folder structure
-2. **Create collections before uploading files** to maintain organization
-3. **Use appropriate collection types** for better categorization
-4. **Handle errors gracefully** - check response status codes
-5. **Use bulk operations** when moving multiple files
-6. **Cache collection data** to reduce API calls
-7. **Implement proper loading states** for async operations
+// Get root contents
+const rootContents = await getContents();
 
-## Rate Limiting
+// Get collection contents
+const folderContents = await getContents('123e4567-e89b-12d3-a456-426614174000');
+```
 
-- Standard rate limiting applies to all endpoints
-- File uploads may have additional restrictions
-- Consider implementing client-side throttling for bulk operations
-`
+## Testing
+
+Run the test script to verify the system works:
+
+```bash
+python test_hierarchical_collections.py
+```
+
+## Benefits
+
+### **Unified API Benefits**
+1. **Single Endpoint**: One API call gets everything (files + folders) at any level
+2. **Consistent Response Format**: Same structure for root and collection views
+3. **Minimal API Calls**: No need for multiple requests to build a file manager
+4. **UUID-Based**: Collections now use UUIDs like files for consistency
+5. **Google Drive Experience**: Build familiar file manager interfaces easily
+
+### **General Benefits**
+1. **Logical Organization**: Files are grouped by regulatory context
+2. **Easy Navigation**: Intuitive folder structure for users
+3. **Metadata Preservation**: Regulatory information is searchable and organized
+4. **Scalability**: Supports unlimited nesting and file organization
+5. **API Integration**: Full REST API support for programmatic access
+6. **Backward Compatibility**: Existing functionality remains unchanged
+
+## Future Enhancements
+
+- Collection templates for common regulatory structures
+- Bulk operations on collections
+- Collection-level permissions and sharing
+- Advanced search within collections
+- Collection analytics and usage statistics
