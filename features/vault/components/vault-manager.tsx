@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -243,7 +243,55 @@ export function VaultManager() {
     }
   };
 
-  const handleFileUpload = async (uploadedFiles: any[]) => {
+  // Memoize filtered files to prevent unnecessary re-computations
+  const filteredFiles = useMemo(() => {
+    return vaultFiles.filter(file => {
+      // Apply file type filters
+      const fileType = file.file_type || '';
+      const matchesType = showAllFiles || 
+        (activeFilters.length === 0) || 
+        activeFilters.some((filter: string) => fileType.includes(filter));
+      
+      // Apply search filter
+      const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        false;
+      
+      return matchesType && matchesSearch;
+    });
+  }, [vaultFiles, showAllFiles, activeFilters, searchQuery]);
+
+  // Memoize the select all checkbox state
+  const selectAllChecked = useMemo(() => {
+    return selectedFiles.length > 0 && selectedFiles.length === filteredFiles.length;
+  }, [selectedFiles.length, filteredFiles.length]);
+
+  // Remove the indeterminate state since Checkbox doesn't support it
+  // const selectAllIndeterminate = useMemo(() => {
+  //   return selectedFiles.length > 0 && selectedFiles.length < filteredFiles.length;
+  // }, [selectedFiles.length, filteredFiles.length]);
+
+  // Memoize pagination calculations
+  const paginationData = useMemo(() => {
+    const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (currentPage <= 3) {
+      endPage = Math.min(5, totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      startPage = Math.max(1, totalPages - 4);
+    }
+    
+    const pageNums = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNums.push(i);
+    }
+    
+    return { totalPages, startPage, endPage, pageNums };
+  }, [filesCount, itemsPerPage, currentPage]);
+
+  const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
     
     // Close the upload dialog
@@ -254,7 +302,7 @@ export function VaultManager() {
       description: `${uploadedFiles.length} file(s) uploaded successfully`,
     });
     fetchFiles(); // Refresh the file list
-  };
+  }, [toast]);
 
   const handleGoogleDriveClick = () => {
     // TODO: Implement Google Drive integration
@@ -296,7 +344,7 @@ export function VaultManager() {
     }
   };
 
-  const handleFileDelete = async (fileId: number) => {
+  const handleFileDelete = useCallback(async (fileId: number) => {
     try {
       await deleteVaultFile(fileId);
       toast({
@@ -314,9 +362,9 @@ export function VaultManager() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
   
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = useCallback(async () => {
     if (selectedFiles.length === 0) return;
     
     setIsDeleting(true);
@@ -364,35 +412,98 @@ export function VaultManager() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [selectedFiles, toast]);
   
-  const toggleSelectAll = (checked: boolean) => {
+  const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
-      const filteredFiles = vaultFiles
-        .filter(file => {
-          const fileType = file.file_type || '';
-          const matchesType = showAllFiles || 
-            (activeFilters.length === 0) || 
-            activeFilters.some((filter: string) => fileType.includes(filter));
-            
-          const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            false;
-          return matchesType && matchesSearch;
-        });
       setSelectedFiles(filteredFiles.map(file => file.id));
     } else {
       setSelectedFiles([]);
     }
-  };
+  }, [filteredFiles]);
   
-  const toggleSelectFile = (fileId: number, checked: boolean) => {
+  const toggleSelectFile = useCallback((fileId: number, checked: boolean) => {
     setSelectedFiles(prev => 
       checked 
         ? [...prev, fileId] 
         : prev.filter(id => id !== fileId)
     );
-  };
+  }, []);
+
+  // Memoize search input change handler
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  // Memoize filter change handlers
+  const handleFilterChange = useCallback((filterType: string, checked: boolean) => {
+    if (filterType === 'all') {
+      setShowAllFiles(checked);
+      if (checked) setActiveFilters([]);
+    } else if (filterType === 'doc') {
+      // Handle Word documents (doc, docx)
+      setShowAllFiles(false);
+      const docFilters = ['doc', 'docx'];
+      setActiveFilters(prev => 
+        checked 
+          ? [...prev.filter(f => !docFilters.includes(f)), ...docFilters] 
+          : prev.filter(f => !docFilters.includes(f))
+      );
+    } else if (filterType === 'xls') {
+      // Handle Excel spreadsheets (xls, xlsx)
+      setShowAllFiles(false);
+      const excelFilters = ['xls', 'xlsx'];
+      setActiveFilters(prev => 
+        checked 
+          ? [...prev.filter(f => !excelFilters.includes(f)), ...excelFilters] 
+          : prev.filter(f => !excelFilters.includes(f))
+      );
+    } else if (filterType === 'txt') {
+      // Handle text files (txt, csv)
+      setShowAllFiles(false);
+      const textFilters = ['txt', 'csv'];
+      setActiveFilters(prev => 
+        checked 
+          ? [...prev.filter(f => !textFilters.includes(f)), ...textFilters] 
+          : prev.filter(f => !textFilters.includes(f))
+      );
+    } else if (filterType === 'jpg') {
+      // Handle images (jpg, jpeg, png)
+      setShowAllFiles(false);
+      const imageFilters = ['jpg', 'jpeg', 'png'];
+      setActiveFilters(prev => 
+        checked 
+          ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
+          : prev.filter(f => !imageFilters.includes(f))
+      );
+    } else {
+      // Handle single filters (pdf)
+      setShowAllFiles(false);
+      setActiveFilters(prev => checked 
+        ? [...prev.filter(f => f !== filterType), filterType] 
+        : prev.filter(f => f !== filterType)
+      );
+    }
+  }, []);
+
+  // Memoize items per page change handler
+  const handleItemsPerPageChange = useCallback((value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  }, []);
+
+  // Memoize page change handlers
+  const handlePageChange = useCallback((pageNum: number) => {
+    setCurrentPage(pageNum);
+  }, []);
+
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((prev) => Math.min(prev + 1, paginationData.totalPages));
+  }, [paginationData.totalPages]);
 
   // Add a function to handle rename
   const handleRename = async () => {
@@ -457,7 +568,7 @@ export function VaultManager() {
                         <SearchInput 
                           placeholder="Search files..." 
                           value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onChange={handleSearchChange}
                           className="w-full" 
                         />
                       </div>
@@ -473,78 +584,38 @@ export function VaultManager() {
                           <DropdownMenuContent className="w-56">
                             <DropdownMenuCheckboxItem 
                               checked={showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(checked);
-                                if (checked) setActiveFilters([]);
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('all', checked)}
                             >
                               All Files
                             </DropdownMenuCheckboxItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuCheckboxItem 
                               checked={activeFilters.includes('pdf') || showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(false);
-                                setActiveFilters(prev => checked 
-                                  ? [...prev.filter(f => f !== 'pdf'), 'pdf'] 
-                                  : prev.filter(f => f !== 'pdf'))
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('pdf', checked)}
                             >
                               PDF Documents
                             </DropdownMenuCheckboxItem>
                             <DropdownMenuCheckboxItem 
                               checked={activeFilters.includes('doc') || activeFilters.includes('docx') || showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(false);
-                                const docFilters = ['doc', 'docx'];
-                                setActiveFilters(prev => 
-                                  checked 
-                                    ? [...prev.filter(f => !docFilters.includes(f)), ...docFilters] 
-                                    : prev.filter(f => !docFilters.includes(f))
-                                );
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('doc', checked)}
                             >
                               Word Documents
                             </DropdownMenuCheckboxItem>
                             <DropdownMenuCheckboxItem 
                               checked={activeFilters.includes('xls') || activeFilters.includes('xlsx') || showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(false);
-                                const excelFilters = ['xls', 'xlsx'];
-                                setActiveFilters(prev => 
-                                  checked 
-                                    ? [...prev.filter(f => !excelFilters.includes(f)), ...excelFilters] 
-                                    : prev.filter(f => !excelFilters.includes(f))
-                                );
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('xls', checked)}
                             >
                               Excel Spreadsheets
                             </DropdownMenuCheckboxItem>
                             <DropdownMenuCheckboxItem 
                               checked={activeFilters.includes('txt') || activeFilters.includes('csv') || showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(false);
-                                const textFilters = ['txt', 'csv'];
-                                setActiveFilters(prev => 
-                                  checked 
-                                    ? [...prev.filter(f => !textFilters.includes(f)), ...textFilters] 
-                                    : prev.filter(f => !textFilters.includes(f))
-                                );
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('txt', checked)}
                             >
                               Text Files
                             </DropdownMenuCheckboxItem>
                             <DropdownMenuCheckboxItem 
                               checked={activeFilters.includes('jpg') || activeFilters.includes('jpeg') || activeFilters.includes('png') || showAllFiles}
-                              onCheckedChange={(checked) => {
-                                setShowAllFiles(false);
-                                const imageFilters = ['jpg', 'jpeg', 'png'];
-                                setActiveFilters(prev => 
-                                  checked 
-                                    ? [...prev.filter(f => !imageFilters.includes(f)), ...imageFilters] 
-                                    : prev.filter(f => !imageFilters.includes(f))
-                                );
-                              }}
+                              onCheckedChange={(checked) => handleFilterChange('jpg', checked)}
                             >
                               Images
                             </DropdownMenuCheckboxItem>
@@ -600,17 +671,7 @@ export function VaultManager() {
                       <TableRow>
                         <TableHead className="w-[50px]">
                             <Checkbox 
-                            checked={selectedFiles.length > 0 && selectedFiles.length === vaultFiles.filter((file) => {
-                              const fileType = file.file_type || '';
-                              const matchesType = showAllFiles || 
-                                (activeFilters.length === 0) || 
-                                activeFilters.some((filter: string) => fileType.includes(filter));
-                                
-                              const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                                false;
-                              return matchesType && matchesSearch;
-                            }).length}
+                            checked={selectAllChecked}
                             onCheckedChange={toggleSelectAll}
                             aria-label="Select all files"
                           />
@@ -623,22 +684,8 @@ export function VaultManager() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vaultFiles.length > 0 ? (
-                        vaultFiles
-                          .filter(file => {
-                            // Apply file type filters
-                            const fileType = file.file_type || '';
-                            const matchesType = showAllFiles || 
-                              (activeFilters.length === 0) || 
-                              activeFilters.some((filter: string) => fileType.includes(filter));
-                            
-                            // Apply search filter
-                            const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                              false;
-                            
-                            return matchesType && matchesSearch;
-                          })
+                      {filteredFiles.length > 0 ? (
+                        filteredFiles
                           .map((file) => (
                           <TableRow key={file.id}>
                             <TableCell>
@@ -725,71 +772,46 @@ export function VaultManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        onClick={handlePreviousPage}
                         disabled={currentPage === 1 || !hasPreviousPage}
                       >
                         Previous
                       </Button>
                     </PaginationItem>
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      return totalPages > 5 && currentPage > 3 ? (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : null;
-                    })()}
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      const pageNums = [];
-                      let startPage = Math.max(1, currentPage - 2);
-                      let endPage = Math.min(totalPages, currentPage + 2);
-                      
-                      if (currentPage <= 3) {
-                        endPage = Math.min(5, totalPages);
-                      } else if (currentPage >= totalPages - 2) {
-                        startPage = Math.max(1, totalPages - 4);
-                      }
-                      
-                      for (let i = startPage; i <= endPage; i++) {
-                        pageNums.push(i);
-                      }
-                      
-                      return pageNums.map((pageNum) => {
-                        if (pageNum >= 1 && pageNum <= totalPages) {
-                          return (
-                            <PaginationItem key={pageNum}>
-                              <Button
-                                variant={currentPage === pageNum ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setCurrentPage(pageNum)}
-                              >
-                                {pageNum}
-                              </Button>
-                            </PaginationItem>
-                          );
-                        }
-                        return null;
-                      });
-                    })()}
-                    {(() => {
-                      const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-                      return totalPages > 5 && currentPage < totalPages - 2 ? (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : null;
-                    })()}
+                    
+                    {/* Show ellipsis before page numbers if needed */}
+                    {paginationData.totalPages > 5 && currentPage > 3 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
+                    {/* Page numbers */}
+                    {paginationData.pageNums.map((pageNum) => (
+                      <PaginationItem key={pageNum}>
+                        <Button
+                          variant={currentPage === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      </PaginationItem>
+                    ))}
+                    
+                    {/* Show ellipsis after page numbers if needed */}
+                    {paginationData.totalPages > 5 && currentPage < paginationData.totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
                     <PaginationItem>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => 
-                          setCurrentPage((prev) => 
-                            Math.min(prev + 1, Math.max(1, Math.ceil(filesCount / itemsPerPage)))
-                          )
-                        }
-                        disabled={currentPage >= Math.ceil(filesCount / itemsPerPage) || !hasNextPage}
+                        onClick={handleNextPage}
+                        disabled={currentPage >= paginationData.totalPages || !hasNextPage}
                       >
                         Next
                       </Button>
@@ -811,10 +833,7 @@ export function VaultManager() {
                       {[5, 10, 20, 50].map((value) => (
                         <DropdownMenuItem
                           key={value}
-                          onClick={() => {
-                            setItemsPerPage(value);
-                            setCurrentPage(1);
-                          }}
+                          onClick={() => handleItemsPerPageChange(value)}
                         >
                           {value}
                         </DropdownMenuItem>

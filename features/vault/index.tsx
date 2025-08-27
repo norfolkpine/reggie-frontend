@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -113,7 +113,7 @@ export default function Projects() {
         owner: auth.user?.id
       })
       
-      setProjects([...projects, {
+      setProjects(prevProjects => [...prevProjects, {
         ...newProject,
         icon: getProjectIcon(newProject.name ?? ''),
         color: getProjectColor(newProject.name ?? ''),
@@ -138,6 +138,29 @@ export default function Projects() {
     }
   }
 
+  // Handle project deletion without page refresh
+  const handleProjectDeleted = useCallback((projectId: string) => {
+    setProjects(prevProjects => prevProjects.filter(project => {
+      const id = getProjectId(project);
+      return id !== projectId;
+    }));
+  }, []);
+
+  // Handle project renaming without page refresh
+  const handleProjectRenamed = useCallback((projectId: string, newName: string) => {
+    setProjects(prevProjects => prevProjects.map(project => {
+      const id = getProjectId(project);
+      if (id === projectId) {
+        return {
+          ...project,
+          name: newName,
+          lastUpdated: `Updated ${project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`
+        };
+      }
+      return project;
+    }));
+  }, []);
+
   const getProjectIcon = (name: string) => {
     const icons = [Database, Globe, BarChart, Code, Zap, FileText]
     return icons[Math.floor(Math.random() * icons.length)]
@@ -161,24 +184,26 @@ export default function Projects() {
   }
 
   // Filter projects based on search query and selected tags
-  const filteredProjects = projects.filter((project) => {
-    // Filter by search query
-    const matchesSearch =
-      project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (project.tags && project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      // Filter by search query
+      const matchesSearch =
+        project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.tags && project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
 
-    // Filter by selected tags
-    const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
+      // Filter by selected tags
+      const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
 
-    // Filter by view mode
-    const matchesViewMode =
-      (viewMode === "starred" && project.starred) ||
-      (viewMode === "user" && project.owner === auth.user?.id) ||
-      (viewMode === "userProjects" && project.owner !== auth.user?.id)
+      // Filter by view mode
+      const matchesViewMode =
+        (viewMode === "starred" && project.starred) ||
+        (viewMode === "user" && project.owner === auth.user?.id) ||
+        (viewMode === "userProjects" && project.owner !== auth.user?.id)
 
-    return matchesSearch && matchesTags && matchesViewMode
-  })
+      return matchesSearch && matchesTags && matchesViewMode
+    })
+  }, [projects, searchQuery, selectedTags, viewMode, auth.user?.id])
 
 
 
@@ -299,6 +324,8 @@ export default function Projects() {
                     key={projectId}
                     project={project}
                     onSelect={() => {}}
+                    onProjectDeleted={handleProjectDeleted}
+                    onProjectRenamed={handleProjectRenamed}
                   />
                 </Link>
               );

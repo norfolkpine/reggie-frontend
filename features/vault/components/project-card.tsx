@@ -20,9 +20,11 @@ import { useToast } from "@/components/ui/use-toast";
 interface ProjectCardProps {
   project: Project
   onSelect?: (projectName: string) => void
+  onProjectDeleted?: (projectId: string) => void
+  onProjectRenamed?: (projectId: string, newName: string) => void
 }
 
-export function ProjectCard({ project, onSelect }: ProjectCardProps) {
+export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRenamed }: ProjectCardProps) {
   const { toast } = useToast();
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState(project.name || "");
@@ -37,7 +39,8 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
       await updateProject(projectId, { ...project, name: newName });
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
-      if (typeof window !== "undefined") window.location.reload();
+      // Notify parent component instead of reloading page
+      onProjectRenamed?.(projectId, newName);
     } catch (e) {
       toast({ title: "Error renaming project", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -53,7 +56,8 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
     try {
       await deleteProject(projectId);
       toast({ title: "Project deleted", description: `Project '${project.name}' was deleted.` });
-      if (typeof window !== "undefined") window.location.reload();
+      // Notify parent component instead of reloading page
+      onProjectDeleted?.(projectId);
     } catch (e) {
       toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
     } finally {
