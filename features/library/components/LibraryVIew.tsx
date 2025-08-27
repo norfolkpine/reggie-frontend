@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { LibraryHeader } from "./LibraryHeader"
 import { LibraryTabs } from "./LibraryTabs"
 import { Document, Collection, Team } from "../types"
@@ -25,61 +25,72 @@ export function LibraryView({
   const [teamFilter, setTeamFilter] = useState("all")
   const { setHeaderCustomContent } = useHeader()
 
+  // Memoized header content
+  const headerContent = useMemo(() => (
+    <div className="text-lg font-medium text-gray-900">
+      Australian Corporate & Tax Library
+    </div>
+  ), []);
+
   // Set custom header content
   useEffect(() => {
-    setHeaderCustomContent(
-      <div className="text-lg font-medium text-gray-900">
-        Australian Corporate & Tax Library
-      </div>
-    );
+    setHeaderCustomContent(headerContent);
 
     // Cleanup when component unmounts
     return () => setHeaderCustomContent(null);
-  }, [setHeaderCustomContent]);
+  }, [setHeaderCustomContent, headerContent]);
 
-  // Combine documents based on the selected document type
-  let documents: Document[] = []
-  if (documentType === "all") documents = [...publicDocuments, ...privateDocuments]
-  else if (documentType === "public") documents = publicDocuments
-  else if (documentType === "private") documents = privateDocuments
+  // Memoized combined documents based on the selected document type
+  const documents = useMemo(() => {
+    if (documentType === "all") return [...publicDocuments, ...privateDocuments]
+    else if (documentType === "public") return publicDocuments
+    else if (documentType === "private") return privateDocuments
+    return []
+  }, [publicDocuments, privateDocuments, documentType]);
 
-  // Combine collections based on the selected document type
-  let collections: Collection[] = []
-  if (documentType === "all") collections = [...publicCollections, ...privateCollections]
-  else if (documentType === "public") collections = publicCollections
-  else if (documentType === "private") collections = privateCollections
+  // Memoized combined collections based on the selected document type
+  const collections = useMemo(() => {
+    if (documentType === "all") return [...publicCollections, ...privateCollections]
+    else if (documentType === "public") return publicCollections
+    else if (documentType === "private") return privateCollections
+    return []
+  }, [publicCollections, privateCollections, documentType]);
 
-  // Filter documents based on search query, tab, and team filter
-  const filteredDocuments = documents.filter((doc) => {
-    // Search filter
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.category.toLowerCase().includes(searchQuery.toLowerCase())
+  // Memoized filtered documents based on search query, tab, and team filter
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      // Search filter
+      const matchesSearch =
+        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.category.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Tab filter for legislation and taxation
-    let matchesTab = true
-    if (activeTab === "legislation" && doc.type !== "Legislation") matchesTab = false
-    if (activeTab === "taxation" && doc.category !== "Taxation") matchesTab = false
+      // Tab filter for legislation and taxation
+      let matchesTab = true
+      if (activeTab === "legislation" && doc.type !== "Legislation") matchesTab = false
+      if (activeTab === "taxation" && doc.category !== "Taxation") matchesTab = false
 
-    // Team filter (only for private documents)
-    let matchesTeam = true
-    if (doc.access !== "public" && teamFilter !== "all") {
-      if (teamFilter === "personal" && doc.access !== "private") matchesTeam = false
-      else if (teamFilter !== "personal" && (doc as any).team !== teamFilter) matchesTeam = false
-    }
+      // Team filter (only for private documents)
+      let matchesTeam = true
+      if (doc.access !== "public" && teamFilter !== "all") {
+        if (teamFilter === "personal" && doc.access !== "private") matchesTeam = false
+        else if (teamFilter !== "personal" && (doc as any).team !== teamFilter) matchesTeam = false
+      }
 
-    return matchesSearch && matchesTab && matchesTeam
-  })
+      return matchesSearch && matchesTab && matchesTeam
+    })
+  }, [documents, searchQuery, activeTab, teamFilter]);
 
-  // Filter collections based on team filter
-  const filteredCollections = collections.filter((collection) => {
-    if (collection.access === "public") return true
-    if (teamFilter === "all") return true
-    if (teamFilter === "personal" && collection.access === "private") return true
-    if (collection.team === teamFilter) return true
-    return false
-  })
+  // Memoized filtered collections based on team filter
+  const filteredCollections = useMemo(() => {
+    return collections.filter((collection) => {
+      if (collection.access === "public") return true
+      if (teamFilter === "all") return true
+      if (teamFilter === "personal" && collection.access === "private") return true
+      if (collection.team === teamFilter) return true
+      return false
+    })
+  }, [collections, teamFilter]);
 
   return (
     <div className="flex-1 flex flex-col h-full">

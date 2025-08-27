@@ -6,6 +6,8 @@ import {
   RefAttributes,
   useEffect,
   useState,
+  useCallback,
+  useMemo,
 } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,10 +162,10 @@ export default function Sidebar() {
 
   // Add state for rename dialog and project
   const [renameOpen, setRenameOpen] = useState(false);
-  const [renameProjectId, setRenameProjectId] = useState<number | null>(null);
+  const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   // Documents state
   const [documentsExpanded, setDocumentsExpanded] = useState(false);
@@ -227,36 +229,36 @@ export default function Sidebar() {
 
 
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setIsExpanded(!isExpanded);
-  };
+  }, [isExpanded]);
 
-  const handleNavItemClick = (url: string) => {
+  const handleNavItemClick = useCallback((url: string) => {
     // Always navigate to /chat for new sessions when clicking Assistant
     if (url === "/chat") {
       router.push("/chat");
       return;
     }
     router.push(url);
-  };
+  }, [router]);
 
-  const handleChatItemClick = (url: string) => {
+  const handleChatItemClick = useCallback((url: string) => {
     router.push(url);
-  };
+  }, [router]);
 
-  const handleHistoryItemClick = (
-  sessionId: string,
-  agentCode?: string | null
-) => {
-  let url = `/chat/${sessionId}`;
-  if (agentCode) {
-    const params = new URLSearchParams({ agentId:agentCode });
-    url += `?${params.toString()}`;
-  }
-  router.push(url);
-};
+  const handleHistoryItemClick = useCallback((
+    sessionId: string,
+    agentCode?: string | null
+  ) => {
+    let url = `/chat/${sessionId}`;
+    if (agentCode) {
+      const params = new URLSearchParams({ agentId: agentCode });
+      url += `?${params.toString()}`;
+    }
+    router.push(url);
+  }, [router]);
 
-  const renderIcon = (icon?: ChatItem["icon"]) => {
+  const renderIcon = useCallback((icon?: ChatItem["icon"]) => {
     if (!icon) return null;
     
     if (typeof icon === "string") {
@@ -271,9 +273,9 @@ export default function Sidebar() {
     // Handle Lucide icons which are ForwardRefExoticComponent
     const IconComponent = icon as ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
     return <IconComponent className="h-4 w-4" />;
-  };
+  }, []);
 
-  const handleCreateProject = async (name: string, description: string) => {
+  const handleCreateProject = useCallback(async (name: string, description: string) => {
     try {
       await createProject({
         name,
@@ -296,13 +298,18 @@ export default function Sidebar() {
         variant: "destructive",
       });
     }
-  };
+  }, [createProject, user?.id, pathname, router, toast]);
 
-  const handleRename = async () => {
+  const handleRename = useCallback(async () => {
     if (!renameProjectId) return;
     setIsRenaming(true);
     try {
-      await updateProject(renameProjectId, { name: newName });
+      // Convert string ID to number for the API call
+      const numericId = parseInt(renameProjectId, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid project ID');
+      }
+      await updateProject(numericId, { name: newName });
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       setRenameProjectId(null);
@@ -312,30 +319,37 @@ export default function Sidebar() {
     } finally {
       setIsRenaming(false);
     }
-  };
+  }, [renameProjectId, newName, updateProject, toast]);
 
-  const handleDelete = async (projectId: number, projectName: string) => {
+  const handleDelete = useCallback(async (projectId: string, projectName: string) => {
     if (!window.confirm(`Are you sure you want to delete project '${projectName}'? This cannot be undone.`)) return;
     setIsDeleting(projectId);
     try {
-      await deleteProject(projectId);
+      // Convert string ID to number for the API call
+      const numericId = parseInt(projectId, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid project ID');
+      }
+      await deleteProject(numericId);
       toast({ title: "Project deleted", description: `Project '${projectName}' was deleted.` });
     } catch (e) {
       toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsDeleting(null);
     }
-  };
+  }, [deleteProject, toast]);
 
-  // Filter navigation items to hide Admin for non-superusers/staff
-  const filteredNavigationItems = navigationItems.filter(item => {
-    if (typeof item === 'object' && 'name' in item) {
-      if (item.name === "Admin") {
-        return user?.is_superuser || user?.is_staff;
+  // Memoized filtered navigation items
+  const filteredNavigationItems = useMemo(() => {
+    return navigationItems.filter(item => {
+      if (typeof item === 'object' && 'name' in item) {
+        if (item.name === "Admin") {
+          return user?.is_superuser || user?.is_staff;
+        }
       }
-    }
-    return true;
-  });
+      return true;
+    });
+  }, [navigationItems, user?.is_superuser, user?.is_staff]);
 
   return (
     <div

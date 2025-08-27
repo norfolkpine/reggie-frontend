@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { AlertCircle, Plus, Search } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { SearchFilter } from "./components/search-filter"
@@ -26,23 +26,26 @@ export default function ExploreAgents() {
   const router = useRouter()
   const { setHeaderActions } = useHeader()
 
+  // Memoized header actions
+  const headerActions = useMemo(() => [
+    {
+      label: "Create Agent",
+      onClick: () => router.push('/agent/create'),
+      icon: <Plus className="h-4 w-4" />,
+      variant: "default" as const,
+      size: "sm" as const
+    }
+  ], [router]);
+
   // Set header actions
   useEffect(() => {
-    setHeaderActions([
-      {
-        label: "Create Agent",
-        onClick: () => router.push('/agent/create'),
-        icon: <Plus className="h-4 w-4" />,
-        variant: "default",
-        size: "sm"
-      }
-    ]);
+    setHeaderActions(headerActions);
 
     // Cleanup when component unmounts
     return () => setHeaderActions([]);
-  }, [setHeaderActions, router]);
+  }, [setHeaderActions, headerActions]);
 
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await getAgents()
@@ -60,27 +63,29 @@ export default function ExploreAgents() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast]);
 
-  const handleDeleteAgent = async () => {
+  const handleDeleteAgent = useCallback(async () => {
     await fetchAgents();
-  };
+  }, [fetchAgents]);
 
   useEffect(() => {
     fetchAgents()
-  }, [])
+  }, [fetchAgents])
 
-  // Filter agents based on search query and category
-  const filteredAgents = agents.filter((agent) => {
-    const matchesSearch =
-      agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchQuery.toLowerCase())
+  // Memoized filtered agents
+  const filteredAgents = useMemo(() => {
+    return agents.filter((agent) => {
+      const matchesSearch =
+        agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        agent.description.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Since we don't have category in the API response, we'll need to adjust this later
-    const matchesCategory = activeCategory === "All"
+      // Since we don't have category in the API response, we'll need to adjust this later
+      const matchesCategory = activeCategory === "All"
 
-    return matchesSearch && matchesCategory
-  })
+      return matchesSearch && matchesCategory
+    })
+  }, [agents, searchQuery, activeCategory]);
 
   return (
     <div className="flex-1 flex flex-col h-full">

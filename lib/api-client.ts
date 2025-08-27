@@ -98,10 +98,11 @@ export function triggerTokenExpiration(): void {
   if (context) {
     context.handleTokenExpiration();
   } else {
-    // Fallback if auth context is not available
+    // Fallback if auth context is not available - clear storage but don't hard redirect
     if (typeof window !== 'undefined') {
       localStorage.clear();
-      window.location.href = "/sign-in";
+      console.warn('Auth context not available for token expiration handling');
+      // Don't use window.location.href - let the auth context handle navigation
     }
   }
 }
@@ -210,10 +211,11 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
       if (context) {
         context.handleTokenExpiration();
       } else {
-        // Fallback if auth context is not available
+        // Fallback if auth context is not available - clear storage but don't hard redirect
         if (typeof window !== 'undefined') {
           localStorage.clear();
-          window.location.href = '/sign-in';
+          console.warn('Auth context not available for authentication error handling');
+          // Don't use window.location.href - let the auth context handle navigation
         }
       }
     }

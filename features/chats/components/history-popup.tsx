@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { History, X, FileSearch, Plus, MessageSquare } from "lucide-react";
 import {
@@ -23,9 +23,21 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [filteredSessions, setFilteredSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Memoized filtered sessions based on search query
+  const filteredSessions = useMemo(() => {
+    if (searchQuery.trim() === "") {
+      return chatSessions;
+    } else {
+      const query = searchQuery.toLowerCase();
+      return chatSessions.filter(
+        (session) =>
+          session.title.toLowerCase().includes(query)
+      );
+    }
+  }, [searchQuery, chatSessions]);
 
   // Fetch chat sessions when popup is opened
   useEffect(() => {
@@ -35,48 +47,33 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
     }
   }, [isOpen]);
 
-  const fetchChatSessions = async () => {
+  const fetchChatSessions = useCallback(async () => {
     try {
       const response = await getChatSessions();
       setChatSessions(response.results);
-      setFilteredSessions(response.results);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching chat sessions:", error);
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Filter sessions based on search query
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredSessions(chatSessions);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = chatSessions.filter(
-        (session) =>
-          session.title.toLowerCase().includes(query)
-      );
-      setFilteredSessions(filtered);
-    }
-  }, [searchQuery, chatSessions]);
-
-  const handleSelectChat = (chatId: string,agentCode?: string | null) => {
+  const handleSelectChat = useCallback((chatId: string, agentCode?: string | null) => {
     if (onSelectChat) {
-      onSelectChat(chatId,agentCode);
+      onSelectChat(chatId, agentCode);
     } else {
       // Default navigation if no handler provided
       let url = `/chat/${chatId}`;
       if (agentCode) {
-        const params = new URLSearchParams({ agentId:agentCode });
+        const params = new URLSearchParams({ agentId: agentCode });
         url += `?${params.toString()}`;
       }
       router.push(url);
     }
     setIsOpen(false);
-  };
+  }, [onSelectChat, router]);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     if (onNewChat) {
       onNewChat();
     } else {
@@ -84,47 +81,37 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
       router.push("/chat/new");
     }
     setIsOpen(false);
-  };
+  }, [onNewChat, router]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });
-  };
+  }, []);
 
-  // New component for empty state
-  const EmptyState = ({ hasSearch }: { hasSearch: boolean }) => (
+  // Memoized empty state component
+  const EmptyState = useMemo(() => ({ hasSearch }: { hasSearch: boolean }) => (
     <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
       <div className="bg-muted/30 p-4 rounded-full mb-4">
         {hasSearch ? (
-          <FileSearch className="h-8 w-8 text-muted-foreground/70" />
+          <FileSearch className="h-6 w-6 text-muted-foreground" />
         ) : (
-          <MessageSquare className="h-8 w-8 text-muted-foreground/70" />
+          <MessageSquare className="h-6 w-6 text-muted-foreground" />
         )}
       </div>
-      <h4 className="text-base font-medium mb-1">
-        {hasSearch ? "No matches found" : "No conversations yet"}
-      </h4>
+      <h3 className="font-medium mb-2">
+        {hasSearch ? "No conversations found" : "No conversations yet"}
+      </h3>
       <p className="text-sm text-muted-foreground mb-4">
-        {hasSearch 
-          ? "Try a different search term or clear your search" 
-          : "Start a new conversation to chat with the AI assistant"
-        }
+        {hasSearch
+          ? "Try adjusting your search terms to find what you're looking for."
+          : "Start your first conversation to get started."}
       </p>
-      {hasSearch ? (
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setSearchQuery("")}
-          className="min-w-[120px]"
-        >
-          Clear search
-        </Button>
-      ) : (
-        <Button 
-          variant="default" 
+      {!hasSearch && (
+        <Button
+          variant="outline"
           size="sm"
           onClick={handleNewChat}
           className="min-w-[120px]"
@@ -133,7 +120,7 @@ export function HistoryPopup({ onSelectChat, onNewChat }: HistoryPopupProps) {
         </Button>
       )}
     </div>
-  );
+  ), [handleNewChat]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>

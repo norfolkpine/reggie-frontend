@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FileText,
   Trash2,
@@ -124,22 +124,22 @@ export function FileManager() {
   const [collectionCache, setCollectionCache] = useState<Map<string, Collection>>(new Map());
   
   // Cache helper functions
-  const cacheCollection = (collection: Collection) => {
+  const cacheCollection = useCallback((collection: Collection) => {
     if (collection.uuid) {
       setCollectionCache(prev => new Map(prev).set(collection.uuid!, collection));
     }
-  };
+  }, []);
   
-  const getCachedCollection = (uuid: string): Collection | undefined => {
+  const getCachedCollection = useCallback((uuid: string): Collection | undefined => {
     return collectionCache.get(uuid);
-  };
+  }, [collectionCache]);
   
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     setCollectionCache(new Map());
-  };
+  }, []);
   
   // Cache invalidation logic
-  const invalidateCollectionCache = (uuid?: string) => {
+  const invalidateCollectionCache = useCallback((uuid?: string) => {
     if (uuid) {
       // Remove specific collection from cache
       setCollectionCache(prev => {
@@ -153,7 +153,7 @@ export function FileManager() {
       clearCache();
       console.log('Cleared entire collection cache');
     }
-  };
+  }, [clearCache]);
 
   // Consolidated navigation state
   const [navigationState, setNavigationState] = useState({
@@ -166,15 +166,15 @@ export function FileManager() {
   const { currentCollectionUuid, breadcrumbs, navigationPath } = navigationState;
   
   // Helper function to update navigation state
-  const updateNavigationState = (updates: Partial<typeof navigationState>) => {
+  const updateNavigationState = useCallback((updates: Partial<typeof navigationState>) => {
     setNavigationState(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   // Request deduplication - prevent duplicate API calls
   const [pendingRequests, setPendingRequests] = useState<Map<string, Promise<any>>>(new Map());
   
   // Helper function to deduplicate API requests
-  const deduplicatedRequest = async (key: string, requestFn: () => Promise<any>): Promise<any> => {
+  const deduplicatedRequest = useCallback(async (key: string, requestFn: () => Promise<any>): Promise<any> => {
     // Check if there's already a pending request with this key
     const existingRequest = pendingRequests.get(key);
     if (existingRequest) {
@@ -197,13 +197,13 @@ export function FileManager() {
         return newMap;
       });
     }
-  };
+  }, [pendingRequests]);
   
   // Cancel all pending requests (useful when navigating)
-  const cancelPendingRequests = () => {
+  const cancelPendingRequests = useCallback(() => {
     setPendingRequests(new Map());
     console.log('Cancelled all pending requests');
-  };
+  }, []);
   
   // Debounced search hook
   const useDebounce = (value: string, delay: number) => {
@@ -790,29 +790,29 @@ export function FileManager() {
 
   const filteredItems = table.getRowModel().rows.map((r) => r.original);
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = useCallback((bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     else return (bytes / 1048576).toFixed(1) + ' MB';
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, []);
 
-  const getItemIcon = (item: FileOrFolder) => {
+  const getItemIcon = useCallback((item: FileOrFolder) => {
     if (item.type === 'folder') {
       return <Folder className="h-5 w-5 text-blue-500" />;
     }
     return <FileText className="h-5 w-5" />;
-  };
+  }, []);
 
-  const getStatusBadge = (status: FileOrFolder['status']) => {
+  const getStatusBadge = useCallback((status: FileOrFolder['status']) => {
     if (!status) return null;
     
     switch (status) {
@@ -849,10 +849,10 @@ export function FileManager() {
       default:
         return null;
     }
-  };
+  }, []);
 
   // Function to navigate to a specific collection
-  const navigateToCollection = async (collectionUuid: string, breadcrumbIndex?: number) => {
+  const navigateToCollection = useCallback(async (collectionUuid: string, breadcrumbIndex?: number) => {
     try {
       console.log('navigateToCollection called with:', { collectionUuid, breadcrumbIndex, currentNavigationPath: navigationPath });
       
@@ -888,10 +888,10 @@ export function FileManager() {
         console.error('Failed to navigate to collection:', error);
         toast.error('Failed to navigate to collection');
       }
-    };
+    }, [navigationPath, cancelPendingRequests, updateNavigationState]);
 
   // Function to navigate back to root
-  const navigateToRoot = () => {
+  const navigateToRoot = useCallback(() => {
     console.log('navigateToRoot called. Resetting navigation path from:', navigationPath);
     console.log('Current breadcrumbs before reset:', breadcrumbs);
     
@@ -915,7 +915,7 @@ export function FileManager() {
     
     // Remove the manual fetchData call - let useEffect handle it
     // The useEffect will automatically trigger when currentCollectionUuid changes to undefined
-  };
+  }, [navigationPath, breadcrumbs, clearCache, cancelPendingRequests, updateNavigationState]);
 
   // Function to rebuild breadcrumbs from navigation path
   const rebuildBreadcrumbsFromPath = async () => {
@@ -970,6 +970,33 @@ export function FileManager() {
     console.log('Rebuilt breadcrumb trail:', breadcrumbTrail.map(c => c.name));
     updateBreadcrumbs(breadcrumbTrail);
   };
+
+  // Memoized event handlers for table interactions
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedItems(filteredItems.map((item) => item.id));
+    } else {
+      setSelectedItems([]);
+    }
+  }, [filteredItems]);
+
+  const handleSelectItem = useCallback((itemId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter((id) => id !== itemId));
+    }
+  }, []);
+
+  const handleItemClick = useCallback((item: FileOrFolder) => {
+    if (item.id === 'go-up') {
+      // Go up to parent directory
+      navigateToRoot();
+    } else if (item.type === 'folder' && item.folder?.uuid) {
+      // Navigate into folder
+      navigateToCollection(item.folder.uuid);
+    }
+  }, [navigateToRoot, navigateToCollection]);
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -1203,13 +1230,7 @@ export function FileManager() {
                     selectedItems.length === filteredItems.length &&
                     filteredItems.length > 0
                   }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedItems(filteredItems.map((item) => item.id));
-                    } else {
-                      setSelectedItems([]);
-                    }
-                  }}
+                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
                 />
               </TableHead>
               <TableHead>Name</TableHead>
@@ -1247,15 +1268,7 @@ export function FileManager() {
                   <TableCell>
                     <Checkbox
                       checked={selectedItems.includes(item.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedItems([...selectedItems, item.id]);
-                        } else {
-                          setSelectedItems(
-                            selectedItems.filter((id) => id !== item.id)
-                          );
-                        }
-                      }}
+                      onCheckedChange={(checked) => handleSelectItem(item.id, checked === true)}
                     />
                   </TableCell>
                   <TableCell>
@@ -1269,15 +1282,7 @@ export function FileManager() {
                               ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
                               : ''
                         }`}
-                        onClick={() => {
-                          if (item.id === 'go-up') {
-                            // Go up to parent directory
-                            navigateToRoot();
-                          } else if (item.type === 'folder' && item.folder?.uuid) {
-                            // Navigate into folder
-                            navigateToCollection(item.folder.uuid);
-                          }
-                        }}
+                        onClick={() => handleItemClick(item)}
                       >
                         {item.name}
                       </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, Search, Loader2, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,18 +28,21 @@ export default function DocumentListPage() {
   const { toast } = useToast();
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
 
+  // Memoized header actions
+  const headerActions = useMemo(() => [
+    {
+      label: "New Document",
+      onClick: () => setCreateDocumentOpen(true),
+      icon: <Plus className="h-4 w-4" />,
+      variant: "default" as const,
+      size: "sm" as const
+    }
+  ], []);
+
   // Set header actions and custom content
   useEffect(() => {
     // Set the "New Document" button as a header action
-    setHeaderActions([
-      {
-        label: "New Document",
-        onClick: () => setCreateDocumentOpen(true),
-        icon: <Plus className="h-4 w-4" />,
-        variant: "default",
-        size: "sm"
-      }
-    ]);
+    setHeaderActions(headerActions);
 
     // Set loading indicator as custom content next to the title
     setHeaderCustomContent(
@@ -51,7 +54,7 @@ export default function DocumentListPage() {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, isLoading]);
+  }, [setHeaderActions, setHeaderCustomContent, isLoading, headerActions]);
 
   // Create document mutation
   const createDocMutation = useCreateDoc({
@@ -66,7 +69,7 @@ export default function DocumentListPage() {
     },
   });
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getPaginatedDocuments({
@@ -80,13 +83,13 @@ export default function DocumentListPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, searchQuery]);
 
   useEffect(() => {
     loadDocuments();
-  }, [page, searchQuery]);
+  }, [loadDocuments]);
 
-  const handleCreateDocument = async (title: string, description?: string) => {
+  const handleCreateDocument = useCallback(async (title: string, description?: string) => {
     try {
       await createDocMutation.mutateAsync();
     } catch (error) {
@@ -96,11 +99,11 @@ export default function DocumentListPage() {
         variant: "destructive"
       });
     }
-  };
+  }, [createDocMutation, toast]);
 
-  // Convert API documents to the format expected by RecentDocuments component
-  const recentDocuments = documents.map(doc => (
-    {
+  // Memoized recent documents
+  const recentDocuments = useMemo(() => {
+    return documents.map(doc => ({
       id: doc.id.toString(),
       title: doc.title,
       lastOpened: new Date(doc.updated_at).toLocaleDateString('en-US', {
@@ -108,8 +111,13 @@ export default function DocumentListPage() {
         day: 'numeric',
         year: 'numeric'
       }),
-    }
-  ))
+    }));
+  }, [documents]);
+
+  // Memoized load more handler
+  const handleLoadMore = useCallback(() => {
+    setPage(p => p + 1);
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -153,7 +161,7 @@ export default function DocumentListPage() {
                     <div className="mt-4 flex justify-center">
                       <Button
                         variant="outline"
-                        onClick={() => setPage(p => p + 1)}
+                        onClick={handleLoadMore}
                         disabled={isLoading}
                       >
                         {isLoading ? (
