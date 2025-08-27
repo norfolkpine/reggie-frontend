@@ -25,6 +25,18 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000',
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://api.opie.sh/api/:path*',
+      },
+      {
+        source: '/_allauth/:path*',
+        destination: 'https://api.opie.sh/_allauth/:path*',
+      },
+    ];
+  },
 }
 
 mergeConfig(nextConfig, userConfig)
