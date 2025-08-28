@@ -1,10 +1,10 @@
-import { Loader } from '@openfun/cunningham-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { TextErrors } from '@/components/text-errors';
 import { Box } from '@/components/ui/box';
 
-import { useCunninghamTheme } from '@/cunningham';
+
 import { DocHeader, DocVersionHeader } from '@/features/docs/doc-header/';
 import {
   Doc,
@@ -43,7 +43,7 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
   const { isDesktop } = useResponsiveStore();
   const isVersion = !!versionId && typeof versionId === 'string';
-  const { colorsTokens } = useCunninghamTheme();
+
   const { provider } = useProviderStore();
   const { t } = useTranslation();
   const router = useRouter();
@@ -93,8 +93,7 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
         <div className="w-full flex justify-center">
         <div
-          className="--docs--doc-editor-content flex justify-center w-full"
-          style={{ backgroundColor: colorsTokens['primary-bg'] }}
+          className="--docs--doc-editor-content flex justify-center w-full bg-white"
         >
                       {isDesktop && !isVersion && (
               <Box
@@ -167,7 +166,7 @@ export const DocVersionEditor = ({
   if (isLoading || !version || !initialContent) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
