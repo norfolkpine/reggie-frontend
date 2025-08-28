@@ -37,8 +37,12 @@ export const ModalRemoveDoc = ({ onClose, doc }: ModalRemoveDocProps) => {
       });
       if (pathname === '/') {
         onClose();
+      } else if (pathname.startsWith('/documents/')) {
+        // If we're on a document page, redirect to documents list
+        void push('/documents');
       } else {
-        void push('/');
+        // For other pages, redirect to documents list as well
+        void push('/documents');
       }
     },
   });
