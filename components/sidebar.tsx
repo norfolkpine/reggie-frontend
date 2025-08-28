@@ -63,6 +63,7 @@ import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
 import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
 import { Doc } from "@/features/docs/doc-management/types";
 import { useProjects } from "@/features/vault/api/useProjects";
+import { DeleteProjectDialog } from "@/features/vault/components/delete-project-dialog";
 
 
 const FolderShieldIcon = () => (
@@ -180,6 +181,8 @@ export default function Sidebar() {
   const [isDeletingDoc, setIsDeletingDoc] = useState<string | null>(null);
   const [deleteDocDialogOpen, setDeleteDocDialogOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Infinite paginated fetch for documents (only user's own)
   const {
@@ -347,22 +350,9 @@ export default function Sidebar() {
   }, [renameProjectId, newName, updateProject, toast]);
 
   const handleDelete = useCallback(async (projectId: string, projectName: string) => {
-    if (!window.confirm(`Are you sure you want to delete project '${projectName}'? This cannot be undone.`)) return;
-    setIsDeleting(projectId);
-    try {
-      // Convert string ID to number for the API call
-      const numericId = parseInt(projectId, 10);
-      if (isNaN(numericId)) {
-        throw new Error('Invalid project ID');
-      }
-      await deleteProject(numericId);
-      toast({ title: "Project deleted", description: `Project '${projectName}' was deleted.` });
-    } catch (e) {
-      toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setIsDeleting(null);
-    }
-  }, [deleteProject, toast]);
+    setProjectToDelete({ id: projectId, name: projectName });
+    setDeleteProjectOpen(true);
+  }, []);
 
   // Memoized filtered navigation items
   const filteredNavigationItems = useMemo(() => {
@@ -829,6 +819,16 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
+      <DeleteProjectDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        project={projectToDelete}
+        onSuccess={() => {
+          // Refresh the projects list
+          void queryClient.invalidateQueries({ queryKey: ['projects'] });
+        }}
+      />
     </div>
   );
 }

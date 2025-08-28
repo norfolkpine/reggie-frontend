@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { updateProject, deleteProject } from "@/api/projects";
 import { useToast } from "@/components/ui/use-toast";
+import { DeleteProjectDialog } from "./delete-project-dialog";
 
 interface ProjectCardProps {
   project: Project
@@ -30,6 +31,7 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
   const [newName, setNewName] = useState(project.name || "");
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
 
   const handleRename = async () => {
     const projectId = getProjectId(project);
@@ -49,20 +51,7 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
   };
 
   const handleDelete = async () => {
-    const projectId = getProjectId(project);
-    if (!projectId) return;
-    if (!window.confirm(`Are you sure you want to delete project '${project.name}'? This cannot be undone.`)) return;
-    setIsDeleting(true);
-    try {
-      await deleteProject(projectId);
-      toast({ title: "Project deleted", description: `Project '${project.name}' was deleted.` });
-      // Notify parent component instead of reloading page
-      onProjectDeleted?.(projectId);
-    } catch (e) {
-      toast({ title: "Error deleting project", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setIsDeleting(false);
-    }
+    setDeleteProjectOpen(true);
   };
 
   return (
@@ -140,6 +129,13 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteProjectDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        project={project ? { id: getProjectId(project) || '', name: project.name || '' } : null}
+        onSuccess={() => onProjectDeleted?.(getProjectId(project) || '')}
+      />
     </Card>
   )
 }
