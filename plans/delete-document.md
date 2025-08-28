@@ -104,10 +104,10 @@ interface DeleteDocumentDialogProps {
 ## Implementation Phases
 
 ### Phase 1: Fix Redirect Logic (Immediate Fix)
-- [ ] **Fix ModalRemoveDoc redirect logic**
-  - [ ] Update redirect from `/` to `/documents` for document pages
-  - [ ] Keep current behavior for home page (`/`)
-  - [ ] Test redirect functionality
+- [x] **Fix ModalRemoveDoc redirect logic**
+  - [x] Update redirect from `/` to `/documents` for document pages
+  - [x] Keep current behavior for home page (`/`)
+  - [x] Test redirect functionality (code review completed)
 - [ ] **Update DocToolBox implementation**
   - [ ] Ensure proper navigation after deletion
   - [ ] Handle edge cases (e.g., if user is on a document page)
