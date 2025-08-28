@@ -7,22 +7,32 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { RecentDocuments } from "./_components/recent-documents";
 import { CreateDocumentDialog } from "./_components/create-document-dialog";
-import { getPaginatedDocuments } from "@/api/documents";
 import { Document } from "@/types/api";
 import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
+import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
+import { useInfiniteDocs, KEY_LIST_DOC } from "@/features/docs/doc-management/api/useDocs";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import SearchInput from "@/components/ui/search-input";
 import { useHeader } from "@/contexts/header-context";
 
 export default function DocumentListPage() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
+  
+  // Use React Query for documents
+  const {
+    data: docsPages,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteDocs({ page: 1, title: searchQuery || undefined });
+
+  // Flatten all loaded pages into a single array
+  const documents = docsPages?.pages.flatMap(page => page.results) || [];
+  const hasMore = !!hasNextPage;
   
   const router = useRouter();
   const { toast } = useToast();
@@ -56,34 +66,28 @@ export default function DocumentListPage() {
         title: "Success",
         description: "Document created successfully"
       });
-      // Refresh the documents list
-      loadDocuments();
+      // React Query will automatically refresh the documents list
     },
   });
 
-  const loadDocuments = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getPaginatedDocuments({
-        page,
-        title: searchQuery || undefined,
+  // Delete document mutation
+  const removeDocMutation = useRemoveDoc({
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Document deleted successfully"
       });
-      setDocuments(response.results);
-      setHasMore(!!response.next);
-    } catch (err) {
-      setError("Failed to load documents");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      // React Query will automatically refresh the documents list
+    },
+  });
 
-  useEffect(() => {
-    loadDocuments();
-  }, [page, searchQuery]);
+  const handleDeleteDocument = (documentId: string) => {
+    removeDocMutation.mutate({ docId: documentId });
+  };
 
   const handleCreateDocument = async (title: string, description?: string) => {
     try {
-      await createDocMutation.mutateAsync();
+      await createDocMutation.mutateAsync({ title, description });
     } catch (error) {
       toast({
         title: "Error",
@@ -97,7 +101,7 @@ export default function DocumentListPage() {
   const recentDocuments = documents.map(doc => (
     {
       id: doc.id.toString(),
-      title: doc.title,
+      title: doc.title || "Untitled",
       lastOpened: new Date(doc.updated_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -136,22 +140,25 @@ export default function DocumentListPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : error ? (
-                <div className="text-center py-8 text-destructive">{error}</div>
+                <div className="text-center py-8 text-destructive">Failed to load documents</div>
               ) : documents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No documents found
                 </div>
               ) : (
                 <>
-                  <RecentDocuments documents={recentDocuments} />
+                  <RecentDocuments 
+                    documents={recentDocuments} 
+                    onDeleteDocument={handleDeleteDocument}
+                  />
                   {hasMore && (
                     <div className="mt-4 flex justify-center">
                       <Button
                         variant="outline"
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={isLoading}
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
                       >
-                        {isLoading ? (
+                        {isFetchingNextPage ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         ) : null}
                         Load more

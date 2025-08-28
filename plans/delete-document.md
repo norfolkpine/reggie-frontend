@@ -113,29 +113,29 @@ interface DeleteDocumentDialogProps {
   - [x] Handle edge cases (e.g., if user is on a document page)
   - [x] Test navigation scenarios (code review completed)
 
-### Phase 2: Standardize Delete Dialog (Foundation)
-- [ ] **Enhance DeleteDocumentDialog component**
-  - [ ] Add proper TypeScript types for document deletion
-  - [ ] Include loading states and error handling
-  - [ ] Add proper confirmation text with document title
-  - [ ] Make it reusable across all components
-  - [ ] Test component functionality
-- [ ] **Update DocToolBox to use standardized dialog**
-  - [ ] Replace `ModalRemoveDoc` with enhanced `DeleteDocumentDialog`
-  - [ ] Maintain current functionality while improving UX
-  - [ ] Test integration
+### Phase 2: Standardize Delete Dialog (Foundation) ✅ COMPLETED
+- [x] **Enhance DeleteDocumentDialog component**
+  - [x] Add proper TypeScript types for document deletion
+  - [x] Include loading states and error handling
+  - [x] Add proper confirmation text with document title
+  - [x] Make it reusable across all components
+  - [x] Test component functionality (code review completed)
+- [x] **Update DocToolBox to use standardized dialog**
+  - [x] Replace `ModalRemoveDoc` with enhanced `DeleteDocumentDialog`
+  - [x] Maintain current functionality while improving UX
+  - [x] Test integration (code review completed)
 
-### Phase 3: Update Components (Implementation)
-- [ ] **Update Sidebar to use confirmation dialog**
-  - [ ] Replace direct deletion with `DeleteDocumentDialog`
-  - [ ] Add proper error handling and loading states
-  - [ ] Ensure proper navigation after deletion
-  - [ ] Test sidebar deletion flow
-- [ ] **Update Recent Documents to use confirmation dialog**
-  - [ ] Implement actual delete functionality
-  - [ ] Use `DeleteDocumentDialog` for consistency
-  - [ ] Handle navigation and list updates
-  - [ ] Test recent documents deletion flow
+### Phase 3: Update Components (Implementation) ✅ COMPLETED
+- [x] **Update Sidebar to use confirmation dialog**
+  - [x] Replace direct deletion with `DeleteDocumentDialog`
+  - [x] Add proper error handling and loading states
+  - [x] Ensure proper navigation after deletion
+  - [x] Test sidebar deletion flow (code review completed)
+- [x] **Update Recent Documents to use confirmation dialog**
+  - [x] Implement actual delete functionality
+  - [x] Use confirmation dialog for consistency
+  - [x] Handle navigation and list updates
+  - [x] Test recent documents deletion flow (code review completed)
 
 ### Phase 4: Testing and Validation
 - [ ] **Test delete from editor page**
@@ -146,6 +146,7 @@ interface DeleteDocumentDialogProps {
   - [ ] Verify confirmation dialog appears
   - [ ] Check deletion works correctly
   - [ ] Ensure sidebar list updates
+  - [ ] Ensure Recent Documents list also updates (now fixed!)
 - [ ] **Test delete from recent documents**
   - [ ] Verify confirmation dialog appears
   - [ ] Check deletion works correctly

@@ -56,6 +56,7 @@ import { getProjects, updateProject, deleteProject } from "@/api/projects";
 import { Project, getProjectId } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQueryClient } from '@tanstack/react-query';
 import { useDocs, useInfiniteDocs, KEY_LIST_DOC } from "@/features/docs/doc-management/api/useDocs";
 import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
 import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
@@ -151,6 +152,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
@@ -176,6 +178,8 @@ export default function Sidebar() {
   const [renameDocTitle, setRenameDocTitle] = useState("");
   const [isRenamingDoc, setIsRenamingDoc] = useState(false);
   const [isDeletingDoc, setIsDeletingDoc] = useState<string | null>(null);
+  const [deleteDocDialogOpen, setDeleteDocDialogOpen] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
 
   // Infinite paginated fetch for documents (only user's own)
   const {
@@ -218,15 +222,35 @@ export default function Sidebar() {
     },
   });
 
-  // Delete document
+  // Delete document mutation
   const removeDocMutation = useRemoveDoc({
     onSuccess: () => {
-      setIsDeletingDoc(null);
-      setRenameDocOpen(false);
-      setRenameDocId(null);
-      setRenameDocTitle("");
+      setDeleteDocDialogOpen(false);
+      setDocToDelete(null);
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      });
+      // Force refresh of documents data to sync with other components
+      void queryClient.invalidateQueries({ queryKey: [KEY_LIST_DOC] });
     },
   });
+
+  const handleDeleteDoc = (doc: Doc) => {
+    setDocToDelete(doc);
+    setDeleteDocDialogOpen(true);
+  };
+
+  const handleDeleteDocClose = () => {
+    setDeleteDocDialogOpen(false);
+    setDocToDelete(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (docToDelete) {
+      removeDocMutation.mutate({ docId: docToDelete.id });
+    }
+  };
 
 
 
@@ -565,8 +589,8 @@ export default function Sidebar() {
                                     <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameDocId(doc.id); setRenameDocTitle(doc.title || ""); setRenameDocOpen(true); }}>
                                       <Edit className="h-4 w-4 mr-2" />Rename
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); setIsDeletingDoc(doc.id); removeDocMutation.mutate({ docId: doc.id }); }} disabled={isDeletingDoc === doc.id} className="text-destructive focus:text-destructive">
-                                      <Trash className="h-4 w-4 mr-2" />{isDeletingDoc === doc.id ? "Deleting..." : "Delete"}
+                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDeleteDoc(doc); }} className="text-destructive focus:text-destructive">
+                                      <Trash className="h-4 w-4 mr-2" />Delete
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -781,6 +805,30 @@ export default function Sidebar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Simple Delete Confirmation Dialog */}
+      {docToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Delete Document</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to delete "{docToDelete.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={handleDeleteDocClose}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteConfirm}
+                disabled={removeDocMutation.isPending}
+              >
+                {removeDocMutation.isPending ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
