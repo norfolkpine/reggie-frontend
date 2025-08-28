@@ -56,7 +56,7 @@ import { getProjects, updateProject, deleteProject } from "@/api/projects";
 import { Project, getProjectId } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useDocs, useInfiniteDocs } from "@/features/docs/doc-management/api/useDocs";
+import { useDocs, useInfiniteDocs, KEY_LIST_DOC } from "@/features/docs/doc-management/api/useDocs";
 import { useCreateDoc } from "@/features/docs/doc-management/api/useCreateDoc";
 import { useUpdateDoc } from "@/features/docs/doc-management/api/useUpdateDoc";
 import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
@@ -210,6 +210,7 @@ export default function Sidebar() {
 
   // Rename document
   const updateDocMutation = useUpdateDoc({
+    listInvalideQueries: [KEY_LIST_DOC],
     onSuccess: () => {
       setRenameDocOpen(false);
       setRenameDocId(null);
