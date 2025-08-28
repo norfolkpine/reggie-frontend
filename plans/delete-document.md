@@ -108,10 +108,10 @@ interface DeleteDocumentDialogProps {
   - [x] Update redirect from `/` to `/documents` for document pages
   - [x] Keep current behavior for home page (`/`)
   - [x] Test redirect functionality (code review completed)
-- [ ] **Update DocToolBox implementation**
-  - [ ] Ensure proper navigation after deletion
-  - [ ] Handle edge cases (e.g., if user is on a document page)
-  - [ ] Test navigation scenarios
+- [x] **Update DocToolBox implementation**
+  - [x] Ensure proper navigation after deletion
+  - [x] Handle edge cases (e.g., if user is on a document page)
+  - [x] Test navigation scenarios (code review completed)
 
 ### Phase 2: Standardize Delete Dialog (Foundation)
 - [ ] **Enhance DeleteDocumentDialog component**
