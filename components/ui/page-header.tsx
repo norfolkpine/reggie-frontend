@@ -28,9 +28,9 @@ export function PageHeader({
   const pageTitle = getPageTitle(pathname);
 
   return (
-    <div className={`p-4 border-b bg-white flex items-center justify-between ${className}`}>
+    <div className={`h-16 px-6 flex items-center justify-between ${className}`}>
       <div className="flex items-center gap-3">
-        {customContent ? customContent : (pageTitle && <h1 className="text-xl font-medium text-gray-900">{pageTitle}</h1>)}
+        {customContent ? customContent : (pageTitle && <h1 className="text-xl font-semibold text-gray-900">{pageTitle}</h1>)}
       </div>
 
       {actions.length > 0 && (

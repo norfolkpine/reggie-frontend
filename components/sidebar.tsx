@@ -379,7 +379,7 @@ export default function Sidebar() {
   return (
     <div
       className={cn(
-        "h-full flex flex-col bg-gray-50 transition-all duration-300",
+        "fixed left-0 top-0 h-full flex flex-col bg-gray-50 transition-all duration-300 z-40",
         isExpanded ? "w-64" : "w-16"
       )}
     >

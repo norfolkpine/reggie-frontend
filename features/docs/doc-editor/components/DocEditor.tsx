@@ -75,13 +75,13 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
   return (
     <>
-      <div className="pl-64 max-md:pl-0 flex flex-col min-h-screen">
+      <div className="flex flex-col h-full">
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1">
          
         <div className="w-full flex justify-center">
           <div 
-            className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header w-full max-w-4xl mx-auto`}
+            className={`${isDesktop ? 'px-8' : 'px-4'} pt-0 --docs--doc-editor-header w-full max-w-4xl mx-auto`}
           >
             {isVersion ? (
               <DocVersionHeader title={doc.title} />

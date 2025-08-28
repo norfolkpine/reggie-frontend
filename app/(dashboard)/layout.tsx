@@ -8,28 +8,26 @@ import { useState, useEffect, useRef } from "react";
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { customHeader, headerActions, headerCustomContent } = useHeader();
   const [isScrolled, setIsScrolled] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Detect scroll position to change header styling
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) return;
-
     const handleScroll = () => {
-      const scrollTop = scrollContainer.scrollTop;
-      setIsScrolled(scrollTop > 0);
+      const scrolled = window.scrollY > 20;
+      setIsScrolled(scrolled);
     };
 
-    scrollContainer.addEventListener('scroll', handleScroll);
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
   // If custom header is provided, use it; otherwise use PageHeader with actions/content
   if (customHeader) {
     return (
-      <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden">
-        {customHeader}
-        <div className="flex-1 overflow-auto px-1">
+      <div className="h-full flex flex-col border">
+        <div className={`fixed ${isScrolled ? 'top-0' : 'top-2'} right-2 left-64 z-50 h-16 bg-white border-b border-border ${isScrolled ? '' : 'rounded-t-xl'} shadow-sm`}>
+          {customHeader}
+        </div>
+        <div className="flex-1 pt-20 bg-white">
           {children}
         </div>
       </div>
@@ -37,18 +35,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden" ref={scrollContainerRef}>
-      <div className={`transition-all duration-200 ${
-        isScrolled 
-          ? 'sticky top-0 z-50 rounded-none shadow-md bg-white' 
-          : 'rounded-t-xl'
-      }`}>
+    <div className="h-full flex flex-col border">
+      <div className={`fixed ${isScrolled ? 'top-0' : 'top-2'} right-2 left-64 z-50 h-16 bg-white border-b border-border ${isScrolled ? '' : 'rounded-t-xl'} shadow-sm`}>
         <PageHeader 
           actions={headerActions || []}
           customContent={headerCustomContent}
         />
       </div>
-      <div className="flex-1 overflow-auto px-1">
+      <div className="flex-1 pt-20 bg-white rounder-b-lg">
         {children}
       </div>
     </div>
@@ -69,7 +63,7 @@ export default function RootLayout({
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="h-screen overflow-auto flex-1 pt-2 pr-2 pb-2">
+      <div className="h-screen flex-1 pt-2 pr-2 pb-2 ml-64">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>

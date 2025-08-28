@@ -111,11 +111,11 @@ export default function DocumentListPage() {
   ))
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full bg-white">
       {/* Header removed - now handled by layout */}
 
       {/* Search and create */}
-      <div className="p-4 border-b">
+      <div className="p-4">
         <div className="flex gap-2">
           <SearchInput 
             placeholder="Search documents..."
