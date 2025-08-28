@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, ArrowRight, LucideIcon, MoreHorizontal, Edit, Trash } from "lucide-react"
+import { Star, ArrowRight, LucideIcon, MoreHorizontal, Edit, Trash, User, MessageSquare } from "lucide-react"
 import { Project, getProjectId } from "@/types/api"
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { updateProject, deleteProject } from "@/api/projects";
 import { useToast } from "@/components/ui/use-toast";
 import { DeleteProjectDialog } from "./delete-project-dialog";
@@ -25,7 +25,7 @@ interface ProjectCardProps {
   onProjectRenamed?: (projectId: string, newName: string) => void
 }
 
-export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRenamed }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRenamed }: ProjectCardProps) {
   const { toast } = useToast();
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState(project.name || "");
@@ -33,7 +33,7 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
 
-  const handleRename = async () => {
+  const handleRename = useCallback(async () => {
     const projectId = getProjectId(project);
     if (!projectId) return;
     setIsRenaming(true);
@@ -48,16 +48,41 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
     } finally {
       setIsRenaming(false);
     }
-  };
+  }, [project, newName, toast, onProjectRenamed]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(() => {
     setDeleteProjectOpen(true);
-  };
+  }, []);
+
+  const handleCardClick = useCallback((e: React.MouseEvent) => {
+    // Don't navigate if clicking on buttons, dropdowns, or interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="menuitem"]') || target.closest('.dropdown-menu')) {
+      return;
+    }
+    
+    // Only navigate if clicking on the card content
+    onSelect?.(project.name ?? '');
+  }, [onSelect, project.name]);
+
+  const handleRenameClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenameOpen(true);
+  }, []);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleDelete();
+  }, [handleDelete]);
+
+  const handleMoreClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
 
   return (
     <Card 
       className={`overflow-hidden flex flex-col h-full w-full aspect-[4/5] ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
-      onClick={() => onSelect?.(project.name ?? '')}
+      onClick={handleCardClick}
     >
       <CardHeader className={`p-4 pb-2 flex-1 ${project.color || 'bg-muted'}`}>
         <div className="flex justify-between items-start">
@@ -75,15 +100,15 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={handleMoreClick}>
                   <MoreHorizontal className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={e => { e.stopPropagation(); setRenameOpen(true); }}>
+                <DropdownMenuItem onClick={handleRenameClick}>
                   <Edit className="h-4 w-4 mr-2" />Rename
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(); }} disabled={isDeleting} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={handleDeleteClick} disabled={isDeleting} className="text-destructive focus:text-destructive">
                   <Trash className="h-4 w-4 mr-2" />{isDeleting ? "Deleting..." : "Delete"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -101,41 +126,51 @@ export function ProjectCard({ project, onSelect, onProjectDeleted, onProjectRena
           ))}
         </div>
       </CardContent>
-      <CardFooter className="p-2 bg-muted/50 flex justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{project.lastUpdated}</span>
-          {project.teamSize && (
-            <span className="text-sm text-muted-foreground">{project.teamSize} members</span>
-          )}
-          {project.chatCount !== undefined && (
-            <span className="text-sm text-muted-foreground">
-              {project.chatCount} chats
-            </span>
-          )}
+      <CardFooter className="p-4 pt-0 mt-auto">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>{project.teamSize} member{project.teamSize !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MessageSquare className="h-4 w-4" />
+            <span>{project.chatCount} chat{project.chatCount !== 1 ? 's' : ''}</span>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" className="gap-1">
-          View <ArrowRight className="h-4 w-4" />
-        </Button>
       </CardFooter>
+
+      {/* Rename Dialog */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent onClick={e => e.stopPropagation()}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename Project</DialogTitle>
           </DialogHeader>
-          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project name" />
+          <div className="space-y-4">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Enter new project name"
+            />
+          </div>
           <DialogFooter>
-            <Button onClick={() => setRenameOpen(false)} variant="outline">Cancel</Button>
-            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>{isRenaming ? "Renaming..." : "Rename"}</Button>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename} disabled={isRenaming}>
+              {isRenaming ? "Renaming..." : "Rename"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Project Dialog */}
       <DeleteProjectDialog
         open={deleteProjectOpen}
         onOpenChange={setDeleteProjectOpen}
-        project={project ? { id: getProjectId(project) || '', name: project.name || '' } : null}
-        onSuccess={() => onProjectDeleted?.(getProjectId(project) || '')}
+        projectId={getProjectId(project) || null}
+        projectName={project.name || null}
+        onProjectDeleted={onProjectDeleted}
       />
     </Card>
   )
-}
+});

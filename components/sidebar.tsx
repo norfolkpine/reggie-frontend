@@ -350,6 +350,7 @@ export default function Sidebar() {
   }, [renameProjectId, newName, updateProject, toast]);
 
   const handleDelete = useCallback(async (projectId: string, projectName: string) => {
+    console.log('Sidebar handleDelete called:', { projectId, projectName });
     setProjectToDelete({ id: projectId, name: projectName });
     setDeleteProjectOpen(true);
   }, []);
@@ -823,8 +824,9 @@ export default function Sidebar() {
       <DeleteProjectDialog
         open={deleteProjectOpen}
         onOpenChange={setDeleteProjectOpen}
-        project={projectToDelete}
-        onSuccess={() => {
+        projectId={projectToDelete?.id || null}
+        projectName={projectToDelete?.name || null}
+        onProjectDeleted={() => {
           // Refresh the projects list
           void queryClient.invalidateQueries({ queryKey: ['projects'] });
         }}

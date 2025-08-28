@@ -6,41 +6,53 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Trash2, AlertTriangle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { deleteProject } from "@/api/projects"
-import { useRouter } from "next/navigation"
+
 
 interface DeleteProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  project: {
-    id: string
-    name: string
-  } | null
-  onSuccess?: () => void
+  projectId: string | null
+  projectName: string | null
+  onProjectDeleted?: (projectId: string) => void
 }
 
-export function DeleteProjectDialog({ open, onOpenChange, project, onSuccess }: DeleteProjectDialogProps) {
+export function DeleteProjectDialog({ 
+  open, 
+  onOpenChange, 
+  projectId, 
+  projectName, 
+  onProjectDeleted
+}: DeleteProjectDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
-  const router = useRouter()
+
+  console.log('DeleteProjectDialog rendered with:', { 
+    open, 
+    projectId, 
+    projectName, 
+    onProjectDeleted 
+  });
 
   const handleDelete = async () => {
-    if (!project) return
+    console.log('DeleteProjectDialog handleDelete called with:', { 
+      projectId, 
+      projectName 
+    });
+    
+    if (!projectId || !projectName) return
 
     setIsDeleting(true)
     try {
-      await deleteProject(project.id)
+      await deleteProject(projectId)
       toast({
         title: "Project deleted",
-        description: `Project '${project.name}' has been permanently deleted.`,
+        description: `Project '${projectName}' has been permanently deleted.`,
       })
       onOpenChange(false)
       
-      // Call onSuccess callback if provided, otherwise redirect to vault
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        // Redirect to vault projects list
-        router.push("/vault")
+      // Call the callback if provided
+      if (onProjectDeleted) {
+        onProjectDeleted(projectId)
       }
     } catch (error) {
       console.error("Failed to delete project:", error)
@@ -54,7 +66,7 @@ export function DeleteProjectDialog({ open, onOpenChange, project, onSuccess }: 
     }
   }
 
-  if (!project) return null
+  if (!projectId || !projectName) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -67,7 +79,7 @@ export function DeleteProjectDialog({ open, onOpenChange, project, onSuccess }: 
             <DialogTitle className="text-lg font-semibold">Delete Project</DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground">
-            Are you sure you want to delete <span className="font-semibold text-foreground">"{project.name}"</span>? 
+            Are you sure you want to delete <span className="font-semibold text-foreground">"{projectName}"</span>? 
             This action cannot be undone and will permanently remove the project and all its associated files.
           </DialogDescription>
         </DialogHeader>

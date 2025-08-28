@@ -121,13 +121,13 @@ export function VaultManager() {
           size: "sm",
           icon: <ArrowLeft className="h-4 w-4" />
         },
-        {
-          label: "Delete Project",
-          onClick: () => setDeleteProjectOpen(true),
-          variant: "outline",
-          size: "sm",
-          icon: <Trash2 className="h-4 w-4" />
-        }
+        // {
+        //   label: "Delete Project",
+        //   onClick: () => setDeleteProjectOpen(true),
+        //   variant: "outline",
+        //   size: "sm",
+        //   icon: <Trash2 className="h-4 w-4" />
+        // }
       ]);
 
       // Set project name with edit button as custom content
