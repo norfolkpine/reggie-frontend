@@ -73,7 +73,7 @@ export function getPageTitle(pathname: string): string {
   
   // Handle dynamic routes - return empty for routes with custom headers
   if (pathname.startsWith("/chat/")) return "Chat Session"
-  if (pathname.startsWith("/documents/")) return "Document"
+  if (pathname.startsWith("/documents/")) return "Documents"
   if (pathname.startsWith("/vault/")) return "" // Empty for project pages with custom breadcrumbs
   
   // Handle exact matches
