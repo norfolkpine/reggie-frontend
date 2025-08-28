@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
+import { DeleteProjectDialog } from "./delete-project-dialog";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -88,6 +89,7 @@ export function VaultManager() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
 
   // Set header actions and custom content
   useEffect(() => {
@@ -118,7 +120,14 @@ export function VaultManager() {
           variant: "ghost",
           size: "sm",
           icon: <ArrowLeft className="h-4 w-4" />
-        }
+        },
+        // {
+        //   label: "Delete Project",
+        //   onClick: () => setDeleteProjectOpen(true),
+        //   variant: "outline",
+        //   size: "sm",
+        //   icon: <Trash2 className="h-4 w-4" />
+        // }
       ]);
 
       // Set project name with edit button as custom content
@@ -905,6 +914,12 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteProjectDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        project={project ? { id: project.id?.toString() || '', name: project.name || '' } : null}
+      />
     </div>
   );
 }

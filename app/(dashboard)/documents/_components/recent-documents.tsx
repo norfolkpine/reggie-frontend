@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, ChevronDown, File, Globe, Lock } from "lucide-react"
+import { MoreVertical, ChevronDown, File, Globe, Lock, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { ViewToggle } from "./view-toggle"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+
 
 interface Document {
   id: string
@@ -19,11 +20,33 @@ interface Document {
 
 interface RecentDocumentsProps {
   documents: Document[]
+  onDeleteDocument?: (documentId: string) => void
 }
 
-export function RecentDocuments({ documents }: RecentDocumentsProps) {
+export function RecentDocuments({ documents, onDeleteDocument }: RecentDocumentsProps) {
   const [currentView, setCurrentView] = useState<"grid" | "list">("grid")
   const [documentType, setDocumentType] = useState<"all" | "public" | "private">("all")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
+
+  const handleDeleteClick = (doc: Document) => {
+    setDocumentToDelete(doc)
+    setDeleteDialogOpen(true)
+    setOpenDropdownId(null) // Close the dropdown
+  }
+
+  const handleDeleteClose = () => {
+    setDeleteDialogOpen(false)
+    setDocumentToDelete(null)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (documentToDelete && onDeleteDocument) {
+      onDeleteDocument(documentToDelete.id.toString())
+      handleDeleteClose()
+    }
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -98,7 +121,7 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                       <span className="text-xs text-muted-foreground/70 truncate">Opened {doc.lastOpened}</span>
                     </div>
                   </div>
-                  <DropdownMenu>
+                  <DropdownMenu open={openDropdownId === doc.id} onOpenChange={(open) => setOpenDropdownId(open ? doc.id : null)}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
@@ -113,7 +136,17 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                       <DropdownMenuItem>Open</DropdownMenuItem>
                       <DropdownMenuItem>Rename</DropdownMenuItem>
                       <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(doc)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardFooter>
@@ -151,7 +184,7 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                 <div className="col-span-2 text-sm text-muted-foreground">Me</div>
                 <div className="col-span-3 text-sm text-muted-foreground line-clamp-2">{doc.lastOpened}</div>
                 <div className="col-span-1 flex justify-end">
-                  <DropdownMenu>
+                  <DropdownMenu open={openDropdownId === doc.id} onOpenChange={(open) => setOpenDropdownId(open ? doc.id : null)}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
@@ -166,7 +199,17 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
                       <DropdownMenuItem>Open</DropdownMenuItem>
                       <DropdownMenuItem>Rename</DropdownMenuItem>
                       <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(doc)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -175,6 +218,29 @@ export function RecentDocuments({ documents }: RecentDocumentsProps) {
             </div>
           ))}
         </Card>
+      )}
+
+      {/* Simple Delete Confirmation Dialog */}
+      {documentToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Delete Document</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to delete "{documentToDelete.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={handleDeleteClose}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteConfirm}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

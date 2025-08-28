@@ -6,9 +6,10 @@ import { Doc } from '../types';
 
 import { KEY_LIST_DOC } from './useDocs';
 
-export const createDoc = async (): Promise<Doc> => {
+export const createDoc = async (params: { title: string; description?: string }): Promise<Doc> => {
   const response = await fetchAPI(`documents/`, {
     method: 'POST',
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -24,7 +25,7 @@ interface CreateDocProps {
 
 export function useCreateDoc({ onSuccess }: CreateDocProps) {
   const queryClient = useQueryClient();
-  return useMutation<Doc, APIError>({
+  return useMutation<Doc, APIError, { title: string; description?: string }>({
     mutationFn: createDoc,
     onSuccess: (data) => {
       void queryClient.resetQueries({

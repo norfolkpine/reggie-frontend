@@ -11,11 +11,11 @@ import {
   Doc,
   KEY_DOC,
   KEY_LIST_DOC,
-  ModalRemoveDoc,
   useCopyDocLink,
   useCreateFavoriteDoc,
   useDeleteFavoriteDoc,
 } from '@/features/docs/doc-management';
+import { DeleteDocumentDialog } from '@/components/doc/DeleteDocumentDialog';
 import { DocShareModal } from '@/features/docs/doc-share';
 import {
   KEY_LIST_DOC_VERSIONS,
@@ -192,14 +192,11 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
 
       <ModalExport onClose={() => setIsModalExportOpen(false)} doc={doc} open={isModalExportOpen} />
 
-      <Dialog open={isModalRemoveOpen} onOpenChange={setIsModalRemoveOpen}>
-        <DialogContent className="p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{t('Delete Document')}</DialogTitle>
-          </DialogHeader>
-          <ModalRemoveDoc onClose={() => setIsModalRemoveOpen(false)} doc={doc} />
-        </DialogContent>
-      </Dialog>
+      <DeleteDocumentDialog 
+        open={isModalRemoveOpen} 
+        doc={doc} 
+        onClose={() => setIsModalRemoveOpen(false)} 
+      />
 
       <Dialog open={isSelectHistoryOpen} onOpenChange={setIsSelectHistoryOpen}>
         <DialogContent className="p-0">

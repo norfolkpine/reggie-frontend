@@ -1,14 +1,17 @@
-import { Loader } from '@openfun/cunningham-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
+import { TextErrors } from '@/components/text-errors';
+import { Box } from '@/components/ui/box';
 
-import { useCunninghamTheme } from '@/cunningham';
+
 import { DocHeader, DocVersionHeader } from '@/features/docs/doc-header/';
 import {
   Doc,
   base64ToBlocknoteXmlFragment,
   useProviderStore,
 } from '@/features/docs/doc-management';
+import { TableContent } from '@/features/docs/doc-table-content/';
 import { Versions, useDocVersion } from '@/features/docs/doc-versioning/';
 import { useResponsiveStore } from '@/stores';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,6 +21,8 @@ import { BlockNoteEditor, BlockNoteEditorVersion } from './BlockNoteEditor';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
+import { useHeader } from '@/contexts/header-context';
+import { ArrowLeft } from 'lucide-react';
 
 interface DocEditorProps {
   doc: Doc;
@@ -38,34 +43,42 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
 
   const { isDesktop } = useResponsiveStore();
   const isVersion = !!versionId && typeof versionId === 'string';
-  const { colorsTokens } = useCunninghamTheme();
+
   const { provider } = useProviderStore();
   const { t } = useTranslation();
   const router = useRouter();
+  const { setHeaderActions, setHeaderCustomContent } = useHeader();
+
+  // Set header actions when component mounts
+  useEffect(() => {
+    setHeaderActions([
+      {
+        label: "Back to Documents",
+        onClick: () => router.push('/documents'),
+        variant: "ghost",
+        size: "sm",
+        icon: <ArrowLeft className="h-4 w-4" />
+      }
+    ]);
+
+    // Set custom header content
+    setHeaderCustomContent(<h1 className="text-xl font-medium">Document Editor</h1>);
+
+    // Cleanup header actions when component unmounts
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, setHeaderCustomContent, router]);
 
   if (!provider) return null;
 
   return (
-    <div className="pl-64 max-md:pl-0 flex flex-col min-h-screen">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-white border-b h-16 flex items-center px-4">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            aria-label="Back"
-            className="rounded-full hover:bg-gray-100 p-2 transition-colors"
-            onClick={() => router.push('/documents')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-medium">Document Editor</h1>
-        </div>
-      </header>
-
-      {/* Scrollable content */}
-      <main className="flex-1 overflow-y-auto">
+    <>
+      <div className="pl-64 max-md:pl-0 flex flex-col min-h-screen">
+        {/* Scrollable content */}
+        <main className="flex-1 overflow-y-auto">
+         
         <div className="w-full flex justify-center">
           <div 
             className={`px-${isDesktop ? '8' : '4'} pt-0 --docs--doc-editor-header w-full max-w-4xl mx-auto`}
@@ -79,10 +92,21 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
         </div>
 
         <div className="w-full flex justify-center">
-          <div
-            className="--docs--doc-editor-content flex justify-center w-full"
-            style={{ backgroundColor: colorsTokens['primary-bg'] }}
-          >
+        <div
+          className="--docs--doc-editor-content flex justify-center w-full bg-white"
+        >
+                      {isDesktop && !isVersion && (
+              <Box
+                $position="absolute"
+                $zIndex="50"
+                style={{
+                  top: '72px',
+                  right: '20px'
+                }}
+              >
+                <TableContent />
+              </Box>
+            )}
             <div className="w-full max-w-4xl mx-auto px-4">
               {isVersion ? (
                 <DocVersionEditor docId={doc.id} versionId={versionId} />
@@ -94,6 +118,7 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
         </div>
       </main>
     </div>
+    </>
   );
 };
 
@@ -141,7 +166,7 @@ export const DocVersionEditor = ({
   if (isLoading || !version || !initialContent) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }

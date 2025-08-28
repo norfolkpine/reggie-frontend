@@ -36,6 +36,7 @@ import { UploadFileModal } from "./upload-file-modal"
 import SearchInput from "@/components/ui/search-input"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
+import { DeleteProjectDialog } from "./delete-project-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +67,7 @@ export default function ProjectView({ projectId }: { projectId: number }) {
   const [fileToPreview, setFileToPreview] = useState<VaultFile | null>(null);
   const [fileToLink, setFileToLink] = useState<string | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const { user } = useAuth();
   
   // TanStack column filters
@@ -240,9 +242,19 @@ export default function ProjectView({ projectId }: { projectId: number }) {
           <FolderIcon className="h-6 w-6 text-red-500" />
         </div>
         <h1 className="text-2xl font-semibold truncate flex-1">{project?.name}</h1>
-        <Button variant="outline" className="gap-2" onClick={() => setUploadModalOpen(true)}>
-          <FileText className="h-5 w-5" /> Upload File
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setUploadModalOpen(true)}>
+            <FileText className="h-5 w-5" /> Upload File
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            onClick={() => setDeleteProjectOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
 
       </div>
 
@@ -426,6 +438,12 @@ export default function ProjectView({ projectId }: { projectId: number }) {
         supportedTypes={[".pdf", ".png", "image/jpeg"]}
         maxFiles={5}
         title="Upload files"
+      />
+
+      <DeleteProjectDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        project={project ? { id: project.id?.toString() || '', name: project.name || '' } : null}
       />
     </div>
   )

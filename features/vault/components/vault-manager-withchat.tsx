@@ -426,14 +426,17 @@ export function VaultManager() {
           <h1 className="text-xl font-medium flex items-center gap-2">
             {loading ? "Loading project..." : project?.name}
             {!loading && project && (
-              <button
-                type="button"
-                className="ml-2 p-1 rounded hover:bg-gray-200 focus:outline-none"
-                title="Edit project name"
-                onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
-              >
-                <Edit className="h-5 w-5 text-muted-foreground" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ml-2 p-1 rounded hover:bg-gray-200 focus:outline-none"
+                  title="Edit project name"
+                  onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+                >
+                  <Edit className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+              </>
             )}
           </h1>
           {loading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}

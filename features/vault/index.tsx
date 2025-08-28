@@ -56,17 +56,14 @@ export default function Projects() {
       }
     ]);
 
-    // Set loading indicator as custom content next to the title
-    setHeaderCustomContent(
-      loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null
-    );
+    // Don't override the header content during loading - let the default title show
+    setHeaderCustomContent(null);
 
-    // Cleanup when component unmounts
     return () => {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, loading]);
+  }, [setHeaderActions, setHeaderCustomContent]);
 
   useEffect(() => {
     fetchProjects()
@@ -279,7 +276,9 @@ export default function Projects() {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto p-4">
-        {filteredProjects.length === 0 ? (
+        {loading ? (
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+        ) : filteredProjects.length === 0 ? (
           <EmptyState
             icon={<FileText className="h-8 w-8 text-muted-foreground" />}
             title="No projects found"
@@ -312,22 +311,17 @@ export default function Projects() {
                 return null;
               }
               
-              const vaultUrl = `/vault/${projectId}`;
-              console.log('Generated vault URL:', vaultUrl);
-              
               return (
-                <Link
+                <ProjectCard
                   key={projectId}
-                  href={vaultUrl}
-                >
-                  <ProjectCard
-                    key={projectId}
-                    project={project}
-                    onSelect={() => {}}
-                    onProjectDeleted={handleProjectDeleted}
-                    onProjectRenamed={handleProjectRenamed}
-                  />
-                </Link>
+                  project={project}
+                  onSelect={(projectName) => {
+                    // Navigate to the project page
+                    window.location.href = `/vault/${projectId}`;
+                  }}
+                  onProjectDeleted={handleProjectDeleted}
+                  onProjectRenamed={handleProjectRenamed}
+                />
               );
             })}
           </div>
