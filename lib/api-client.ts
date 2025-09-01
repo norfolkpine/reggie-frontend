@@ -107,6 +107,22 @@ export function triggerTokenExpiration(): void {
   }
 }
 
+// Global CSRF token storage
+let globalCSRFToken: string | null = null;
+
+// Function to extract CSRF token from Set-Cookie headers
+function extractCSRFFromHeaders(setCookieHeader: string | null): string | null {
+  if (!setCookieHeader) return null;
+  
+  // Parse Set-Cookie header for csrftoken
+  const csrfMatch = setCookieHeader.match(/csrftoken=([^;]+)/);
+  if (csrfMatch) {
+    return csrfMatch[1];
+  }
+  
+  return null;
+}
+
 // CSRF token management with better security practices
 export async function ensureCSRFToken(): Promise<boolean> {
   try {
@@ -128,30 +144,51 @@ export async function ensureCSRFToken(): Promise<boolean> {
       console.log('❌ No CSRF token found in cookies, trying to get from backend...');
     }
     
-    // Try to get CSRF token from Django Allauth config endpoint
+    // Try to get CSRF token from Django Allauth config endpoint (using Next.js proxy)
     try {
-      const csrfResponse = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+      if (isDevelopment) {
+        console.log('🔄 Trying Django Allauth config endpoint via Next.js proxy...');
+      }
+      
+      const csrfResponse = await fetch('/_allauth/browser/v1/config', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
       });
       
+      if (isDevelopment) {
+        console.log(`Config endpoint response status: ${csrfResponse.status}`);
+        console.log('Set-Cookie headers:', csrfResponse.headers.get('set-cookie'));
+      }
+      
       if (csrfResponse.ok) {
-        // Check if we now have a CSRF token in cookies
+        // Wait a moment for cookies to be set by the browser
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Check if we now have a CSRF token in cookies after the config call
         csrfToken = getCSRFToken();
         if (csrfToken) {
+          globalCSRFToken = csrfToken;
           if (isDevelopment) {
-            console.log('CSRF token retrieved from Django Allauth config endpoint');
+            console.log('✅ CSRF token retrieved from Django Allauth config endpoint');
           }
           return true;
         }
+        
+        if (isDevelopment) {
+          console.log('❌ No CSRF token found in cookies after config endpoint call');
+        }
       } else {
         if (isDevelopment) {
-          console.log(`Django Allauth config endpoint returned status: ${csrfResponse.status}`);
+          console.log(`❌ Django Allauth config endpoint returned status: ${csrfResponse.status}`);
         }
       }
     } catch (csrfError) {
       if (isDevelopment) {
-        console.log('Django Allauth config endpoint not available or failed:', csrfError);
+        console.log('❌ Django Allauth config endpoint not available or failed:', csrfError);
       }
     }
     
@@ -173,23 +210,35 @@ export async function ensureCSRFToken(): Promise<boolean> {
 // Function to refresh CSRF token when we get a CSRF error
 export async function refreshCSRFToken(): Promise<boolean> {
   if (isDevelopment) {
-    console.log('Refreshing CSRF token...');
+    console.log('🔄 Refreshing CSRF token...');
   }
   
   try {
-    // Get a fresh CSRF token from Django Allauth config endpoint
-    const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
+    // Get a fresh CSRF token from Django Allauth config endpoint (using Next.js proxy)
+    const response = await fetch('/_allauth/browser/v1/config', {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
     });
     
     if (response.ok) {
+      // Wait a moment for cookies to be set by the browser
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const csrfToken = getCSRFToken();
       if (csrfToken) {
+        globalCSRFToken = csrfToken;
         if (isDevelopment) {
-          console.log('CSRF token refreshed successfully');
+          console.log('✅ CSRF token refreshed successfully from Allauth endpoint');
         }
         return true;
+      }
+      
+      if (isDevelopment) {
+        console.log('❌ No CSRF token found in cookies after refresh endpoint call');
       }
     }
     

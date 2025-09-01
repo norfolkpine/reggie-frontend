@@ -86,6 +86,41 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
 
   const login = async (credentials: Login) => {
     try {
+      // Clear any mock cookies first
+      if (typeof document !== 'undefined') {
+        const cookies = document.cookie.split(';');
+        cookies.forEach(cookie => {
+          const [name, value] = cookie.split('=').map(c => c.trim());
+          if (value && value.includes('mock')) {
+            console.log('Clearing mock cookie before login:', name);
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost;`;
+          }
+        });
+      }
+      
+      // Ensure Django session and CSRF token before login
+      try {
+        const configResponse = await fetch('/_allauth/browser/v1/config', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (!configResponse.ok) {
+          throw new Error(`Config request failed: ${configResponse.status}`);
+        }
+        
+        console.log('✅ Django session established for login');
+      } catch (configError) {
+        console.log("Config fetch failed, continuing with login:", configError);
+      }
+      
+      await ensureCSRFToken();
+      
       const response = await authApi.login(credentials);
       
       setStatus('LOGGED_IN');
@@ -116,20 +151,52 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
   React.useEffect(() => {
     async function initializeAuth() {
       console.log("Initializing auth...");
-      await ensureCSRFToken();
-        try {
-          const response =await authApi.verifySession();
-          flushSync(() => {
-            setUser(response.data.user);
+      
+      try {
+        // Clear any mock cookies first
+        if (typeof document !== 'undefined') {
+          const cookies = document.cookie.split(';');
+          cookies.forEach(cookie => {
+            const [name, value] = cookie.split('=').map(c => c.trim());
+            if (value && value.includes('mock')) {
+              console.log('Clearing mock cookie:', name);
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost;`;
+            }
           });
-        } catch (error) {
-          
-          
-          flushSync(() => {
-            setUser(null);
-          });
-          
         }
+        
+        // First, establish Django session by fetching config
+      const configResponse = await fetch('/_allauth/browser/v1/config', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      if (!configResponse.ok) {
+        throw new Error(`Config request failed: ${configResponse.status}`);
+      }
+      
+      console.log('✅ Django session established successfully');
+        
+        // Ensure CSRF token is available
+        await ensureCSRFToken();
+        
+        // Now try to verify the session
+        const response = await authApi.verifySession();
+        flushSync(() => {
+          setUser(response.data.user);
+        });
+      } catch (error) {
+        console.log("Session verification failed:", error);
+        flushSync(() => {
+          setUser(null);
+        });
+      }
+      
       setLoading(false);
     }
 

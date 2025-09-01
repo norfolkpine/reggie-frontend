@@ -25,6 +25,26 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000',
   },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // These rewrites are checked before pages/api routes
+        // Local API routes will take precedence over these rewrites
+      ],
+      afterFiles: [
+        // These rewrites are checked after pages/api routes
+        // Only proxy to backend if no local API route matches
+        // Note: /_allauth routes are handled by middleware
+        {
+          source: '/api/:path*',
+          destination: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000'}/reggie/api/v1/:path*`,
+        },
+      ],
+      fallback: [
+        // These rewrites are checked after both pages/api routes and afterFiles
+      ]
+    };
+  },
 }
 
 mergeConfig(nextConfig, userConfig)
