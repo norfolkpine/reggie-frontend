@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { SettingsDialog } from "@/components/settings-dialog";
 import { ProfileDialog } from "@/components/profile-dialog";
 import { BillingDialog } from "@/components/billing-dialog";
 import { TeamDialog } from "@/components/team/team-dialog";
@@ -48,7 +47,6 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
   const [dialogStates, setDialogStates] = React.useState({
     profile: false,
     billing: false,
-    settings: false,
     team: false,
     logoutConfirm: false,
   });
@@ -114,9 +112,24 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
 
   const handleMenuItemSelect = React.useCallback(
     (key: string) => {
-      setDialogState(key as keyof typeof dialogStates)(true);
+      switch (key) {
+        case 'profile':
+          router.push('/settings/profile');
+          break;
+        case 'billing':
+          router.push('/settings/billing');
+          break;
+        case 'settings':
+          router.push('/settings');
+          break;
+        case 'team':
+          router.push('/settings/organizations');
+          break;
+        default:
+          setDialogState(key as keyof typeof dialogStates)(true);
+      }
     },
-    [setDialogState]
+    [setDialogState, router]
   );
 
   const renderDialogs = React.useCallback(
@@ -125,10 +138,6 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
         <ProfileDialog
           open={dialogStates.profile}
           onOpenChange={setDialogState("profile")}
-        />
-        <SettingsDialog
-          open={dialogStates.settings}
-          onOpenChange={setDialogState("settings")}
         />
         <BillingDialog
           open={dialogStates.billing}

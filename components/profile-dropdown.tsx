@@ -15,7 +15,6 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { SettingsDialog } from '@/components/settings-dialog'
 import { useState } from 'react'
 import { ProfileDialog } from '@/components/profile-dialog'
 // Add this import at the top with other imports
@@ -30,8 +29,7 @@ export function ProfileDropdown() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showTeam, setShowTeam] = useState(false)
   const [showBilling, setShowBilling] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)  // Add this line
+  const [showProfile, setShowProfile] = useState(false)
   const { user, logout, isAuthenticated } = useAuth()
   const router = useRouter()
 
@@ -94,7 +92,7 @@ export function ProfileDropdown() {
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={(e) => {
             e.preventDefault()
-            setShowSettings(true)
+            router.push('/settings')
           }}>
             Settings
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
@@ -107,7 +105,6 @@ export function ProfileDropdown() {
             <DropdownMenuShortcut>⌘T</DropdownMenuShortcut>
           </DropdownMenuItem>
           <ProfileDialog open={showProfile} onOpenChange={setShowProfile} />
-          <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
           <BillingDialog open={showBilling} onOpenChange={setShowBilling} />
           <TeamDialog open={showTeam} onOpenChange={setShowTeam} />
         </DropdownMenuGroup>
