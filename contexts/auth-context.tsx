@@ -22,13 +22,13 @@ export interface AuthContext {
 
 const AuthContext = React.createContext<AuthContext | null>(null);
 
-export function AuthProvider({ children, allowedRoutes=[] }: { children: React.ReactNode, allowedRoutes: string[] }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const isAuthenticated = !!user;
   const [status, setStatus] = React.useState<string | 'LOGGED_IN' | 'LOGGED_OUT'>('LOGGED_OUT');
   const router = useRouter();
-  
+
   useEffect(() => {
     const storedUser = getStoredUser();
     if (storedUser) {
@@ -48,18 +48,12 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
     };
   }
 
-  
-
   const handleTokenExpiration = React.useCallback(() => {
     console.log("Token expired, clearing auth state");
-    
+
     flushSync(() => {
       setUser(null);
     });
-
-    if(allowedRoutes.includes(window.location.pathname)){
-      return;
-    }
 
     // Redirect to sign-in page using Next.js router (no page refresh)
     router.push('/sign-in');
