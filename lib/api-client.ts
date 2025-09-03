@@ -286,13 +286,19 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
       credentials: 'include',
     });
 
-    // Check for CSRF errors and retry once with a fresh token
-    if (response.status === 403 && retryCount === 0) {
+    // Check for CSRF errors (403 or 409) and retry once with a fresh token
+    if ((response.status === 403 || response.status === 409) && retryCount === 0) {
       try {
         const errorData = await response.json();
-        if (errorData.detail && errorData.detail.includes('CSRF')) {
+
+        // Check for CSRF error detail in the response
+        const isCsrfError = (errorData.detail && errorData.detail.includes('CSRF')) ||
+                            (Array.isArray(errorData.errors) &&
+                             errorData.errors.some((err: any) => err.message && err.message.includes('CSRF')));
+
+        if (isCsrfError) {
           if (isDevelopment) {
-            console.log('CSRF error detected:', errorData.detail);
+            console.log(`CSRF error detected (status ${response.status}):`, errorData);
             console.log('Current CSRF token:', csrfToken);
             console.log('Attempting to refresh token...');
           }
