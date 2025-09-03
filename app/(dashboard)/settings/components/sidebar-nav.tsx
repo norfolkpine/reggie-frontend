@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -15,7 +17,7 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string
     title: string
-    icon: JSX.Element
+    icon: React.ReactElement
   }[]
 }
 
