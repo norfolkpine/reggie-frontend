@@ -27,7 +27,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // If custom header is provided, use it; otherwise use PageHeader with actions/content
   if (customHeader) {
     return (
-      <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden">
+      <div className="bg-card rounded-xl border shadow-sm h-full flex flex-col overflow-hidden">
         {customHeader}
         <div className="flex-1 overflow-auto px-1">
           {children}
@@ -37,10 +37,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm h-full flex flex-col overflow-hidden" ref={scrollContainerRef}>
+    <div className="bg-card rounded-xl border shadow-sm h-full flex flex-col overflow-hidden" ref={scrollContainerRef}>
       <div className={`transition-all duration-200 ${
         isScrolled 
-          ? 'sticky top-0 z-50 rounded-none shadow-md bg-white' 
+          ? 'sticky top-0 z-50 rounded-none shadow-md bg-card' 
           : 'rounded-t-xl'
       }`}>
         <PageHeader 
@@ -67,7 +67,7 @@ export default function RootLayout({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-sidebar-background">
       <Sidebar />
       <div className="h-screen overflow-auto flex-1 pt-2 pr-2 pb-2">
         <HeaderProvider>

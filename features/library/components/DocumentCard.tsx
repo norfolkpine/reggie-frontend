@@ -21,21 +21,21 @@ export function DocumentCard({ document }: DocumentCardProps) {
   }
 
   return (
-    <Card className={`overflow-hidden h-full w-full aspect-[4/5] ${isStarred ? "border-yellow-300" : ""} hover:shadow-md transition-all`}>
+    <Card className={`overflow-hidden h-full w-full aspect-[4/5] ${isStarred ? "border-yellow-300 dark:border-yellow-700" : ""} hover:shadow-md transition-all`}>
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{document.title}</CardTitle>
           <div className="flex items-center gap-1">
             {isPublic ? (
-              <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
                 <Globe className="h-3 w-3 mr-1" /> Public
               </Badge>
             ) : document.access === "private" ? (
-              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">
+              <Badge variant="outline" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800">
                 <Lock className="h-3 w-3 mr-1" /> Private
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-green-50 text-green-800 border-green-200">
+              <Badge variant="outline" className="bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800">
                 <Users className="h-3 w-3 mr-1" /> Team
               </Badge>
             )}
@@ -48,10 +48,10 @@ export function DocumentCard({ document }: DocumentCardProps) {
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="bg-blue-50">
+          <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950">
             {document.type}
           </Badge>
-          <Badge variant="outline" className="bg-gray-50">
+          <Badge variant="outline" className="bg-muted">
             {document.category}
           </Badge>
         </div>
@@ -118,10 +118,10 @@ export function DocumentCard({ document }: DocumentCardProps) {
           <Button
             variant={isStarred ? "default" : "ghost"}
             size="icon"
-            className={`h-8 w-8 ${isStarred ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" : ""}`}
+            className={`h-8 w-8 ${isStarred ? "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-900" : ""}`}
             onClick={toggleStar}
           >
-            <Star className={`h-4 w-4 ${isStarred ? "fill-yellow-500 text-yellow-500" : ""}`} />
+            <Star className={`h-4 w-4 ${isStarred ? "fill-yellow-500 text-yellow-500 dark:fill-yellow-400 dark:text-yellow-400" : ""}`} />
           </Button>
         </div>
       </CardFooter>
