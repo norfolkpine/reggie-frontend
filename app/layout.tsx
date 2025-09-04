@@ -5,6 +5,7 @@ import "../styles/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,20 +31,28 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AppProvider>
-        <AuthProvider allowedRoutes={allowedRoutes}>
-          <AuthGuard allowedRoutes={allowedRoutes}>
-            <SearchProvider>
-              <ModalProvider>
-                <ChatSessionProvider>
-                  {children}
-                </ChatSessionProvider>
-              </ModalProvider>
-            </SearchProvider>
-          </AuthGuard>
-        </AuthProvider>
-        <Toaster />
-        </AppProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          suppressHydrationWarning
+        >
+          <AppProvider>
+          <AuthProvider allowedRoutes={allowedRoutes}>
+            <AuthGuard allowedRoutes={allowedRoutes}>
+              <SearchProvider>
+                <ModalProvider>
+                  <ChatSessionProvider>
+                    {children}
+                  </ChatSessionProvider>
+                </ModalProvider>
+              </SearchProvider>
+            </AuthGuard>
+          </AuthProvider>
+          <Toaster />
+          </AppProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
