@@ -153,8 +153,8 @@ export default function Apps() {
         const response = await getNangoSessions();
         console.log('[Nango] Raw response from getNangoSessions:', response);
 
-        if (response && typeof response === 'object' && 'token' in response) {
-          const sessionToken = (response as any).token;
+        if (response && typeof response === 'object' && 'data' in response && 'token' in (response as any).data) {
+          const sessionToken = (response as any).data.token;
           console.log('[Nango] Session token received:', sessionToken);
           setNangoSessionToken(sessionToken);
 
@@ -166,7 +166,8 @@ export default function Apps() {
         } else {
           console.error('[Nango] Failed to get Connect session token. Response structure:', response);
           console.error('[Nango] Response type:', typeof response);
-          console.error('[Nango] Has token property:', response && typeof response === 'object' && 'token' in response);
+          console.error('[Nango] Has data property:', response && typeof response === 'object' && 'data' in response);
+          console.error('[Nango] Has token in data:', response && typeof response === 'object' && 'data' in response && 'token' in (response as any).data);
           
           // For development, create a mock session token if the API is not working
           if (process.env.NODE_ENV === 'development') {
