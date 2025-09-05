@@ -24,8 +24,8 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000',
-    NEXT_PUBLIC_NANGO_API_URL: process.env.NEXT_PUBLIC_NANGO_API_URL || 'https://app.opie.sh/nango',
-    NEXT_PUBLIC_NANGO_BASE_URL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || 'https://app.opie.sh/nango',
+    NEXT_PUBLIC_NANGO_API_URL: process.env.NEXT_PUBLIC_NANGO_API_URL || 'https://nango.opie.sh',
+    NEXT_PUBLIC_NANGO_BASE_URL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || 'https://nango.opie.sh',
   },
 }
 
