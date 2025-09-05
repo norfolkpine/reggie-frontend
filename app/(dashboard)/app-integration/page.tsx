@@ -81,19 +81,19 @@ export default function Apps() {
       const data = await getIntegrations();
       const connects = await getConnections();
       console.log("data", data);
-      connects?.data?.forEach(item => {
-        data?.data?.map(element => {
-          if(element.key === item.provider) {
-            element.is_connected = true;
-          } else {
-            element.is_connected = false;
-          }
-          return element;
-        })
+      
+      // Process connections to update integration status
+      const processedData = data?.map(element => {
+        const isConnected = connects?.some(connection => connection.provider === element.key);
+        return {
+          ...element,
+          is_connected: isConnected
+        };
       });
+      
       console.log("connections", connects);
-      setConnects(connects?.data ?? []);
-      setApps(data?.data ?? []);
+      setConnects(connects ?? []);
+      setApps(processedData ?? []);
     } catch (error) {
       console.log(error);
     }
@@ -136,8 +136,8 @@ export default function Apps() {
 
         console.log("res", response);
 
-        if (response.data) {
-          const sessionToken = await response.data.token;
+        if (response && typeof response === 'object' && 'token' in response) {
+          const sessionToken = (response as any).token;
           setNangoSessionToken(sessionToken);
 
           const nangoInstance = new Nango();
@@ -146,8 +146,7 @@ export default function Apps() {
           setNangoSessionToken(sessionToken);
           console.log('[Nango] Session token stored, Connect UI will be initialized on demand');
         } else {
-          const errorData = await response;
-          console.error('[Nango] Failed to get Connect session token:', errorData);
+          console.error('[Nango] Failed to get Connect session token:', response);
         }
       } catch (error) {
         console.error('[Nango] Initialization error:', error);
@@ -172,8 +171,6 @@ export default function Apps() {
 
     try {
       const connectUI = nango.openConnectUI({
-        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL || "https://nango.opie.sh",
-        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || "https://nango.opie.sh",
         onEvent: (event) => {
           console.log('[Nango] Connect UI event:', event);
           try {
@@ -185,14 +182,23 @@ export default function Apps() {
               // Use providerConfigKey as the provider identifier if provider is not present
               const actualProvider = (eventData as any).provider ?? providerConfigKey;
 
-              if (!actualProvider) {
+              if (!actualProvider || !connectionId) {
+                console.error('[Nango] Missing required connection data:', { actualProvider, connectionId });
+                toast({
+                  title: "Connection Error",
+                  description: "Invalid connection data received. Please try again.",
+                  variant: "destructive",
+                });
                 return;
               }
 
               console.log(`[Nango] Successfully connected to ${actualProvider} with connection ID: ${connectionId}`);
 
-              const integrationName = integration.title;
-              console.log('[Nango] Mapped provider ID', actualProvider, 'to integration name:', integrationName);
+              // Show success toast
+              toast({
+                title: "Connection Successful",
+                description: `Successfully connected to ${integration.title}`,
+              });
 
               // Save the connection to database
               console.log('[Nango] Saving connection to database...', { provider: actualProvider, connectionId });
@@ -209,25 +215,23 @@ export default function Apps() {
 
                   try {
                     const connectionData = {
-                      providor: actualProvider,
+                      provider: actualProvider,
                       connectionId: connectionId || undefined
                     };
 
                     const saveResponse = await saveNangoConnection(connectionData);
 
-                    const saveData = await saveResponse;
-
-                    if (!saveResponse.id) {
-                      if (!saveData.error?.includes('duplicate')) {
-                        console.error('[Nango] Failed to save connection:', saveData);
-                      }
-                    } else {
-                      console.log('[Nango] Save request completed:', saveData);
-                      // const { redirectUrl } = saveData;
-                      const redirectUrl = "/app-integration";
-                      console.log('redirecteurl ---------->', redirectUrl);
-                      if (redirectUrl) {
-                        window.location.href = redirectUrl;
+                    if (saveResponse && typeof saveResponse === 'object') {
+                      const saveData = saveResponse as any;
+                      
+                      if (!saveData.id) {
+                        if (!saveData.error?.includes('duplicate')) {
+                          console.error('[Nango] Failed to save connection:', saveData);
+                        }
+                      } else {
+                        console.log('[Nango] Save request completed:', saveData);
+                        // Refresh the apps list to show updated connection status
+                        await fetchApps();
                       }
                     }
                   } catch (error) {
@@ -267,32 +271,52 @@ export default function Apps() {
     setIntegration(integration);
     try {
       console.log(`[Nango] Attempting to connect to ${integration.title} with provider ID: ${integration.key}`);
-      const connectUI = initializeConnectUI(integration);
-
-      if (!connectUI && (!nango || !nangoSessionToken)) {
-        console.error('[Nango] Connect UI initialization failed - missing nango instance or session token');
+      
+      if (!nango || !nangoSessionToken) {
+        console.error('[Nango] Cannot connect: missing nango instance or session token');
+        toast({
+          title: "Connection Error",
+          description: "Unable to initialize connection. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
-      const providerId = integration.key;
-      if (connectUI) {
-          console.log(`[Nango] Opening Connect UI for ${providerId}`);
-          try {
-            setTimeout(() => {
-              try {
-                connectUI.open(providerId);
-              } catch (error) {
-                console.error(`[Nango] Error opening Connect UI for ${providerId}:`, error);
-              }
-            }, 100);
-          } catch (error) {
-            console.error(`[Nango] Error preparing Connect UI for ${providerId}:`, error);
-          }
-        } else {
-          console.log('[Nango] Connect UI not ready...');
-        }
+
+      const connectUI = initializeConnectUI(integration);
+      if (!connectUI) {
+        console.error('[Nango] Connect UI initialization failed');
+        toast({
+          title: "Connection Error", 
+          description: "Failed to initialize connection UI. Please try again.",
+          variant: "destructive",
+        });
         return;
+      }
+
+      const providerId = integration.key;
+      console.log(`[Nango] Opening Connect UI for ${providerId}`);
+      
+      // Use a small delay to ensure the UI is ready
+      setTimeout(() => {
+        try {
+          connectUI.open(providerId);
+        } catch (error) {
+          console.error(`[Nango] Error opening Connect UI for ${providerId}:`, error);
+          toast({
+            title: "Connection Error",
+            description: "Failed to open connection dialog. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }, 100);
+      
     } catch (err) {
       console.error('Nango connect error:', err);
+      toast({
+        title: "Connection Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
   

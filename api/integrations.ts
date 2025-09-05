@@ -29,7 +29,7 @@ interface PaginatedConnectionList {
 }
 
 interface Connection {
-  prividor: string;
+  provider: string;
   connectionId: string | undefined;
 }
 
