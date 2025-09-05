@@ -80,22 +80,40 @@ export default function Apps() {
     try {
       const data = await getIntegrations();
       const connects = await getConnections();
-      console.log("data", data);
+      console.log("Raw integrations data:", data);
+      console.log("Raw connections data:", connects);
+      
+      // Check if data is wrapped in a response object
+      const integrations = Array.isArray(data) ? data : (data as any)?.data || (data as any)?.results || [];
+      const connections = Array.isArray(connects) ? connects : (connects as any)?.data || (connects as any)?.results || [];
+      
+      console.log("Processed integrations:", integrations);
+      console.log("Processed connections:", connections);
       
       // Process connections to update integration status
-      const processedData = data?.map(element => {
-        const isConnected = connects?.some(connection => connection.provider === element.key);
+      const processedData = integrations?.map(element => {
+        const isConnected = connections?.some(connection => connection.provider === element.key);
         return {
           ...element,
           is_connected: isConnected
         };
       });
       
-      console.log("connections", connects);
-      setConnects(connects ?? []);
-      setApps(processedData ?? []);
+      console.log("Final processed data:", processedData);
+      setConnects(connections);
+      
+      // Use processed data if available, otherwise fall back to temp_apps
+      if (processedData && processedData.length > 0) {
+        setApps(processedData);
+      } else {
+        console.log("No integrations from API, using temp_apps");
+        setApps(temp_apps);
+      }
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching apps:", error);
+      // Fall back to temp_apps if API calls fail
+      setApps(temp_apps);
+      setConnects([]);
     }
   };
 
@@ -131,25 +149,50 @@ export default function Apps() {
   useEffect(() => {
     const initNango = async () => {
       try {
-
+        console.log('[Nango] Starting initialization...');
         const response = await getNangoSessions();
-
-        console.log("res", response);
+        console.log('[Nango] Raw response from getNangoSessions:', response);
 
         if (response && typeof response === 'object' && 'token' in response) {
           const sessionToken = (response as any).token;
+          console.log('[Nango] Session token received:', sessionToken);
           setNangoSessionToken(sessionToken);
 
           const nangoInstance = new Nango();
           setNango(nangoInstance);
+          console.log('[Nango] Nango instance created:', nangoInstance);
 
-          setNangoSessionToken(sessionToken);
           console.log('[Nango] Session token stored, Connect UI will be initialized on demand');
         } else {
-          console.error('[Nango] Failed to get Connect session token:', response);
+          console.error('[Nango] Failed to get Connect session token. Response structure:', response);
+          console.error('[Nango] Response type:', typeof response);
+          console.error('[Nango] Has token property:', response && typeof response === 'object' && 'token' in response);
+          
+          // For development, create a mock session token if the API is not working
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Nango] Development mode: Creating mock session token');
+            const mockToken = 'mock-session-token-' + Date.now();
+            setNangoSessionToken(mockToken);
+            
+            const nangoInstance = new Nango();
+            setNango(nangoInstance);
+            console.log('[Nango] Mock Nango instance created for development');
+          }
         }
       } catch (error) {
         console.error('[Nango] Initialization error:', error);
+        console.error('[Nango] Error details:', error.message);
+        
+        // For development, create a mock session token if the API call fails
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Nango] Development mode: API call failed, creating mock session token');
+          const mockToken = 'mock-session-token-' + Date.now();
+          setNangoSessionToken(mockToken);
+          
+          const nangoInstance = new Nango();
+          setNango(nangoInstance);
+          console.log('[Nango] Mock Nango instance created for development after API error');
+        }
       }
     };
     initNango();
@@ -259,8 +302,10 @@ export default function Apps() {
       });
 
       console.log("connectUI", connectUI);
+      console.log(`[Nango] Setting session token: ${nangoSessionToken}`);
       connectUI.setSessionToken(nangoSessionToken);
       setNangoConnect(connectUI);
+      console.log(`[Nango] Connect UI initialized and ready`);
 
       return connectUI;
     } catch (error) {
@@ -273,9 +318,15 @@ export default function Apps() {
     setIntegration(integration);
     try {
       console.log(`[Nango] Attempting to connect to ${integration.title} with provider ID: ${integration.key}`);
+      console.log(`[Nango] Nango instance:`, nango);
+      console.log(`[Nango] Session token:`, nangoSessionToken);
+      console.log(`[Nango] API URL:`, process.env.NEXT_PUBLIC_NANGO_API_URL);
+      console.log(`[Nango] Base URL:`, process.env.NEXT_PUBLIC_NANGO_BASE_URL);
       
       if (!nango || !nangoSessionToken) {
         console.error('[Nango] Cannot connect: missing nango instance or session token');
+        console.error('[Nango] Nango instance exists:', !!nango);
+        console.error('[Nango] Session token exists:', !!nangoSessionToken);
         toast({
           title: "Connection Error",
           description: "Unable to initialize connection. Please try again.",
@@ -301,7 +352,9 @@ export default function Apps() {
       // Use a small delay to ensure the UI is ready
       setTimeout(() => {
         try {
+          console.log(`[Nango] About to call connectUI.open(${providerId})`);
           connectUI.open(providerId);
+          console.log(`[Nango] connectUI.open() called successfully`);
         } catch (error) {
           console.error(`[Nango] Error opening Connect UI for ${providerId}:`, error);
           toast({
