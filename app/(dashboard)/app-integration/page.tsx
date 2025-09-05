@@ -214,9 +214,19 @@ export default function Apps() {
     console.log('[Nango] Initializing new Connect UI...');
 
     try {
+      if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
+        console.error('[Nango] Missing required environment variables: NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
+        toast({
+          title: "Configuration Error",
+          description: "Nango configuration is missing. Please contact support.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
       const connectUI = nango.openConnectUI({
-        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL || "https://nango.opie.sh",
-        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || "https://nango.opie.sh",
+        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
+        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
         onEvent: (event) => {
           console.log('[Nango] Connect UI event:', event);
           try {
