@@ -370,7 +370,7 @@ export default function Sidebar() {
   return (
     <div
       className={cn(
-        "h-full flex flex-col bg-gray-50 transition-all duration-300",
+        "h-full flex flex-col bg-sidebar-background transition-all duration-300",
         isExpanded ? "w-64" : "w-16"
       )}
     >
@@ -406,7 +406,7 @@ export default function Sidebar() {
                   <div key={index} className="w-full">
                     {item.name === "Vault" ? (
                       <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                         onMouseEnter={() => setHoveredVault(true)}
                         onMouseLeave={() => setHoveredVault(false)}
                       >
@@ -417,7 +417,7 @@ export default function Sidebar() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 p-0 rounded-full hover:bg-gray-200"
+                                className="h-5 w-5 p-0 rounded-full hover:bg-sidebar-accent"
                                 onClick={e => {
                                   e.stopPropagation();
                                   setVaultExpanded((prev) => !prev);
@@ -444,7 +444,7 @@ export default function Sidebar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 rounded-full hover:bg-gray-300"
+                          className="h-6 w-6 rounded-full hover:bg-sidebar-accent"
                           onClick={e => {
                             e.stopPropagation();
                             setCreateProjectOpen(true);
@@ -455,7 +455,7 @@ export default function Sidebar() {
                       </div>
                     ) : item.name === "Documents" ? (
                       <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                         onMouseEnter={() => setHoveredDocuments(true)}
                         onMouseLeave={() => setHoveredDocuments(false)}
                       >
@@ -465,7 +465,7 @@ export default function Sidebar() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 p-0 rounded-full hover:bg-gray-200"
+                                className="h-5 w-5 p-0 rounded-full hover:bg-sidebar-accent"
                                 onClick={e => {
                                   e.stopPropagation();
                                   setDocumentsExpanded((prev) => !prev);
@@ -492,7 +492,7 @@ export default function Sidebar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 rounded-full hover:bg-gray-300"
+                          className="h-6 w-6 rounded-full hover:bg-sidebar-accent"
                           onClick={e => {
                             e.stopPropagation();
                             createDocMutation.mutate();
@@ -504,7 +504,7 @@ export default function Sidebar() {
                       </div>
                     ) : (
                       <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-gray-100 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                         onClick={() => handleNavItemClick(item.url)}
                       >
                         <div className="flex items-center gap-2">
@@ -524,7 +524,7 @@ export default function Sidebar() {
                           projects.filter(project => project.owner === user?.id).map((project) => (
                             <div
                               key={getProjectId(project)}
-                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/vault/${getProjectId(project)}` ? "bg-gray-300 font-semibold" : ""}`}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-sidebar-accent text-sm ${pathname === `/vault/${getProjectId(project)}` ? "bg-sidebar-accent font-semibold" : ""}`}
                               onClick={e => {
                                 e.stopPropagation();
                                 handleNavItemClick(`/vault/${getProjectId(project)}`);
@@ -562,7 +562,7 @@ export default function Sidebar() {
                             {documents.map((doc: Doc) => (
                               <div
                                 key={doc.id}
-                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/documents/${doc.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-sidebar-accent text-sm ${pathname === `/documents/${doc.id}` ? "bg-sidebar-accent font-semibold" : ""}`}
                                 onClick={e => {
                                   e.stopPropagation();
                                   handleNavItemClick(`/documents/${doc.id}`);
@@ -652,7 +652,7 @@ export default function Sidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`rounded-full w-10 h-10 ${pathname.startsWith(item.url) ? "bg-gray-200" : ""}`}
+                      className={`rounded-full w-10 h-10 ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                       title={item.name}
                       onClick={() => handleNavItemClick(item.url)}
                     >
@@ -663,7 +663,7 @@ export default function Sidebar() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-300"
+                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-sidebar-accent hover:bg-sidebar-accent/80"
                         onClick={e => {
                           e.stopPropagation();
                           setCreateProjectOpen(true);
@@ -675,7 +675,7 @@ export default function Sidebar() {
                     )}
                     {/* Documents popover */}
                     {item.name === "Documents" && pathname.startsWith("/documents") && (
-                      <div className="absolute left-12 top-0 z-10 bg-white border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
+                      <div className="absolute left-12 top-0 z-10 bg-sidebar-background border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
                         {loadingDocs ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (
@@ -683,7 +683,7 @@ export default function Sidebar() {
                             {visibleDocuments.map((doc: Doc) => (
                               <div
                                 key={doc.id}
-                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 text-sm ${pathname === `/documents/${doc.id}` ? "bg-gray-300 font-semibold" : ""}`}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-sidebar-accent text-sm ${pathname === `/documents/${doc.id}` ? "bg-sidebar-accent font-semibold" : ""}`}
                                 onClick={e => {
                                   e.stopPropagation();
                                   handleNavItemClick(`/documents/${doc.id}`);
@@ -800,7 +800,7 @@ export default function Sidebar() {
       {/* Simple Delete Confirmation Dialog */}
       {docToDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Delete Document</h3>
             <p className="text-sm text-muted-foreground mb-6">
               Are you sure you want to delete "{docToDelete.title}"? This action cannot be undone.

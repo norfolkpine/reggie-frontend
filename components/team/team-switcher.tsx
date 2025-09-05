@@ -123,7 +123,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
           router.push('/settings');
           break;
         case 'team':
-          router.push('/settings/organizations');
+          router.push('/settings/teams');
           break;
         default:
           setDialogState(key as keyof typeof dialogStates)(true);

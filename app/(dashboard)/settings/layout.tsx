@@ -5,7 +5,6 @@ import {
   IconBrowserCheck,
   IconNotification,
   IconPalette,
-  IconTool,
   IconUser,
   IconCreditCard,
   IconLayoutList,
@@ -25,11 +24,6 @@ const sidebarNavItems = [
     title: 'Profile',
     icon: <IconUser size={18} />,
     href: '/settings',
-  },
-  {
-    title: 'Account',
-    icon: <IconTool size={18} />,
-    href: '/settings/account',
   },
   {
     title: 'Appearance',
@@ -72,19 +66,9 @@ const sidebarNavItems = [
     ]
   },
   {
-    title: 'Emails',
-    icon: <IconMail size={18} />,
-    href: '/settings/emails',
-  },
-  {
     title: 'Password and MFA',
     icon: <IconLock size={18} />,
     href: '/settings/password-authentication',
-  },
-  {
-    title: 'Sessions',
-    icon: <IconDeviceLaptop size={18} />,
-    href: '/settings/sessions',
   },
   {
     title: 'Teams',
@@ -97,7 +81,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const { setHeaderCustomContent } = useHeader()
 
     const headerContent = useMemo(() => (
-    <div className="text-lg font-medium text-gray-900">
+    <div className="text-lg font-medium ">
       Settings
     </div>
   ), []);

@@ -80,6 +80,7 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       localStorage.clear();
 
       // Explicitly clear session cookies to prevent stale state on next login
+
       const clearAuthCookies = () => {
         if (typeof document === 'undefined') return;
         document.cookie = "csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
