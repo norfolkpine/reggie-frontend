@@ -215,8 +215,8 @@ export default function Apps() {
 
     try {
       const connectUI = nango.openConnectUI({
-        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL || "https://nango.opie.sh",
-        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || "https://nango.opie.sh",
+        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL || "https://connect.opie.sh",
+        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL || "https://connect.opie.sh",
         onEvent: (event) => {
           console.log('[Nango] Connect UI event:', event);
           try {
