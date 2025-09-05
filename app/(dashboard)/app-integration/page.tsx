@@ -17,11 +17,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search } from "@/components/search";
 import { Button } from "@/components/custom/button";
-import { getIntegrations, Integration } from "@/api/integrations";
+import { getIntegrations, NangoConnection, Integration, getNangoSessions, revokeAccess, saveNangoConnection, getConnections } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
 import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
 import { useToast } from "@/components/ui/use-toast";
+import Nango from '@nangohq/frontend';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Icons } from "@/components/icons";
 import { isSafeUrl } from "@/lib/utils/url";
+import { Provider } from "@radix-ui/react-toast";
 
 const appText = new Map<string, string>([
   ["all", "All Apps"],
@@ -48,15 +50,50 @@ export default function Apps() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRevoking, setIsRevoking] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Integration | null>(null);
+  const [nangoSessionToken, setNangoSessionToken] = useState<string | null>(null);
+  const [nangoConnect, setNangoConnect] = useState<any>(null);
+  const [nango, setNango] = useState<Nango | null>(null);
+  const [appIntegration, setIntegration] = useState<Integration | null>(null);
   const { toast } = useToast();
 
   // Ensure apps is initialized as an empty array
   const [apps, setApps] = useState<Integration[]>([]);
+  const [connnects, setConnects] = useState<NangoConnection[]>([]);
+  const temp_apps = [
+    {
+      key: "google_drive",
+      title: "Google Drive",
+      description: "Google Drive",
+      icon_url: "",
+      is_connected: false
+    },
+    {
+      key: "google_drive",
+      title: "Slack",
+      description: "Slack",
+      icon_url: "",
+      is_connected: true
+    }
+  ];
 
   const fetchApps = async () => {
     try {
       const data = await getIntegrations();
-      setApps(data ?? []);
+      const connects = await getConnections();
+      console.log("data", data);
+      connects?.data?.forEach(item => {
+        data?.data?.map(element => {
+          if(element.key === item.provider) {
+            element.is_connected = true;
+          } else {
+            element.is_connected = false;
+          }
+          return element;
+        })
+      });
+      console.log("connections", connects);
+      setConnects(connects?.data ?? []);
+      setApps(data?.data ?? []);
     } catch (error) {
       console.log(error);
     }
@@ -91,28 +128,197 @@ export default function Apps() {
     }
   };
 
+  useEffect(() => {
+    const initNango = async () => {
+      try {
+
+        const response = await getNangoSessions();
+
+        console.log("res", response);
+
+        if (response.data) {
+          const sessionToken = await response.data.token;
+          setNangoSessionToken(sessionToken);
+
+          const nangoInstance = new Nango();
+          setNango(nangoInstance);
+
+          setNangoSessionToken(sessionToken);
+          console.log('[Nango] Session token stored, Connect UI will be initialized on demand');
+        } else {
+          const errorData = await response;
+          console.error('[Nango] Failed to get Connect session token:', errorData);
+        }
+      } catch (error) {
+        console.error('[Nango] Initialization error:', error);
+      }
+    };
+    initNango();
+  }, []);
+
+  const initializeConnectUI = (integration: Integration) => {
+
+    if (nangoConnect) {
+      console.log('[Nango] Using existing Connect UI instance');
+      return nangoConnect;
+    }
+
+    if (!nango || !nangoSessionToken) {
+      console.error('[Nango] Cannot initialize Connect UI: missing nango instance or session token');
+      return null;
+    }
+
+    console.log('[Nango] Initializing new Connect UI...');
+
+    try {
+      const connectUI = nango.openConnectUI({
+        apiURL: "https://nango.opie.sh",
+        baseURL: "https://nango.opie.sh",
+        onEvent: (event) => {
+          console.log('[Nango] Connect UI event:', event);
+          try {
+            if (event.type === 'connect') {
+              const eventData = event.payload || {};
+              console.log('[Nango] Event data structure:', { payload: event.payload });
+
+              const { connectionId, providerConfigKey } = eventData;
+              // Use providerConfigKey as the provider identifier if provider is not present
+              const actualProvider = (eventData as any).provider ?? providerConfigKey;
+
+              if (!actualProvider) {
+                return;
+              }
+
+              console.log(`[Nango] Successfully connected to ${actualProvider} with connection ID: ${connectionId}`);
+
+              const integrationName = integration.title;
+              console.log('[Nango] Mapped provider ID', actualProvider, 'to integration name:', integrationName);
+
+              // Save the connection to database
+              console.log('[Nango] Saving connection to database...', { provider: actualProvider, connectionId });
+              
+              const handleConnectionSave = async () => {
+                console.log('[Nango] Waiting for webhook processing...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                try {
+                  console.log('[Nango] Attempting to save connection:', {
+                    provider: actualProvider,
+                    connectionId
+                  });
+
+                  try {
+                    const connectionData = {
+                      providor: actualProvider,
+                      connectionId: connectionId || undefined
+                    };
+
+                    const saveResponse = await saveNangoConnection(connectionData);
+
+                    const saveData = await saveResponse;
+
+                    if (!saveResponse.id) {
+                      if (!saveData.error?.includes('duplicate')) {
+                        console.error('[Nango] Failed to save connection:', saveData);
+                      }
+                    } else {
+                      console.log('[Nango] Save request completed:', saveData);
+                      // const { redirectUrl } = saveData;
+                      const redirectUrl = "/app-integration";
+                      console.log('redirecteurl ---------->', redirectUrl);
+                      if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                      }
+                    }
+                  } catch (error) {
+                    console.log('[Nango] Save request failed, but webhook may have saved it:', error);
+                  }
+
+                } catch (error) {
+                  console.error('[Nango] ❌ Error in save/verify process:', error);
+                }
+              };
+
+              handleConnectionSave();
+
+              setNangoConnect(null);
+            } else if (event.type === 'close') {
+              console.log('[Nango] Connect UI closed');
+            }
+          } catch (error) {
+            console.error('[Nango] Error handling event:', error);
+            console.error('[Nango] Event that caused error:', event);
+          }
+        }
+      });
+
+      console.log("connectUI", connectUI);
+      connectUI.setSessionToken(nangoSessionToken);
+      setNangoConnect(connectUI);
+
+      return connectUI;
+    } catch (error) {
+      console.error('[Nango] Error initializing Connect UI:', error);
+      return null;
+    }
+  };
+
+  const handleConnect = async (integration: Integration) => {
+    setIntegration(integration);
+    try {
+      console.log(`[Nango] Attempting to connect to ${integration.title} with provider ID: ${integration.key}`);
+      const connectUI = initializeConnectUI(integration);
+
+      if (!connectUI && (!nango || !nangoSessionToken)) {
+        console.error('[Nango] Connect UI initialization failed - missing nango instance or session token');
+        return;
+      }
+      const providerId = integration.key;
+      if (connectUI) {
+          console.log(`[Nango] Opening Connect UI for ${providerId}`);
+          try {
+            setTimeout(() => {
+              try {
+                connectUI.open(providerId);
+              } catch (error) {
+                console.error(`[Nango] Error opening Connect UI for ${providerId}:`, error);
+              }
+            }, 100);
+          } catch (error) {
+            console.error(`[Nango] Error preparing Connect UI for ${providerId}:`, error);
+          }
+        } else {
+          console.log('[Nango] Connect UI not ready...');
+        }
+        return;
+    } catch (err) {
+      console.error('Nango connect error:', err);
+    }
+  };
   
   const handleRevokeAccess = async (app: Integration) => {
-  try {
-    setIsRevoking(true);
-    await revokeGoogleDriveAccess();
-    toast({
-      title: "Connection revoked",
-      description: `${app.title} has been disconnected successfully.`,
-    });
-    // Refresh the app list to show updated connection status
-    await fetchApps();
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to revoke access. Please try again.",
-      variant: "destructive",
-    });
-    console.error(error);
-  } finally {
-    setIsRevoking(false);
+    try {
+      setIsRevoking(true);
+      // await revokeGoogleDriveAccess();
+      const revoke_provider = app.key;
+      await revokeAccess(revoke_provider);
+      toast({
+        title: "Connection revoked",
+        description: `${app.title} has been disconnected successfully.`,
+      });
+      // Refresh the app list to show updated connection status
+      await fetchApps();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke access. Please try again.",
+        variant: "destructive",
+      });
+      console.error(error);
+    } finally {
+      setIsRevoking(false);
+    }
   }
-}
 
   const filteredApps = apps
     .sort((a, b) =>
@@ -205,24 +411,24 @@ export default function Apps() {
                   )}
                 </div>
                 {app.is_connected ? (
-  <div className="flex gap-2">
-    <Button variant="default" size="sm" disabled>
-      Connected
-    </Button>
-    <Button
-      variant="destructive"
-      size="sm"
-      onClick={() => handleRevokeAccess(app)}
-      disabled={isRevoking}
-    >
-      {isRevoking ? "Revoking..." : "Revoke"}
-    </Button>
-  </div>
-) : (
+                  <div className="flex gap-2">
+                    <Button variant="default" size="sm" disabled>
+                      Connected
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRevokeAccess(app)}
+                      disabled={isRevoking}
+                    >
+                      {isRevoking ? "Revoking..." : "Revoke"}
+                    </Button>
+                  </div>
+                  ) : (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleConnectionApp(app)}
+                    onClick={() => handleConnect(app)}
                   >
                     Connect
                   </Button>
