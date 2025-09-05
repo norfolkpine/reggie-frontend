@@ -20,6 +20,8 @@ const allowedRoutes = [
   "/sign-up",
   "/forgot-password",
   "/test-token-expiration",
+  "/test-nango-providers",
+  "/test-nango-integrations",
   ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
 ];
 

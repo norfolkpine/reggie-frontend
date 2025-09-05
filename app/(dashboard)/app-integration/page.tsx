@@ -17,7 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search } from "@/components/search";
 import { Button } from "@/components/custom/button";
-import { getIntegrations, NangoConnection, Integration, getNangoSessions, revokeAccess, saveNangoConnection, getConnections } from "@/api/integrations";
+import { getIntegrations, NangoConnection, Integration, getNangoSessions, revokeAccess, saveNangoConnection, getConnections, getNangoProviders, convertNangoProviderToIntegration } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
 import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
@@ -78,21 +78,22 @@ export default function Apps() {
 
   const fetchApps = async () => {
     try {
-      const data = await getIntegrations();
+      // Fetch providers from Nango API
+      const providers = await getNangoProviders();
       const connects = await getConnections();
-      console.log("Raw integrations data:", data);
+      console.log("Raw Nango providers data:", providers);
       console.log("Raw connections data:", connects);
       
-      // Check if data is wrapped in a response object
-      const integrations = Array.isArray(data) ? data : (data as any)?.data || (data as any)?.results || [];
+      // Convert Nango providers to Integration format
+      const integrations = providers.map(convertNangoProviderToIntegration);
       const connections = Array.isArray(connects) ? connects : (connects as any)?.data || (connects as any)?.results || [];
       
       console.log("Processed integrations:", integrations);
       console.log("Processed connections:", connections);
       
       // Process connections to update integration status
-      const processedData = integrations?.map(element => {
-        const isConnected = connections?.some(connection => connection.provider === element.key);
+      const processedData = integrations?.map((element: Integration) => {
+        const isConnected = connections?.some((connection: NangoConnection) => connection.provider === element.key);
         return {
           ...element,
           is_connected: isConnected
@@ -182,7 +183,7 @@ export default function Apps() {
         }
       } catch (error) {
         console.error('[Nango] Initialization error:', error);
-        console.error('[Nango] Error details:', error.message);
+        console.error('[Nango] Error details:', error instanceof Error ? error.message : 'Unknown error');
         
         // For development, create a mock session token if the API call fails
         if (process.env.NODE_ENV === 'development') {
