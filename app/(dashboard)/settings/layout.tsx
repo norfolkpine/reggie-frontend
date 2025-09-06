@@ -13,6 +13,7 @@ import {
   IconLock,
   IconDeviceLaptop,
   IconBuilding,
+  IconKey,
 } from '@tabler/icons-react'
 import SidebarNav from './components/sidebar-nav'
 import { useHeader } from '@/contexts/header-context';
@@ -74,6 +75,11 @@ const sidebarNavItems = [
     title: 'Teams',
     icon: <IconBuilding size={18} />,
     href: '/settings/teams',
+  },
+  {
+    title: 'API Keys',
+    icon: <IconKey size={18} />,
+    href: '/settings/api-keys',
   }
 ]
 
