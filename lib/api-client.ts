@@ -267,7 +267,8 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
   }
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    // Don't set Content-Type for FormData - browser sets it automatically with boundary
+    ...(!(requestConfig.body instanceof FormData) && { "Content-Type": "application/json" }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...(config.headers as Record<string, string>),
@@ -366,6 +367,18 @@ export const api = {
     
   options: (endpoint: string, config?: RequestConfig): Promise<unknown> =>
     apiClient(endpoint, { ...config, method: "OPTIONS" }),
+
+  // Multipart form data upload (for file uploads)
+  postMultipart: (endpoint: string, formData: FormData, config?: RequestConfig): Promise<unknown> =>
+    apiClient(endpoint, {
+      ...config,
+      method: "POST",
+      body: formData,
+      headers: {
+        // Don't set Content-Type for multipart uploads - let browser set it with boundary
+        ...(config?.headers as Record<string, string>),
+      },
+    }),
 };
 
 export default api;

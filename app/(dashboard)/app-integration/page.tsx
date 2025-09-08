@@ -88,7 +88,6 @@ export default function Apps() {
           } else {
             element.is_connected = false;
           }
-          return element;
         })
       });
       console.log("connections", connects);
