@@ -38,7 +38,9 @@ export async function middleware(request: NextRequest) {
 // Configure the middleware to run on specific paths
 export const config = {
   matcher: [
-    // Match all routes except for static files, _next, and public assets
-    "/((?!_next/static|_next/image|favicon.ico|assets).*)",
+    // Match all routes except for static files, api routes, _next, and public assets
+    "/((?!api|_next/static|_next/image|favicon.ico|assets).*)",
+
   ],
-};
+}
+

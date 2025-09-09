@@ -120,7 +120,6 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
             await uploadFiles([
               fileObj.file
             ], {
-              title: title || "",
               description: "Files uploaded through knowledge base interface",
               ...(knowledgeBaseId && {
                 knowledgebase_id: knowledgeBaseId,
@@ -178,17 +177,6 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
 
   return (
     <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto px-1">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          placeholder="Enter a collection or folder name (optional)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={uploading}
-        />
-
-      </div>
 
       <div
         className={`border-2 border-dashed rounded-lg p-4 min-h-40 sm:p-8 text-center ${
