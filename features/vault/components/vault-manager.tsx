@@ -5,13 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, attemptDeleteFile } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, attemptDeleteFile, moveVaultFiles } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2, FolderPlus, Folder } from "lucide-react";
-import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
+import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +22,7 @@ import { FileUpload } from "./file-upload";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { DeleteFolderConfirmationDialog } from "./delete-folder-confirmation-dialog";
+import { useAiPanel } from "@/contexts/ai-panel-context";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -98,6 +99,14 @@ export function VaultManager() {
   const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false)
   const [folderToDelete, setFolderToDelete] = useState<VaultFile | null>(null)
   const [folderChildrenCount, setFolderChildrenCount] = useState(0)
+  
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false)
+  const [draggedFiles, setDraggedFiles] = useState<number[]>([])
+  const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
+  
+  // AI Panel from layout context
+  const { openPanel: openAiPanel, setCurrentContext } = useAiPanel();
 
   // Set header actions and custom content
   useEffect(() => {
@@ -701,6 +710,102 @@ export function VaultManager() {
       }
     }
   };
+  
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, fileId: number) => {
+    e.stopPropagation();
+    
+    // If the dragged file is selected, drag all selected files
+    // Otherwise, just drag the single file
+    const filesToDrag = selectedFiles.includes(fileId) ? selectedFiles : [fileId];
+    
+    setIsDragging(true);
+    setDraggedFiles(filesToDrag);
+    
+    // Set drag effect
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Store the dragged file IDs in dataTransfer
+    e.dataTransfer.setData('text/plain', JSON.stringify(filesToDrag));
+  }, [selectedFiles]);
+  
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+    setDraggedFiles([]);
+    setDragOverFolderId(null);
+  }, []);
+  
+  const handleDragOver = useCallback((e: React.DragEvent, folderId?: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set drag effect
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Only allow dropping on folders or root
+    if (folderId !== undefined) {
+      setDragOverFolderId(folderId);
+    }
+  }, []);
+  
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check if we're leaving the drop zone entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setDragOverFolderId(null);
+    }
+  }, []);
+  
+  const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setDragOverFolderId(null);
+    setIsDragging(false);
+    
+    // Get the dragged file IDs
+    const draggedFileIds = draggedFiles.length > 0 ? draggedFiles : JSON.parse(e.dataTransfer.getData('text/plain'));
+    
+    // Prevent dropping a folder into itself or its children
+    const draggedItems = vaultFiles.filter(f => draggedFileIds.includes(f.id));
+    for (const item of draggedItems) {
+      if (item.is_folder === 1 && item.id === targetFolderId) {
+        toast({
+          title: "Invalid operation",
+          description: "Cannot move a folder into itself",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Move the files to the target folder
+    try {
+      await moveVaultFiles(draggedFileIds, targetFolderId);
+      
+      toast({
+        title: "Success",
+        description: `Moved ${draggedFileIds.length} item(s) successfully`,
+      });
+      
+      // Refresh the file list
+      fetchFiles();
+      
+      // Clear selection
+      setSelectedFiles([]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move files. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    setDraggedFiles([]);
+  }, [draggedFiles, vaultFiles, toast]);
 
   if (!project && !loading) {
     return (
@@ -802,6 +907,26 @@ export function VaultManager() {
                         </DropdownMenu>
                       </div>
                     </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Set context for AI panel
+                        setCurrentContext({
+                          title: currentFolderId === 0 
+                            ? project?.name || 'Root Folder' 
+                            : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
+                          files: vaultFiles,
+                          folderId: currentFolderId,
+                          projectId: projectId
+                        });
+                        openAiPanel();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Ask AI
+                    </Button>
                     <div className="flex items-center space-x-2">
                       {selectedFiles.length > 0 && (
                         <Button 
@@ -848,32 +973,45 @@ export function VaultManager() {
                   </div>
                 </div>
                 
-                {/* Breadcrumb Navigation */}
-                {(currentFolderId > 0 || folderBreadcrumbs.length > 0) && (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleBreadcrumbClick(0)}
-                      className="h-auto p-1 text-primary hover:text-primary/80"
-                    >
-                      Root
-                    </Button>
-                    {folderBreadcrumbs.map((folder, index) => (
-                      <div key={folder.id} className="flex items-center">
-                        <span className="mx-1">/</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleBreadcrumbClick(folder.id)}
-                          className="h-auto p-1 text-primary hover:text-primary/80"
-                        >
-                          {folder.name}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Breadcrumb Navigation with Drop Zone */}
+                <div 
+                  className={`
+                    flex items-center space-x-2 text-sm text-muted-foreground mb-4 p-2 rounded
+                    ${isDragging ? 'border-2 border-dashed border-gray-300' : ''}
+                    ${dragOverFolderId === currentFolderId && isDragging ? 'bg-primary/10 border-primary' : ''}
+                  `}
+                  onDragOver={(e) => isDragging && handleDragOver(e, currentFolderId)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, currentFolderId)}
+                >
+                  {(currentFolderId > 0 || folderBreadcrumbs.length > 0) ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleBreadcrumbClick(0)}
+                        className="h-auto p-1 text-primary hover:text-primary/80"
+                      >
+                        Root
+                      </Button>
+                      {folderBreadcrumbs.map((folder) => (
+                        <div key={folder.id} className="flex items-center">
+                          <span className="mx-1">/</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleBreadcrumbClick(folder.id)}
+                            className="h-auto p-1 text-primary hover:text-primary/80"
+                          >
+                            {folder.name}
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <span className="text-gray-500">Root folder {isDragging && '(Drop files here)'}</span>
+                  )}
+                </div>
                 
                 <div className="rounded-md border">
                   <Table>
@@ -897,7 +1035,20 @@ export function VaultManager() {
                       {filteredFiles.length > 0 ? (
                         filteredFiles
                           .map((file) => (
-                          <TableRow key={file.id}>
+                          <TableRow 
+                            key={file.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, file.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => file.is_folder === 1 && handleDragOver(e, file.id)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => file.is_folder === 1 && handleDrop(e, file.id)}
+                            className={`
+                              ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
+                              ${dragOverFolderId === file.id && file.is_folder === 1 ? 'bg-primary/10' : ''}
+                              cursor-move
+                            `}
+                          >
                             <TableCell>
                               <Checkbox 
                                 checked={selectedFiles.includes(file.id)}
@@ -1147,6 +1298,8 @@ export function VaultManager() {
         onConfirmDelete={handleConfirmFolderDelete}
         isDeleting={isDeleting}
       />
+      
+      {/* AI Panel is now handled by layout */}
     </div>
   );
 }

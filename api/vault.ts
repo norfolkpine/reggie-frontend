@@ -140,3 +140,68 @@ export async function attemptDeleteFile(fileId: number): Promise<{ success: bool
     throw error;
   }
 }
+
+export async function moveVaultFiles(fileIds: number[], targetFolderId: number): Promise<void> {
+  try {
+    await api.post('/reggie/api/v1/vault-files/move/', {
+      file_ids: fileIds,
+      target_folder_id: targetFolderId
+    });
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to move files');
+  }
+}
+
+export interface AiInsightsRequest {
+  question: string;
+  project_uuid: string;
+  parent_id?: number;
+  file_ids?: number[];
+}
+
+export interface AiInsightsResponse {
+  response: string;
+  insights: {
+    summary?: string;
+    key_points?: string[];
+    file_types?: string[];
+    suggestions?: string[];
+  };
+  processed_files_count: number;
+}
+
+export async function getAiInsights({
+  question,
+  project_uuid,
+  parent_id = 0,
+  file_ids
+}: AiInsightsRequest): Promise<AiInsightsResponse> {
+  try {
+    const response = await api.post('/reggie/api/v1/vault-files/ai-insights/', {
+      question,
+      project_uuid,
+      parent_id,
+      file_ids
+    });
+    return response as AiInsightsResponse;
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to get AI insights');
+  }
+}
+
+export async function generateFolderSummary(
+  projectId: string,
+  parentId: number = 0
+): Promise<{summary: string; file_count: number; folder_count: number}> {
+  try {
+    const response = await api.get(
+      `/reggie/api/v1/vault-files/folder-summary/?project_uuid=${projectId}&parent_id=${parentId}`
+    );
+    return response as {summary: string; file_count: number; folder_count: number};
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to generate folder summary');
+  }
+}
