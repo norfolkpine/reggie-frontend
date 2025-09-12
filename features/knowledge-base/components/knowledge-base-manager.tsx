@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useDebounce } from "use-debounce";
 import {
   Database,
   Plus,
@@ -135,6 +136,7 @@ export function KnowledgeBaseManager() {
   const { toast } = useToast();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,8 +157,8 @@ export function KnowledgeBaseManager() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const fetchKnowledgeBases = useCallback(
-    async (page: number, append: boolean = false) => {
-      if (page === 1) {
+    async (page: number, append: boolean = false, searchTerm: string = "") => {
+      if (page === 1 && !append) {
         setIsLoading(true);
       } else {
         setIsLoadingMore(true);
@@ -165,11 +167,11 @@ export function KnowledgeBaseManager() {
       setError(null);
 
       try {
-        const response = await getKnowledgeBases(page);
+        const response = await getKnowledgeBases(page, undefined, searchTerm || undefined);
         const localKBs = response.results.map(apiToLocalKnowledgeBase);
 
         setKnowledgeBases((prev) => {
-          if (append) {
+          if (append && !searchTerm) {
             return [...prev, ...localKBs];
           }
           return localKBs;
@@ -194,8 +196,14 @@ export function KnowledgeBaseManager() {
 
   // Set up intersection observer for infinite scrolling
   useEffect(() => {
-    if (!searchQuery) {
-      // Don't use infinite scroll when searching
+    // Clean up existing observer first
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    // Only set up observer when not searching
+    if (!debouncedSearchQuery && !isLoading) {
       const observer = new IntersectionObserver(
         (entries) => {
           if (
@@ -207,7 +215,7 @@ export function KnowledgeBaseManager() {
             setCurrentPage((prevPage) => prevPage + 1);
           }
         },
-        { threshold: 0.5 }
+        { threshold: 0.1, rootMargin: '50px' }
       );
 
       observerRef.current = observer;
@@ -215,37 +223,41 @@ export function KnowledgeBaseManager() {
       if (loadMoreRef.current) {
         observer.observe(loadMoreRef.current);
       }
-
-      return () => {
-        if (observerRef.current) {
-          observerRef.current.disconnect();
-        }
-      };
     }
-  }, [hasMorePages, isLoadingMore, isLoading, searchQuery]);
 
-  // Fetch knowledge bases when page changes
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
+  }, [hasMorePages, isLoadingMore, isLoading, debouncedSearchQuery]);
+
+  // Fetch knowledge bases when page changes (only when not searching)
   useEffect(() => {
-    if (currentPage === 1) {
-      fetchKnowledgeBases(1, false);
-    } else {
-      fetchKnowledgeBases(currentPage, true);
+    if (!debouncedSearchQuery) {
+      if (currentPage === 1) {
+        fetchKnowledgeBases(1, false, debouncedSearchQuery);
+      } else {
+        fetchKnowledgeBases(currentPage, true, debouncedSearchQuery);
+      }
     }
-  }, [currentPage, fetchKnowledgeBases]);
+  }, [currentPage, fetchKnowledgeBases, debouncedSearchQuery]);
 
-  // Reset pagination when search query changes
+  // Reset pagination and fetch when search query changes
   useEffect(() => {
     setCurrentPage(1);
-    // Only fetch if we're not in search mode - search is handled by the filtered array
-    if (searchQuery) {
-      fetchKnowledgeBases(1, false);
-    }
-  }, [searchQuery]);
+    setHasMorePages(true);
+    
+    // Always fetch fresh data when search changes
+    fetchKnowledgeBases(1, false, debouncedSearchQuery);
+  }, [debouncedSearchQuery, fetchKnowledgeBases]);
 
   const refreshData = useCallback(() => {
     setCurrentPage(1);
-    fetchKnowledgeBases(1, false);
-  }, [fetchKnowledgeBases]);
+    setHasMorePages(true);
+    fetchKnowledgeBases(1, false, debouncedSearchQuery);
+  }, [fetchKnowledgeBases, debouncedSearchQuery]);
 
   const handleCreateKnowledgeBase = async (data: Partial<KnowledgeBase>) => {
     setIsSubmitting(true);
@@ -354,11 +366,8 @@ export function KnowledgeBaseManager() {
     setIsEditDialogOpen(true);
   };
 
-  const filteredKnowledgeBases = knowledgeBases.filter(
-    (kb) =>
-      kb.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (kb.description || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Since we're doing server-side search, we don't need client-side filtering
+  const filteredKnowledgeBases = knowledgeBases;
 
   // Persist selectedKnowledgeBaseId in localStorage
   useEffect(() => {
@@ -463,11 +472,11 @@ export function KnowledgeBaseManager() {
           <Database className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
           <h3 className="mt-4 text-lg font-medium">No knowledge bases found</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            {searchQuery
+            {debouncedSearchQuery
               ? "Try a different search term"
               : "Create your first knowledge base to get started"}
           </p>
-          {!searchQuery && (
+          {!debouncedSearchQuery && (
             <Button
               className="mt-4"
               onClick={() => setIsCreateDialogOpen(true)}
@@ -492,7 +501,7 @@ export function KnowledgeBaseManager() {
           </div>
 
           {/* Load more section */}
-          {!searchQuery && hasMorePages && (
+          {!debouncedSearchQuery && hasMorePages && (
             <div ref={loadMoreRef} className="flex justify-center py-4">
               {isLoadingMore ? (
                 <div className="flex items-center space-x-2">

@@ -4,10 +4,16 @@ import { PaginatedKnowledgeBaseFileList } from '../types/knowledge-base';
 
 const knowledgeBaseApi = '/reggie/api/v1/knowledge-bases/';
 
-export const getKnowledgeBases = async (page: number = 1, file_id?: string) => {
-  const response = await api.get(knowledgeBaseApi, {
-    params: { page: page.toString(), file_id: file_id ?? ""}
-  });
+export const getKnowledgeBases = async (page: number = 1, file_id?: string, search?: string) => {
+  const params: any = { page: page.toString() };
+  if (file_id) {
+    params.file_id = file_id;
+  }
+  if (search) {
+    params.search = search;
+  }
+  
+  const response = await api.get(knowledgeBaseApi, { params });
   return response as PaginatedKnowledgeBaseList;
 };
 
