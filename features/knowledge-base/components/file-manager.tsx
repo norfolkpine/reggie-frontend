@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   FileText,
   Trash2,
@@ -116,6 +118,119 @@ interface FileOrFolder {
   collection?: Collection;
   status?: 'ready' | 'processing' | 'error';
 }
+
+const DRAG_TYPE = 'FILE_OR_FOLDER';
+
+interface DragItem {
+  id: string;
+  type: 'file' | 'folder';
+  item: FileOrFolder;
+}
+
+interface DraggableTableRowProps {
+  item: FileOrFolder;
+  children: React.ReactNode;
+  onMoveItem: (draggedItem: FileOrFolder, targetFolder: FileOrFolder | null) => void;
+  selectedItems: string[];
+  handleSelectItem: (itemId: string, checked: boolean) => void;
+  handleItemClick: (item: FileOrFolder) => void;
+}
+
+// Root drop zone component
+interface RootDropZoneProps {
+  onMoveItem: (draggedItem: FileOrFolder, targetFolder: FileOrFolder | null) => void;
+  children: React.ReactNode;
+}
+
+const RootDropZone: React.FC<RootDropZoneProps> = ({ onMoveItem, children }) => {
+  const [{ isOver }, drop] = useDrop<DragItem, void, { isOver: boolean }>(() => ({
+    accept: DRAG_TYPE,
+    drop: (draggedItem: DragItem) => {
+      // Move to root (no parent)
+      onMoveItem(draggedItem.item, null);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  }));
+
+  const attachRef = (el: HTMLDivElement | null) => {
+    drop(el);
+  };
+
+  return (
+    <div 
+      ref={attachRef}
+      className={`
+        ${isOver ? 'bg-blue-25 border-2 border-dashed border-blue-300 rounded-lg' : ''}
+        transition-all duration-200
+      `}
+    >
+      {children}
+      {isOver && (
+        <div className="text-center py-4 text-blue-600 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg mt-2">
+          Drop here to move to root directory
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DraggableTableRow: React.FC<DraggableTableRowProps> = ({
+  item,
+  children,
+  onMoveItem,
+}) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: DRAG_TYPE,
+    item: { id: item.id, type: item.type, item },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
+
+  const [{ isOver }, drop] = useDrop<DragItem, void, { isOver: boolean }>(() => ({
+    accept: DRAG_TYPE,
+    drop: (draggedItem: DragItem) => {
+      // Only allow dropping into folders
+      if (item.type === 'folder' && draggedItem.id !== item.id) {
+        onMoveItem(draggedItem.item, item);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver() && item.type === 'folder',
+    }),
+  }));
+
+  const attachRef = (el: HTMLTableRowElement | null) => {
+    drag(drop(el));
+  };
+
+  return (
+    <TableRow
+      ref={attachRef}
+      className={`
+        ${isDragging ? 'opacity-50 bg-gray-100 border-2 border-dashed border-gray-300' : ''}
+        ${isOver ? 'bg-blue-50 border-2 border-blue-300 shadow-md' : ''}
+        ${item.type === 'folder' && !isDragging && !isOver ? 'hover:bg-gray-50' : ''}
+        transition-all duration-200 ease-in-out
+      `}
+      style={{ 
+        cursor: isDragging ? 'grabbing' : (item.id !== 'go-up' ? 'grab' : 'pointer'),
+        transform: isDragging ? 'scale(1.02)' : 'scale(1)'
+      }}
+      title={
+        item.type === 'folder' 
+          ? `Drop items here to move them into ${item.name}` 
+          : item.type === 'file'
+            ? `Drag to move ${item.name}`
+            : ''
+      }
+    >
+      {children}
+    </TableRow>
+  );
+};
 
 export function FileManager() {
   const [currentLocation, setCurrentLocation] = useState<any[] | null>(null);
@@ -263,36 +378,61 @@ export function FileManager() {
     const results = Array.isArray(currentLocation) ? currentLocation : [currentLocation];
     if (!results.length) return [];
 
-    // Since the API response only contains collections/folders for now,
-    // we'll treat all items as folders. In the future, when files are included,
-    // we can distinguish them by checking for file-specific properties
-    const folderItems: FileOrFolder[] = results.map((collection: any) => ({
-        id: `folder-${collection.uuid}`,
-        name: collection.name || collection.title || 'Untitled',
-        type: 'folder' as const,
-        file: undefined,
-        folder: {
-          uuid: collection.uuid,
-          id: undefined,
-          name: collection.name || collection.title || 'Untitled',
-          description: collection.description,
-          collection_type: collection.collection_type || 'folder',
-          jurisdiction: undefined,
-          regulation_number: undefined,
-          effective_date: undefined,
-          sort_order: 0,
-          children: [],
-          files: [],
-          full_path: '',
-          created_at: collection.created_at,
-        } as Collection,
-        created_at: collection.created_at,
-        updated_at: collection.created_at, // collections don't have updated_at
-        file_size: undefined,
-        file_type: undefined,
-        collection: undefined,
-        status: undefined,
-      }));
+    // Process each item and distinguish between files and collections
+    const items: FileOrFolder[] = results.map((item: any) => {
+      // Collections have: name, collection_type, uuid (no file_type, no title)
+      // Files have: title, file_type, uuid (no collection_type, no name)
+      if (item.collection_type !== undefined || (item.name && !item.title)) {
+        return {
+          id: `folder-${item.uuid}`,
+          name: item.name || 'Untitled Folder',
+          type: 'folder' as const,
+          file: undefined,
+          folder: {
+            uuid: item.uuid,
+            id: undefined,
+            name: item.name || 'Untitled Folder',
+            description: item.description,
+            collection_type: item.collection_type || 'folder',
+            jurisdiction: undefined,
+            regulation_number: undefined,
+            effective_date: undefined,
+            sort_order: 0,
+            children: [],
+            files: [],
+            full_path: '',
+            created_at: item.created_at,
+          } as Collection,
+          created_at: item.created_at,
+          updated_at: item.updated_at || item.created_at,
+          file_size: undefined,
+          file_type: undefined,
+          collection: undefined,
+          status: undefined,
+        };
+      } else {
+        // It's a file (has title, file_type)
+        return {
+          id: `file-${item.uuid}`,
+          name: item.title || 'Untitled File',
+          type: 'file' as const,
+          file: {
+            uuid: item.uuid,
+            title: item.title,
+            file_type: item.file_type,
+            collection: undefined,
+            status: 'ready', // Default status
+          } as FileWithUI,
+          folder: undefined,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          file_size: item.file_size || item.filesize || 0,
+          file_type: item.file_type,
+          collection: undefined,
+          status: 'ready',
+        };
+      }
+    });
 
     // Add "Go Up" entry if we're inside a collection
     const goUpItem: FileOrFolder | null = currentCollectionUuid ? {
@@ -309,8 +449,14 @@ export function FileManager() {
       status: undefined,
     } : null;
 
-    // Sort folders by name
-    const sortedItems = folderItems.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort items by name (folders first, then files)
+    const sortedItems = items.sort((a, b) => {
+      // Sort folders first, then files
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
     // Add go up item at the beginning if it exists
     return goUpItem ? [goUpItem, ...sortedItems] : sortedItems;
@@ -693,7 +839,7 @@ export function FileManager() {
 
   const handleBulkDelete = async () => {
     try {
-      const filesToDelete = selectedItems.filter(id => !id.startsWith('folder-'));
+      const filesToDelete = selectedItems.filter(id => !id.startsWith('folder-')).map(id => id.replace('file-', ''));
       const foldersToDelete = selectedItems.filter(id => id.startsWith('folder-')).map(id => id.replace('folder-', ''));
 
       // Delete files
@@ -749,13 +895,6 @@ export function FileManager() {
         header: 'Type',
         accessorFn: (row) => row.type === 'folder' ? (row.folder?.collection_type || 'Folder') : (row.file_type || 'Unknown'),
       },
-      // Collection column
-      {
-        id: "collection",
-        header: 'Collection',
-        accessorFn: (row) => row.collection?.name ?? '',
-        filterFn: multiSelectFilter,
-      },
       // Upload Date column
       {
         id: "created_at",
@@ -809,7 +948,18 @@ export function FileManager() {
     if (item.type === 'folder') {
       return <Folder className="h-5 w-5 text-blue-500" />;
     }
-    return <FileText className="h-5 w-5" />;
+    
+    // Return different icons based on file type
+    const fileType = item.file_type?.toLowerCase();
+    if (fileType?.includes('pdf')) {
+      return <FileText className="h-5 w-5 text-red-500" />;
+    } else if (fileType?.includes('image') || ['jpg', 'jpeg', 'png', 'gif'].includes(fileType || '')) {
+      return <FileText className="h-5 w-5 text-green-500" />;
+    } else if (fileType?.includes('doc') || fileType?.includes('docx')) {
+      return <FileText className="h-5 w-5 text-blue-500" />;
+    } else {
+      return <FileText className="h-5 w-5 text-gray-500" />;
+    }
   }, []);
 
   const getStatusBadge = useCallback((status: FileOrFolder['status']) => {
@@ -995,11 +1145,46 @@ export function FileManager() {
     } else if (item.type === 'folder' && item.folder?.uuid) {
       // Navigate into folder
       navigateToCollection(item.folder.uuid);
+    } else if (item.type === 'file' && item.file) {
+      // Preview file
+      setPreviewFile(item.file);
     }
   }, [navigateToRoot, navigateToCollection]);
 
+  // Move item function for drag and drop
+  const handleMoveItem = useCallback(async (draggedItem: FileOrFolder, targetFolder: FileOrFolder | null) => {
+    try {
+      if (draggedItem.type === 'file' && draggedItem.file) {
+        // Move file to new collection
+        const targetCollectionUuid = targetFolder?.folder?.uuid || null;
+        
+        await api.post('/reggie/api/v1/files/move-to-collection/', {
+          file_ids: [draggedItem.file.uuid],
+          target_collection_uuid: targetCollectionUuid
+        });
+
+        toast.success(`File "${draggedItem.name}" moved successfully`);
+        fetchData(); // Refresh the list
+      } else if (draggedItem.type === 'folder' && draggedItem.folder) {
+        // Move collection to new parent
+        const targetParentUuid = targetFolder?.folder?.uuid || null;
+        
+        await api.patch(`/reggie/api/v1/collections/${draggedItem.folder.uuid}/`, {
+          parent_uuid_write: targetParentUuid
+        });
+
+        toast.success(`Folder "${draggedItem.name}" moved successfully`);
+        fetchData(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Move failed:', error);
+      toast.error(`Failed to move "${draggedItem.name}"`);
+    }
+  }, [fetchData]);
+
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <DndProvider backend={HTML5Backend}>
+      <div className="flex-1 flex flex-col h-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">File Manager</h2>
@@ -1202,7 +1387,6 @@ export function FileManager() {
                 setFileToLink(null); // distinguish from single
                 setIsLinkModalOpen(true);
               }}
-              disabled={selectedItems.every(id => id.startsWith('folder-'))}
             >
               Bulk Link to KB
             </Button>
@@ -1220,8 +1404,9 @@ export function FileManager() {
         </div>
       )}
 
-      <div className="border rounded-md overflow-hidden">
-        <Table>
+      <RootDropZone onMoveItem={handleMoveItem}>
+        <div className="border rounded-md overflow-hidden">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
@@ -1236,7 +1421,6 @@ export function FileManager() {
               <TableHead>Name</TableHead>
               <TableHead>File Size</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Collection</TableHead>
               <TableHead>Created Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
@@ -1264,7 +1448,14 @@ export function FileManager() {
               </TableRow>
             ) : (
               filteredItems.map((item) => (
-                <TableRow key={item.id}>
+                <DraggableTableRow 
+                  key={item.id}
+                  item={item}
+                  onMoveItem={handleMoveItem}
+                  selectedItems={selectedItems}
+                  handleSelectItem={handleSelectItem}
+                  handleItemClick={handleItemClick}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selectedItems.includes(item.id)}
@@ -1279,8 +1470,10 @@ export function FileManager() {
                           item.id === 'go-up' 
                             ? 'text-gray-500 hover:text-gray-700 cursor-pointer italic' 
                             : item.type === 'folder' 
-                              ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
-                              : ''
+                              ? 'text-blue-600 hover:text-blue-800 cursor-pointer'
+                              : item.type === 'file'
+                                ? 'text-gray-900 hover:text-blue-600 cursor-pointer'
+                                : ''
                         }`}
                         onClick={() => handleItemClick(item)}
                       >
@@ -1294,7 +1487,6 @@ export function FileManager() {
                   <TableCell className="text-xs uppercase text-muted-foreground">
                     {item.type === 'folder' ? (item.folder?.collection_type || 'Folder') : (item.file_type || 'Unknown')}
                   </TableCell>
-                  <TableCell>{item.collection?.name || '-'}</TableCell>
                   <TableCell>{formatDate(item.created_at)}</TableCell>
                   <TableCell>{getStatusBadge(item.status)}</TableCell>
                   <TableCell>
@@ -1389,6 +1581,12 @@ export function FileManager() {
                               Manage
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              onClick={() => handleOpenLinkModal(item.folder!.uuid)}
+                            >
+                              <Link className="h-4 w-4 mr-2" />
+                              Link to KB
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => {
                                 if (item.folder?.uuid) {
                                   handleDeleteFolder(item.folder.uuid);
@@ -1403,12 +1601,13 @@ export function FileManager() {
                       )}
                     </div>
                   </TableCell>
-                </TableRow>
+                </DraggableTableRow>
               ))
             )}
           </TableBody>
         </Table>
-      </div>
+        </div>
+      </RootDropZone>
 
             {/* Pagination */}
       {itemsCount > 0 && (
@@ -1539,6 +1738,7 @@ export function FileManager() {
             onUploadComplete={handleUploadComplete}
             folders={[]}
             currentFolderId={null}
+            currentCollectionUuid={currentCollectionUuid}
           />
         </DialogContent>
       </Dialog>
@@ -1560,7 +1760,13 @@ export function FileManager() {
         }}
         fileId={fileToLink}
         fileIds={
-          fileToLink === null ? selectedItems.filter(id => !id.startsWith('folder-')) : fileToLink ? [fileToLink] : []
+          fileToLink === null 
+            ? selectedItems.map(id => {
+                if (id.startsWith('file-')) return id.replace('file-', '');
+                if (id.startsWith('folder-')) return id.replace('folder-', '');
+                return id;
+              })
+            : fileToLink ? [fileToLink] : []
         }
         onLinkFiles={handleLinkFilesToKnowledgeBase}
         existingLinks={
@@ -1607,6 +1813,7 @@ export function FileManager() {
         mode="edit"
         collection={editingCollection || undefined}
       />
-    </div>
+      </div>
+    </DndProvider>
   );
 }
