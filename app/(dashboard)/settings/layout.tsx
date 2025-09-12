@@ -13,6 +13,7 @@ import {
   IconLock,
   IconDeviceLaptop,
   IconBuilding,
+  IconKey,
 } from '@tabler/icons-react'
 import SidebarNav from './components/sidebar-nav'
 import { useHeader } from '@/contexts/header-context';
@@ -74,6 +75,11 @@ const sidebarNavItems = [
     title: 'Teams',
     icon: <IconBuilding size={18} />,
     href: '/settings/teams',
+  },
+  {
+    title: 'API Keys',
+    icon: <IconKey size={18} />,
+    href: '/settings/api-keys',
   }
 ]
 
@@ -94,8 +100,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     return () => setHeaderCustomContent(null);
   }, [setHeaderCustomContent, headerContent]);
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className=" bg-background">
+      <div className="container mx-auto p-4">
        
         <div className='flex flex-1 flex-col space-y-8 md:space-y-2 md:overflow-hidden lg:flex-row lg:space-x-12 lg:space-y-0'>
           <aside className='top-0 lg:sticky lg:w-1/5'>

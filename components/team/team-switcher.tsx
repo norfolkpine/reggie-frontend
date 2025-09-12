@@ -208,38 +208,43 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        {isCollapsed ? (
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
-              {activeTeam?.name.charAt(0).toUpperCase()}
-            </div>
-          </Button>
-        ) : (
-          <Button variant="ghost" className="w-full justify-between">
-            <div className="flex items-center gap-2">
+    <div className="relative">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {isCollapsed ? (
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
                 {activeTeam?.name.charAt(0).toUpperCase()}
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="font-semibold truncate">
-                  {activeTeam?.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {activeTeam?.subscription?.display_name ?? "Free Plan"}
-                </span>
+            </Button>
+          ) : (
+            <Button variant="ghost" className="w-full justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
+                  {activeTeam?.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="font-semibold truncate">
+                    {activeTeam?.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {activeTeam?.subscription?.display_name ?? "Free Plan"}
+                  </span>
+                </div>
               </div>
-            </div>
-            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-          </Button>
-        )}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align={isCollapsed ? "center" : "end"}
-        side={isCollapsed ? "right" : "bottom"}
-        className="w-64"
-      >
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align={isCollapsed ? "start" : "end"}
+          side="top"
+          className="w-64 z-[9999]"
+          sideOffset={8}
+          alignOffset={isCollapsed ? 0 : -10}
+          avoidCollisions={true}
+          collisionPadding={20}
+        >
         <div className="sticky top-0 bg-popover z-10">
           <UserInfo user={user} />
           <DropdownMenuSeparator />
@@ -279,5 +284,6 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
       </DropdownMenuContent>
       {renderDialogs()}
     </DropdownMenu>
+    </div>
   );
 }

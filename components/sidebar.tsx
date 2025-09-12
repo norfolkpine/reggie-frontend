@@ -337,7 +337,7 @@ export default function Sidebar() {
       if (isNaN(numericId)) {
         throw new Error('Invalid project ID');
       }
-      await updateProject(numericId, { name: newName });
+      await updateProject(numericId.toString(), { name: newName });
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       setRenameProjectId(null);
@@ -495,9 +495,9 @@ export default function Sidebar() {
                           className="h-6 w-6 rounded-full hover:bg-sidebar-accent"
                           onClick={e => {
                             e.stopPropagation();
-                            createDocMutation.mutate();
+                            createDocMutation.mutate({ title: "Untitled Document" });
                           }}
-                          disabled={createDocMutation.isLoading}
+                          disabled={createDocMutation.isPending}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </Button>

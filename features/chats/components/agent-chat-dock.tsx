@@ -190,7 +190,7 @@ const AgentChatDock = memo(function AgentChatDock({
   }
 
   return (
-    <div className="flex bg-background sticky top-16 self-start h-[calc(100vh_-_64px)]">
+    <div className="flex bg-background sticky top-16 self-start h-full">
       {/* Left Sidebar with Icons */}
       <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible">
         {dockItems.map((item) => {
