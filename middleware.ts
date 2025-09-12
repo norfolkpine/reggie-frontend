@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { TOKEN_KEY } from "@/lib/constants";
+import { SESSION_COOKIE_KEY } from "@/lib/constants";
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get(TOKEN_KEY)?.value;
+  const token = request.cookies.get(SESSION_COOKIE_KEY)?.value;
   const { pathname } = request.nextUrl;
 
   // Define public routes that do not require authentication
