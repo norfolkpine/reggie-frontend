@@ -13,12 +13,12 @@ import { createChatSession, ChatSession } from "@/api/chat-sessions";
 import { useHeader } from "@/contexts/header-context";
 
 // Default agent ID to use for new conversations
-const DEFAULT_AGENT_ID = "o-9b9bdc247-reggie";
+const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-8e3621016-reggie";
 
 export default function ChatsComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const agentId = searchParams.get("agentId") ?? process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID;
+  const agentId = searchParams.get("agentId") ?? DEFAULT_AGENT_ID;
   const params = useParams();
   const sessionId = params.sessionId as string | null; // This is the sessionId from the URL
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
@@ -32,7 +32,7 @@ export default function ChatsComponent() {
   // Initialize state with URL params
   const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 
       id: sessionId || "", 
-      agentCode: agentId || DEFAULT_AGENT_ID 
+      agentCode: agentId
     });
 
   // Get chat title from useAgentChat if a session is selected
@@ -77,7 +77,7 @@ export default function ChatsComponent() {
   useEffect(() => {
     setSelectedChat({ 
       id: sessionId || "", 
-      agentCode: agentId || DEFAULT_AGENT_ID 
+      agentCode: agentId
     });
   }, [sessionId, agentId]);
 
@@ -116,7 +116,7 @@ export default function ChatsComponent() {
     
     try {
       // Create a new session immediately
-      const session = await createChatSession({ agent_id: agentId || DEFAULT_AGENT_ID });
+      const session = await createChatSession({ agent_id: agentId });
       const newSessionId = session.session_id;
       
       // Update URL immediately with the new session ID
@@ -124,14 +124,14 @@ export default function ChatsComponent() {
       router.replace(newPath);
       
       // Update selectedChat state to reflect the new session ID
-      setSelectedChat({ id: newSessionId, agentCode: agentId || DEFAULT_AGENT_ID });
+      setSelectedChat({ id: newSessionId, agentCode: agentId });
       
       // Refresh the chat history to include the new session
       refresh();
     } catch (error) {
       console.error('Failed to create new chat session:', error);
       // Fallback to the old behavior if session creation fails
-      setSelectedChat({ id: "", agentCode: agentId || DEFAULT_AGENT_ID });
+      setSelectedChat({ id: "", agentCode: agentId });
       router.push("/chat");
     }
   };
@@ -141,7 +141,7 @@ export default function ChatsComponent() {
     // This prevents double updates when handleNewChat already created the session
     if (newSessionId && newSessionId !== selectedChat.id) {
       // Update selectedChat state to reflect the new session ID immediately
-      setSelectedChat({ id: newSessionId, agentCode: agentId || DEFAULT_AGENT_ID });
+      setSelectedChat({ id: newSessionId, agentCode: agentId });
       
       // Optimistically add the new session to chat history instead of full refresh
       // This creates a smoother experience without UI jumping
@@ -149,8 +149,8 @@ export default function ChatsComponent() {
         session_id: newSessionId,
         title: "New Chat",
         updated_at: new Date().toISOString(),
-        agent_code: agentId || DEFAULT_AGENT_ID,
-        agent_id: agentId || DEFAULT_AGENT_ID,
+        agent_code: agentId,
+        agent_id: agentId,
         created_at: new Date().toISOString(),
       };
       
