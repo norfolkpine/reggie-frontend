@@ -3,7 +3,6 @@
 import * as React from "react";
 import { User, Login } from "@/types/api";
 import * as authApi from "@/api/auth";
-import { flushSync } from "react-dom";
 import { useEffect } from "react";
 import { ensureCSRFToken, setAuthContext } from "@/lib/api-client";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
@@ -51,9 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleTokenExpiration = React.useCallback(() => {
     console.log("Token expired, clearing auth state");
 
-    flushSync(() => {
-      setUser(null);
-    });
+    setUser(null);
 
     // Redirect to sign-in page using Next.js router (no page refresh)
     router.push('/sign-in');
@@ -77,9 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         document.cookie = "sessionid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       };
       clearAuthCookies();
-      flushSync(() => {
-        setUser(null);
-      });
+      setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -90,9 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.login(credentials);
       
       setStatus('LOGGED_IN');
-      flushSync(() => {
-        setUser(response.data.user);
-      });
+      setUser(response.data.user);
     } catch (error) {
       console.error("Login failed:", error);
       console.log("Error type:", typeof error);
@@ -105,9 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const updatedUser = await authApi.updateUser(userData);
       
-      flushSync(() => {
-        setUser(updatedUser);
-      });
+      setUser(updatedUser);
     } catch (error) {
       console.error("Update user failed:", error);
       throw error;
@@ -120,16 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await ensureCSRFToken();
         try {
           const response =await authApi.verifySession();
-          flushSync(() => {
-            setUser(response.data.user);
-          });
+          setUser(response.data.user);
         } catch (error) {
-          
-          
-          flushSync(() => {
-            setUser(null);
-          });
-          
+          setUser(null);
         }
       setLoading(false);
     }
