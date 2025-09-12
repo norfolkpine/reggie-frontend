@@ -3,6 +3,7 @@
 import * as React from "react";
 import { User, Login } from "@/types/api";
 import * as authApi from "@/api/auth";
+import { flushSync } from "react-dom";
 import { useEffect } from "react";
 import { ensureCSRFToken, setAuthContext } from "@/lib/api-client";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
@@ -51,7 +52,14 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
 
   const handleTokenExpiration = React.useCallback(() => {
     console.log("Token expired, clearing auth state");
-    setUser(null);
+    
+    flushSync(() => {
+      setUser(null);
+    });
+
+    if(allowedRoutes.includes(window.location.pathname)){
+      return;
+    }
 
     if(allowedRoutes.includes(window.location.pathname)){
       return;
@@ -79,7 +87,9 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
         document.cookie = "sessionid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       };
       clearAuthCookies();
-      setUser(null);
+      flushSync(() => {
+        setUser(null);
+      });
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -90,7 +100,9 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       const response = await authApi.login(credentials);
       
       setStatus('LOGGED_IN');
-      setUser(response.data.user);
+      flushSync(() => {
+        setUser(response.data.user);
+      });
     } catch (error) {
       console.error("Login failed:", error);
       console.log("Error type:", typeof error);
@@ -103,7 +115,9 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
     try {
       const updatedUser = await authApi.updateUser(userData);
       
-      setUser(updatedUser);
+      flushSync(() => {
+        setUser(updatedUser);
+      });
     } catch (error) {
       console.error("Update user failed:", error);
       throw error;
@@ -116,9 +130,16 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       await ensureCSRFToken();
         try {
           const response =await authApi.verifySession();
-          setUser(response.data.user);
+          flushSync(() => {
+            setUser(response.data.user);
+          });
         } catch (error) {
-          setUser(null);
+
+
+          flushSync(() => {
+            setUser(null);
+          });
+
         }
       setLoading(false);
     }
