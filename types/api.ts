@@ -617,6 +617,54 @@ export interface AllauthResponse<T = any> {
   };
 }
 
+// Platform API Key Types
+export interface PlatformApiKey {
+  id: string;
+  name: string;
+  description?: string;
+  key: string;
+  masked_key: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  last_used_at?: string;
+  is_active: boolean;
+  usage_count?: number;
+  permissions?: string[];
+  user: number;
+  team?: number;
+}
+
+export interface PlatformApiKeyCreate {
+  name: string;
+  description?: string;
+  expires_at?: string;
+  permissions?: string[];
+}
+
+export interface PlatformApiKeyUpdate {
+  name?: string;
+  description?: string;
+  expires_at?: string;
+  is_active?: boolean;
+  permissions?: string[];
+}
+
+export interface PaginatedPlatformApiKeyList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PlatformApiKey[];
+}
+
+export interface PlatformApiKeyGenerated {
+  id: string;
+  name: string;
+  key: string;
+  created_at: string;
+  expires_at?: string;
+}
+
 // Helper function to get project ID from various possible fields
 export const getProjectId = (project: Project): string | undefined => {
   // Prioritize UUID fields over the id field
