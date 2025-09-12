@@ -192,20 +192,16 @@ export default function ChatsComponent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      {/* Header removed - now handled by layout */}
-      {/* Content Row */}
-      <div className="flex flex-1 overflow-hidden">
-        <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat}  />
-        <div className="flex-1 flex flex-col min-h-0">
-          <CustomChat
-            agentId={selectedChat.agentCode || DEFAULT_AGENT_ID}
-            sessionId={selectedChat.id || undefined}
-            onNewSessionCreated={handleNewSessionCreated}
-            onTitleUpdate={handleTitleUpdate}
-            onMessageComplete={handleMessageComplete}
-          />
-        </div>
+    <div className="flex h-full min-h-0">
+      <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+      <div className="flex-1 flex flex-col min-h-0">
+        <CustomChat
+          agentId={selectedChat.agentCode || DEFAULT_AGENT_ID}
+          sessionId={selectedChat.id || undefined}
+          onNewSessionCreated={handleNewSessionCreated}
+          onTitleUpdate={handleTitleUpdate}
+          onMessageComplete={handleMessageComplete}
+        />
       </div>
     </div>
   );
