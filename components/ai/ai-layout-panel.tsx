@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, flushSync } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,13 +12,25 @@ import {
   ChevronRight,
   Loader2,
   Send,
-  GripVertical
+  GripVertical,
+  User,
+  Bot
 } from "lucide-react";
 import { useAiPanel } from "@/contexts/ai-panel-context";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import { format } from "date-fns";
+import { chatWithVaultAgent } from "@/api/vault";
 
 const MIN_WIDTH = 450;
 const MAX_WIDTH = 800;
+
+interface Message {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: Date;
+}
 
 export function AiLayoutPanel() {
   const { 
@@ -33,75 +45,218 @@ export function AiLayoutPanel() {
   
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [suggestedPrompts] = useState([
     "Explore these files",
     "List key info for each file", 
     "Ask about this folder"
   ]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const resizeRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  // Auto-generate initial insights when panel opens
+  // Auto-generate initial insights when panel opens or context changes
   useEffect(() => {
-    if (isOpen && !aiResponse) {
+    if (isOpen && currentContext.projectId) {
+      // Clear previous messages when context changes
+      setMessages([]);
       generateInitialInsights();
     }
-  }, [isOpen]);
+  }, [isOpen, currentContext.projectId]);
+  
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const generateInitialInsights = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const fileCount = currentContext.files?.length || 0;
-      
-      let insights = `Happy to help you analyze "${currentContext.title}".\n\n`;
-      
-      if (fileCount > 0) {
-        insights += `This location contains ${fileCount} items. `;
-        insights += `I can help you understand the contents, find specific information, or organize your files.\n\n`;
-        insights += `**What would you like to know?**\n\n`;
-        insights += `• Get summaries of documents\n`;
-        insights += `• Find specific information across files\n`;
-        insights += `• Organize and categorize content\n`;
-        insights += `• Extract key insights and patterns`;
-      } else {
-        insights += `This appears to be an empty location or I don't have access to the file details yet.\n\n`;
-        insights += `You can ask me questions about your files, and I'll help analyze and organize your content.`;
-      }
-      
-      setAiResponse(insights);
-    } catch (error) {
-      setAiResponse("Failed to generate insights. Please try again.");
-    } finally {
-      setIsLoading(false);
+    const fileCount = currentContext.files?.length || 0;
+    
+    let insights = `Happy to help you analyze "${currentContext.title}".\n\n`;
+    
+    if (fileCount > 0) {
+      insights += `This location contains ${fileCount} items. `;
+      insights += `I can help you understand the contents, find specific information, or organize your files.\n\n`;
+      insights += `**What would you like to know?**\n\n`;
+      insights += `• Get summaries of documents\n`;
+      insights += `• Find specific information across files\n`;
+      insights += `• Organize and categorize content\n`;
+      insights += `• Extract key insights and patterns`;
+    } else {
+      insights += `This appears to be an empty location or I don't have access to the file details yet.\n\n`;
+      insights += `You can ask me questions about your files, and I'll help analyze and organize your content.`;
     }
+    
+    // Add system message
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      role: "system",
+      content: insights,
+      timestamp: new Date()
+    };
+    
+    setMessages([systemMessage]);
   };
 
   const handleAskQuestion = async () => {
-    if (!question.trim()) return;
+    if (!question.trim() || isLoading) return;
     
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: question,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setQuestion("");
     setIsLoading(true);
+    
+    // Add placeholder assistant message
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: "",
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+    
     try {
-      // Simulate AI response - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get file IDs from context
+      const fileIds = currentContext.files?.map(f => f.id).filter(Boolean) || [];
       
-      const response = `Based on your question "${question}" about ${currentContext.title}:\n\nI can see ${currentContext.files?.length || 0} items in this context. This appears to be ${currentContext.projectId ? 'a project workspace' : 'a file collection'} with various content types.\n\nWould you like me to provide more specific insights about any particular files or aspects of this ${currentContext.title}?`;
+      // Create abort controller for cancellation
+      abortControllerRef.current = new AbortController();
       
-      setAiResponse(response);
-      setQuestion("");
-    } catch (error) {
-      setAiResponse("Failed to get AI response. Please try again.");
+      // Call the vault-agent-chat endpoint with streaming
+      const response = await chatWithVaultAgent({
+        project_uuid: currentContext.projectId,
+        parent_id: currentContext.folderId || 0,
+        file_ids: fileIds,
+        message: userMessage.content  // Use the saved user message content
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        let accumulatedContent = "";
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            console.log("line", line);
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6);
+
+              // Handle [DONE] token
+              if (dataStr === "[DONE]") {
+                break;
+              }
+
+              try {
+                const data = JSON.parse(dataStr);
+                
+                // Handle different data structures from backend
+                if (data.type === 'content' && data.data) {
+                  accumulatedContent += data.data;
+                  // Force immediate update for streaming effect
+                  setMessages(prev =>
+                    prev.map(msg =>
+                      msg.id === assistantMessage.id
+                        ? { ...msg, content: accumulatedContent }
+                        : msg
+                    )
+                  );
+
+                  // Small delay to ensure visual streaming effect
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                } else if (data.content) {
+                  // Fallback for direct content structure
+                  accumulatedContent += data.content;
+                  // Force immediate update for streaming effect
+                  setMessages(prev =>
+                    prev.map(msg =>
+                      msg.id === assistantMessage.id
+                        ? { ...msg, content: accumulatedContent }
+                        : msg
+                    )
+                  );
+
+                  // Small delay to ensure visual streaming effect
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                }
+
+                if (data.finished) {
+                  // Streaming finished
+                  break;
+                }
+
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+              } catch (e) {
+                // Skip invalid JSON
+                console.error("Failed to parse SSE data:", e);
+              }
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Request was cancelled');
+      } else {
+        console.error("AI chat error:", error);
+        // Update the assistant message with error
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessage.id 
+              ? { ...msg, content: "Failed to get AI response. Please try again." }
+              : msg
+          )
+        );
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAskQuestion();
+    }
+  };
+  
+  const cancelRequest = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
   const handlePromptClick = (prompt: string) => {
     setQuestion(prompt);
+    // Auto-send the prompt after a brief delay
+    setTimeout(() => {
+      handleAskQuestion();
+    }, 100);
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -215,44 +370,73 @@ export function AiLayoutPanel() {
           </div>
         </div>
 
-        {/* AI Response Area */}
-        <ScrollArea className="flex-1">
+        {/* Chat Messages Area */}
+        <ScrollArea className="flex-1" ref={scrollAreaRef}>
           <div className="p-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-            ) : aiResponse ? (
-              <div className="prose prose-sm max-w-none">
-                <div className="space-y-4">
-                  {aiResponse.split('\n').map((line, index) => {
-                    if (line.startsWith('**') && line.endsWith('**')) {
-                      return (
-                        <h3 key={index} className="font-semibold text-gray-900 mt-4">
-                          {line.replace(/\*\*/g, '')}
-                        </h3>
-                      );
-                    } else if (line.startsWith('•')) {
-                      return (
-                        <div key={index} className="flex items-start gap-2 ml-4">
-                          <ChevronRight className="h-4 w-4 text-gray-400 mt-0.5" />
-                          <span className="text-gray-700">{line.substring(1).trim()}</span>
-                        </div>
-                      );
-                    } else if (line.trim()) {
-                      return (
-                        <p key={index} className="text-gray-700">
-                          {line}
-                        </p>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
+            {messages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">
+                  Ask questions about your vault files.
+                  The AI will analyze and provide insights based on the content.
+                </p>
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                Ask a question about your files or select a suggested prompt above.
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={cn(
+                      "flex gap-3",
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    {message.role !== "user" && (
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          {message.role === "system" ? (
+                            <Sparkles className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Bot className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-lg px-4 py-2",
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : message.role === "system"
+                          ? "bg-blue-50 text-blue-900"
+                          : "bg-muted"
+                      )}
+                    >
+                      {message.role === "assistant" || message.role === "system" ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <ReactMarkdown>
+                            {message.content || "Thinking..."}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{message.content}</p>
+                      )}
+                      
+                      <div className="text-xs opacity-70 mt-1">
+                        {format(message.timestamp, "HH:mm")}
+                      </div>
+                    </div>
+                    
+                    {message.role === "user" && (
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -262,24 +446,30 @@ export function AiLayoutPanel() {
         <div className="border-t p-4 rounded-br-xl bg-white mt-auto">
           <div className="flex gap-2">
             <Textarea
-              placeholder="Enter a prompt here"
+              placeholder="Ask about your vault files..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               className="resize-none h-20"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleAskQuestion();
-                }
-              }}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
             />
-            <Button
-              onClick={handleAskQuestion}
-              disabled={!question.trim() || isLoading}
-              className="self-end"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            {isLoading ? (
+              <Button
+                variant="destructive"
+                onClick={cancelRequest}
+                className="self-end"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleAskQuestion}
+                disabled={!question.trim()}
+                className="self-end"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <div className="mt-2 text-xs text-gray-500">
             AI can make mistakes, so double-check responses.

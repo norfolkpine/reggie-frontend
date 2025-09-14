@@ -191,6 +191,58 @@ export async function getAiInsights({
   }
 }
 
+export async function chatWithVaultAgent(params: {
+  project_uuid: string;
+  parent_id?: number;
+  file_ids?: number[];
+  message: string;
+}) {
+  // Use the existing ai-chat-stream endpoint which already handles vault queries
+  const { BASE_URL, ensureCSRFToken } = await import('@/lib/api-client');
+  const { TOKEN_KEY } = await import('@/lib/constants');
+  const { getCSRFToken } = await import('@/api');
+  
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  
+  // Ensure CSRF token exists for non-GET requests (like the API client does)
+  await ensureCSRFToken();
+  const csrfToken = getCSRFToken();
+  
+  // Use exactly the same authentication pattern as the main API client
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    // Include auth token if available
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    // Include CSRF token if available  
+    ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+  };
+
+  const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/ai-chat-stream/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+    credentials: 'include', // IMPORTANT: This was missing!
+  });
+
+  // Handle authentication errors like the main API client
+  if (response.status === 401) {
+    throw new Error('Authentication failed. Please log in again.');
+  }
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.detail || errorData.message || errorMessage;
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response;
+}
+
 export async function generateFolderSummary(
   projectId: string,
   parentId: number = 0
