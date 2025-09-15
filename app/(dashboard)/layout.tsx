@@ -36,15 +36,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
-      <div className="group peer text-sidebar-foreground hidden md:block sticky top-0 h-svh">
-        <Sidebar />
+    <div 
+      className="group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full"
+      style={{
+        '--sidebar-width': 'calc(var(--spacing) * 64)',
+        '--sidebar-width-icon': '3rem',
+        '--header-height': 'calc(var(--spacing) * 14)'
+      } as React.CSSProperties}
+    >
+      {/* Sidebar Container */}
+      <div className="group peer text-sidebar-foreground hidden md:block" data-state="expanded" data-collapsible="" data-variant="inset" data-side="left">
+        {/* Sidebar Gap - maintains layout space */}
+        <div className="relative w-64 bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=icon]:w-16"></div>
+         {/* Fixed Sidebar Container */}
+         <div className="fixed inset-y-0 z-10 hidden h-svh w-64 transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[-256px] group-data-[collapsible=icon]:w-16">
+           <div className="bg-background flex h-full w-full flex-col overflow-hidden">
+             <Sidebar />
+           </div>
+         </div>
       </div>
-      <div className="bg-sidebar-background relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 p-4">
+      
+       {/* Main Content Area */}
+       <main className="bg-background relative flex w-full flex-1 flex-col p-4">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>
-      </div>
+      </main>
     </div>
   );
 }

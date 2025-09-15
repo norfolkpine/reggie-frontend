@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +23,6 @@ export function CreateApiKeyDialog({
 }: CreateApiKeyDialogProps) {
   const [formData, setFormData] = useState<CreateApiKeyFormData>({
     name: '',
-    description: '',
-    expires_at: '',
   });
 
   const generateAutoName = () => {
@@ -36,9 +33,13 @@ export function CreateApiKeyDialog({
 
   const handleSubmit = async () => {
     try {
-      const validatedData = createApiKeySchema.parse(formData);
+      // Auto-generate name if not provided
+      const dataToSubmit = {
+        name: formData.name || generateAutoName()
+      };
+      const validatedData = createApiKeySchema.parse(dataToSubmit);
       await onSubmit(validatedData);
-      setFormData({ name: '', description: '', expires_at: '' });
+      setFormData({ name: '' });
       onOpenChange(false);
     } catch (error: any) {
       console.error('Failed to create API key:', error);
@@ -52,7 +53,7 @@ export function CreateApiKeyDialog({
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setFormData({ name: '', description: '', expires_at: '' });
+      setFormData({ name: '' });
     }
     onOpenChange(open);
   };
@@ -74,31 +75,16 @@ export function CreateApiKeyDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Name (Optional)</Label>
             <Input
               id="name"
               placeholder={generateAutoName()}
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe what this key will be used for..."
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="expires_at">Expiration Date (Optional)</Label>
-            <Input
-              id="expires_at"
-              type="datetime-local"
-              value={formData.expires_at}
-              onChange={(e) => setFormData(prev => ({ ...prev, expires_at: e.target.value }))}
-            />
+            <p className="text-sm text-muted-foreground">
+              Leave empty to auto-generate a name with timestamp
+            </p>
           </div>
         </div>
         <DialogFooter>

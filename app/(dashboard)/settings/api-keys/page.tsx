@@ -9,12 +9,11 @@ import { toast } from 'sonner';
 // Components
 import { ApiKeysList } from './components/ApiKeysList';
 import { CreateApiKeyDialog } from './components/CreateApiKeyDialog';
-import { EditApiKeyDialog } from './components/EditApiKeyDialog';
 import { GeneratedKeyDisplay } from './components/GeneratedKeyDisplay';
 
 // Hooks and Types
 import { useApiKeys } from './hooks/useApiKeys';
-import { CreateApiKeyFormData, UpdateApiKeyFormData } from './types';
+import { CreateApiKeyFormData } from './types';
 import { PlatformApiKey, PlatformApiKeyGenerated } from '@/types/api';
 
 export default function ApiKeysPage() {
@@ -22,16 +21,12 @@ export default function ApiKeysPage() {
     apiKeys,
     isLoading,
     createApiKey,
-    updateApiKey,
-    deleteApiKey,
-    regenerateApiKey,
     toggleApiKeyStatus,
   } = useApiKeys();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingKey, setEditingKey] = useState<PlatformApiKey | null>(null);
   const [generatedKey, setGeneratedKey] = useState<PlatformApiKeyGenerated | null>(null);
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
 
   const handleCreateApiKey = async (formData: CreateApiKeyFormData) => {
     try {
@@ -45,28 +40,9 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleUpdateApiKey = async (formData: UpdateApiKeyFormData) => {
-    if (!editingKey) return;
-    
-    try {
-      await updateApiKey(editingKey.id, formData);
-      setIsEditDialogOpen(false);
-      setEditingKey(null);
-      toast.success('API key updated successfully');
-    } catch (error) {
-      console.error('Failed to update API key:', error);
-      toast.error('Failed to update API key');
-    }
-  };
-
-  const handleEditApiKey = (apiKey: PlatformApiKey) => {
-    setEditingKey(apiKey);
-    setIsEditDialogOpen(true);
-  };
-
   const handleToggleApiKeyStatus = async (apiKey: PlatformApiKey) => {
     try {
-      await toggleApiKeyStatus(apiKey.id, apiKey.name, !apiKey.is_active);
+      await toggleApiKeyStatus(apiKey);
       const action = apiKey.is_active ? 'deactivated' : 'activated';
       toast.success(`API key ${action} successfully`);
     } catch (error) {
@@ -75,26 +51,6 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleRegenerateApiKey = async (keyId: string, keyName: string) => {
-    try {
-      const newKey = await regenerateApiKey(keyId, keyName);
-      setGeneratedKey(newKey);
-      toast.success('API key regenerated successfully');
-    } catch (error) {
-      console.error('Failed to regenerate API key:', error);
-      toast.error('Failed to regenerate API key');
-    }
-  };
-
-  const handleDeleteApiKey = async (keyId: string, keyName: string) => {
-    try {
-      await deleteApiKey(keyId, keyName);
-      toast.success('API key deleted successfully');
-    } catch (error) {
-      console.error('Failed to delete API key:', error);
-      toast.error('Failed to delete API key');
-    }
-  };
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
@@ -106,12 +62,20 @@ export default function ApiKeysPage() {
     }
   };
 
+  const handleToggleVisibility = (keyId: string) => {
+    setVisibleKeys(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }));
+  };
+
   return (
     <ContentSection
       title="API Keys"
-      description="Manage your platform API keys for secure access to our services."
+      desc="Manage your platform API keys for secure access to our services."
     >
       <div className="space-y-6">
+
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div>
@@ -145,11 +109,12 @@ export default function ApiKeysPage() {
         ) : (
           <ApiKeysList
             apiKeys={apiKeys}
-            onEdit={handleEditApiKey}
+            isLoading={isLoading}
+            visibleKeys={visibleKeys}
+            onToggleVisibility={handleToggleVisibility}
             onToggleStatus={handleToggleApiKeyStatus}
-            onRegenerate={handleRegenerateApiKey}
-            onDelete={handleDeleteApiKey}
             onCopy={copyToClipboard}
+            onCreateNew={() => setIsCreateDialogOpen(true)}
           />
         )}
 
@@ -160,13 +125,6 @@ export default function ApiKeysPage() {
           onSubmit={handleCreateApiKey}
         />
 
-        {/* Edit API Key Dialog */}
-        <EditApiKeyDialog
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          editingKey={editingKey}
-          onSubmit={handleUpdateApiKey}
-        />
       </div>
     </ContentSection>
   );

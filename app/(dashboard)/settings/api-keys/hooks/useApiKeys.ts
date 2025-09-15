@@ -3,13 +3,10 @@ import { toast } from "sonner";
 import {
   getPlatformApiKeys,
   createPlatformApiKey,
-  updatePlatformApiKey,
-  deletePlatformApiKey,
-  regeneratePlatformApiKey,
   revokePlatformApiKey,
 } from "@/api/platform-api-keys";
 import { PlatformApiKey, PlatformApiKeyGenerated } from "@/types/api";
-import { CreateApiKeyFormData, UpdateApiKeyFormData, UseApiKeysReturn } from "../types";
+import { CreateApiKeyFormData, UseApiKeysReturn } from "../types";
 
 export function useApiKeys(): UseApiKeysReturn {
   const [apiKeys, setApiKeys] = useState<PlatformApiKey[]>([]);
@@ -24,35 +21,8 @@ export function useApiKeys(): UseApiKeysReturn {
     } catch (error) {
       console.error('Failed to load API keys:', error);
       toast.error('Failed to load API keys');
-      // For development, use mock data
-      setApiKeys([
-        {
-          id: '1',
-          name: 'Development Key',
-          description: 'Key for development environment',
-          key: 'pk_dev_1234567890abcdef',
-          masked_key: 'pk_dev_****...cdef',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          last_used_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          is_active: true,
-          usage_count: 42,
-          user: 1,
-        },
-        {
-          id: '2',
-          name: 'Production Key',
-          description: 'Key for production environment',
-          key: 'pk_prod_abcdef1234567890',
-          masked_key: 'pk_prod_****...7890',
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          is_active: false,
-          usage_count: 156,
-          user: 1,
-        },
-      ]);
+      // Since Opie API doesn't provide a list endpoint, show empty state
+      setApiKeys([]);
     } finally {
       setIsLoading(false);
     }
@@ -66,9 +36,7 @@ export function useApiKeys(): UseApiKeysReturn {
     };
 
     const newKey = await createPlatformApiKey({
-      ...data,
       name: data.name || autoName(),
-      expires_at: data.expires_at || undefined,
     });
 
     await loadApiKeys();
@@ -76,36 +44,24 @@ export function useApiKeys(): UseApiKeysReturn {
     return newKey;
   };
 
-  // Update existing API key
-  const updateApiKey = async (id: string, data: UpdateApiKeyFormData): Promise<void> => {
-    await updatePlatformApiKey(id, data);
-    await loadApiKeys();
-    toast.success('API key updated successfully');
-  };
-
-  // Delete API key
-  const deleteApiKey = async (id: string): Promise<void> => {
-    await deletePlatformApiKey(id);
-    await loadApiKeys();
-  };
-
-  // Regenerate API key
-  const regenerateApiKey = async (id: string): Promise<PlatformApiKeyGenerated> => {
-    const newKey = await regeneratePlatformApiKey(id);
-    await loadApiKeys();
-    return newKey;
-  };
 
   // Toggle API key status (activate/revoke)
   const toggleApiKeyStatus = async (key: PlatformApiKey): Promise<void> => {
-    if (key.is_active) {
-      await revokePlatformApiKey(key.id);
-      toast.success(`API key "${key.name}" revoked`);
-    } else {
-      await updatePlatformApiKey(key.id, { is_active: true });
-      toast.success(`API key "${key.name}" activated`);
+    try {
+      if (key.is_active) {
+        await revokePlatformApiKey(key.id);
+        toast.success(`API key "${key.name}" revoked`);
+      } else {
+        // Since Opie doesn't support activation, we can only revoke
+        toast.error('API key activation not supported by Opie API. Only revocation is available.');
+        return;
+      }
+      await loadApiKeys();
+    } catch (error) {
+      console.error('Failed to toggle API key status:', error);
+      toast.error('Failed to toggle API key status');
+      throw error;
     }
-    await loadApiKeys();
   };
 
   // Load API keys on mount
@@ -118,9 +74,6 @@ export function useApiKeys(): UseApiKeysReturn {
     isLoading,
     loadApiKeys,
     createApiKey,
-    updateApiKey,
-    deleteApiKey,
-    regenerateApiKey,
     toggleApiKeyStatus,
   };
 }
