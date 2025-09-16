@@ -217,7 +217,7 @@ export async function chatWithVaultAgent(params: {
     ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
   };
 
-  const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/ai-chat-stream/`, {
+  const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/vault-agent-chat/`, {
     method: "POST",
     headers,
     body: JSON.stringify(params),

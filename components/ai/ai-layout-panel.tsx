@@ -83,10 +83,10 @@ export function AiLayoutPanel() {
       insights += `This location contains ${fileCount} items. `;
       insights += `I can help you understand the contents, find specific information, or organize your files.\n\n`;
       insights += `**What would you like to know?**\n\n`;
-      insights += `• Get summaries of documents\n`;
-      insights += `• Find specific information across files\n`;
-      insights += `• Organize and categorize content\n`;
-      insights += `• Extract key insights and patterns`;
+      insights += `• Get summaries of documents.\n\n`;
+      insights += `• Find specific information across files.\n\n`;
+      insights += `• Organize and categorize content.\n\n`;
+      insights += `• Extract key insights and patterns.`;
     } else {
       insights += `This appears to be an empty location or I don't have access to the file details yet.\n\n`;
       insights += `You can ask me questions about your files, and I'll help analyze and organize your content.`;
@@ -185,7 +185,7 @@ export function AiLayoutPanel() {
                   );
 
                   // Small delay to ensure visual streaming effect
-                  await new Promise(resolve => setTimeout(resolve, 10));
+                  await new Promise(resolve => setTimeout(resolve, 100));
                 } else if (data.content) {
                   // Fallback for direct content structure
                   accumulatedContent += data.content;
@@ -199,7 +199,7 @@ export function AiLayoutPanel() {
                   );
 
                   // Small delay to ensure visual streaming effect
-                  await new Promise(resolve => setTimeout(resolve, 10));
+                  await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
                 if (data.finished) {

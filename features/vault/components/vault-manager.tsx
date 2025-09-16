@@ -108,9 +108,6 @@ export function VaultManager() {
   
   // AI Panel from layout context
   const { openPanel: openAiPanel, setCurrentContext } = useAiPanel();
-  
-  // AI Chat state
-  const [showAiChat, setShowAiChat] = useState(false);
 
   // Set header actions and custom content
   useEffect(() => {
@@ -141,13 +138,6 @@ export function VaultManager() {
           variant: "ghost",
           size: "sm",
           icon: <ArrowLeft className="h-4 w-4" />
-        },
-        {
-          label: "Ask AI",
-          onClick: () => setShowAiChat(true),
-          variant: "outline",
-          size: "sm",
-          icon: <Sparkles className="h-4 w-4" />
         },
         // {
         //   label: "Delete Project",
