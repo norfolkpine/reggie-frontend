@@ -190,9 +190,9 @@ const AgentChatDock = memo(function AgentChatDock({
   }
 
   return (
-    <div className="flex bg-gray-50 sticky top-16 self-start h-[calc(100vh_-_64px)]">
+    <div className="flex bg-background sticky top-16 self-start h-full">
       {/* Left Sidebar with Icons */}
-      <div className="w-12 bg-white border-r border-gray-200 flex flex-col py-2 overflow-visible">
+      <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible">
         {dockItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id
@@ -209,14 +209,14 @@ const AgentChatDock = memo(function AgentChatDock({
                       className={cn(
                         "w-10 h-10 mx-1 mb-1 rounded-lg flex items-center justify-center",
                         isActive
-                          ? "bg-blue-100 text-blue-600 border border-blue-200"
-                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+                          ? "bg-primary/10 text-primary border border-primary/20"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent",
                       )}
                     >
                       <Icon className="w-5 h-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-gray-50 border-gray-200 text-gray-700 text-xs px-2 py-1 shadow-sm">
+                  <TooltipContent className="bg-popover border-border text-popover-foreground text-xs px-2 py-1 shadow-sm">
                     <p>{item.label}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -228,9 +228,9 @@ const AgentChatDock = memo(function AgentChatDock({
 
       {/* Main Panel */}
       {activeTab && (
-        <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+        <div className="w-96 bg-card border-r border-border flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-2 border-b border-gray-200">
+          <div className="flex items-center justify-between p-2 border-b border-border">
             <div className="flex items-center gap-2">
               {/* <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                 {(() => {
@@ -239,17 +239,17 @@ const AgentChatDock = memo(function AgentChatDock({
                   return <Icon className="w-4 h-4 text-blue-600" />
                 })()}
               </div> */}
-              <h2 className="font-semibold text-gray-900">{getTabLabel(activeTab)}</h2>
+              <h2 className="font-semibold text-foreground">{getTabLabel(activeTab)}</h2>
             </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setActiveTab(null)}>
-                <X className="w-4 h-4 text-gray-500" />
+                <X className="w-4 h-4 text-muted-foreground" />
               </Button>
             </div>
           </div>
 
           {/* New Chat Button & Search Bar */}
-          <div className="p-2 border-b border-gray-100">
+          <div className="p-2 border-b border-border">
             <Button
               onClick={() => {
                 console.log("New Chat button clicked");
@@ -259,10 +259,10 @@ const AgentChatDock = memo(function AgentChatDock({
                   console.log("onNewChat function not provided");
                 }
               }}
-              className="w-full bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 justify-start mb-2 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 rounded-lg"
+              className="w-full bg-card hover:bg-accent text-foreground hover:text-foreground justify-start mb-2 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-border rounded-lg"
               size="sm"
             >
-              <Plus className="w-4 h-4 mr-2 text-gray-500" />
+              <Plus className="w-4 h-4 mr-2 text-muted-foreground" />
               New Chat
             </Button>
             <Input
@@ -279,7 +279,7 @@ const AgentChatDock = memo(function AgentChatDock({
               <div key={section.title} className="mb-4">
                 <button
                   onClick={() => toggleSection(sectionIndex)}
-                  className="flex items-center gap-2 w-full text-left py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                  className="flex items-center gap-2 w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   {section.expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   {section.title}
@@ -292,8 +292,8 @@ const AgentChatDock = memo(function AgentChatDock({
                           key={`chat ${item.id} ${itemIndex}`}
                           className={cn(
                             "rounded-lg p-2 transition-colors duration-150 group relative",
-                            (selectedSessionId === item.id || editingSessionId === item.id) ? "bg-gray-100" : "",
-                            "hover:bg-gray-100"
+                            (selectedSessionId === item.id || editingSessionId === item.id) ? "bg-accent" : "",
+                    "hover:bg-accent"
                           )}
                         >
                           {/* Main content area */}
@@ -325,23 +325,23 @@ const AgentChatDock = memo(function AgentChatDock({
                                     }
                                   }}
                                   onBlur={handleRenameSave}
-                                  className="text-sm font-medium text-gray-900 mb-1"
+                                  className="text-sm font-medium text-foreground mb-1"
                                   autoFocus
                                 />
                               </div>
                             ) : (
-                              <h4 className="font-medium text-sm text-gray-900 mb-1">
+                              <h4 className="font-medium text-sm text-foreground mb-1">
                                 {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                               </h4>
                             )}
 
                             <div className="mb-1">
-                              <span className="inline-block bg-white text-gray-800 text-xs font-medium px-1.5 py-0.5 rounded-full border">
+                              <span className="inline-block bg-card text-foreground text-xs font-medium px-1.5 py-0.5 rounded-full border border-border">
                                 {item.agent && item.agent.split('-').pop()?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="w-3 h-3" />
                               {item.timestamp}
                             </div>
@@ -354,7 +354,7 @@ const AgentChatDock = memo(function AgentChatDock({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 hover:bg-gray-300"
+                                  className="h-6 w-6 p-0 hover:bg-accent"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <MoreHorizontal className="h-3 w-3" />
@@ -394,7 +394,7 @@ const AgentChatDock = memo(function AgentChatDock({
 
           {isLoading && page > 1 && (
             <div className="flex justify-center items-center py-4">
-              <Loader2 className="animate-spin text-gray-400 w-6 h-6" />
+              <Loader2 className="animate-spin text-muted-foreground w-6 h-6" />
             </div>
           )}
         </div>

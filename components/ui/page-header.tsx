@@ -28,13 +28,13 @@ export function PageHeader({
   const pageTitle = getPageTitle(pathname);
 
   return (
-    <div className={`p-4 border-b bg-white flex items-center justify-between ${className}`}>
-      <div className="flex items-center gap-3">
-        {customContent ? customContent : (pageTitle && <h1 className="text-xl font-medium text-gray-900">{pageTitle}</h1>)}
+    <div className={`p-4 flex items-center justify-between w-full ${className}`}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {customContent ? customContent : (pageTitle && <h1 className="text-xl font-medium text-foreground">{pageTitle}</h1>)}
       </div>
 
       {actions.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {actions.map((action, index) => (
             <Button
               key={index}

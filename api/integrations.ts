@@ -29,7 +29,7 @@ interface PaginatedConnectionList {
 }
 
 interface Connection {
-  prividor: string;
+  provider: string;
   connectionId: string | undefined;
 }
 
@@ -53,7 +53,7 @@ export const getNangoSessions = async () => {
 };
 
 export const revokeAccess = async (revoke_provider: String) => {
-  const response = await api.post('/integrations/revokesession/', {data: revoke_provider});
+  const response = await api.post('/integrations/revokesession/', revoke_provider);
   return response;
 };
 

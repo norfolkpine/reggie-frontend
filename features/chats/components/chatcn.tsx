@@ -303,9 +303,9 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   }, [currentToolCalls, currentReasoningSteps]);
 
   return (
-    <ChatContainer className="max-w-full h-full">
+    <div className="flex flex-col h-full max-w-full">
       <div
-        className="flex-1 flex flex-col relative h-full overflow-hidden"
+        className="flex-1 flex flex-col relative min-h-0"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -323,7 +323,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         )}
         
         {isEmpty && (
-          <div className="flex-1 flex items-center justify-center p-8">
+          <div className="flex-1 flex items-center justify-center p-8 min-h-0">
             <PromptSuggestions
               label="Try these prompts ✨"
               append={(message) => {
@@ -337,14 +337,8 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         )}
 
         {!isEmpty && (
-          <ChatMessages 
-            messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')}
-            toolCalls={currentToolCalls}
-            reasoningSteps={currentReasoningSteps}
-          >
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="max-w-3xl mx-auto w-full py-4">
-             
-              
               <MessageList 
                 messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')} 
                 isTyping={isTyping}
@@ -374,11 +368,8 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                   return {};
                 }}
               />
-              
-              {/* Live Thinking Indicator */}
-              
             </div>
-          </ChatMessages>
+          </div>
         )}
 
         <div className="border-t mt-auto">
@@ -480,7 +471,6 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
           </div>
         </div>
       </div>
-    </ChatContainer>
-   
+    </div>
   );
 }

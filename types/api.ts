@@ -506,6 +506,167 @@ export interface AuthErrorResponse {
   }>;
 }
 
+// Django Allauth Headless API Types
+export interface AllauthUser {
+  id: number;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  display: string;
+  has_usable_password: boolean;
+}
+
+export interface AllauthUserResponse {
+  status: number;
+  data: AllauthUser;
+}
+
+export interface AllauthUserUpdate {
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+}
+
+export interface AllauthEmailAddress {
+  email: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+export interface AllauthEmailResponse {
+  status: number;
+  data: AllauthEmailAddress[];
+}
+
+export interface AllauthEmailAdd {
+  email: string;
+}
+
+export interface AllauthEmailVerify {
+  email: string;
+}
+
+export interface AllauthEmailSetPrimary {
+  email: string;
+}
+
+export interface AllauthEmailDelete {
+  email: string;
+}
+
+export interface AllauthPasswordChange {
+  current_password: string;
+  new_password: string;
+}
+
+export interface AllauthPasswordReset {
+  email: string;
+}
+
+export interface AllauthPasswordResetConfirm {
+  password: string;
+}
+
+export interface AllauthMFAAuthenticator {
+  id: string;
+  type: 'totp' | 'recovery_codes' | 'webauthn';
+  data: {
+    secret?: string;
+    qr_code_svg?: string;
+    recovery_codes?: string[];
+  };
+  created_at: string;
+  last_used_at?: string;
+}
+
+export interface AllauthMFAAuthenticatorsResponse {
+  status: number;
+  data: AllauthMFAAuthenticator[];
+}
+
+export interface AllauthMFATOTPAdd {
+  // No body required for initial request
+}
+
+export interface AllauthMFATOTPActivate {
+  code: string;
+}
+
+export interface AllauthMFAAuthenticate {
+  code: string;
+}
+
+export interface AllauthMFAChallenge {
+  // Response contains challenge data
+  status: number;
+  data: {
+    challenge?: string;
+    [key: string]: any;
+  };
+}
+
+export interface AllauthResponse<T = any> {
+  status: number;
+  data?: T;
+  errors?: Array<{
+    message: string;
+    code: string;
+    param?: string;
+  }>;
+  meta?: {
+    [key: string]: any;
+  };
+}
+
+// Platform API Key Types
+export interface PlatformApiKey {
+  id: string;
+  name: string;
+  description?: string;
+  key: string;
+  masked_key: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  last_used_at?: string;
+  is_active: boolean;
+  usage_count?: number;
+  permissions?: string[];
+  user: number;
+  team?: number;
+}
+
+export interface PlatformApiKeyCreate {
+  name: string;
+  description?: string;
+  expires_at?: string;
+  permissions?: string[];
+}
+
+export interface PlatformApiKeyUpdate {
+  name?: string;
+  description?: string;
+  expires_at?: string;
+  is_active?: boolean;
+  permissions?: string[];
+}
+
+export interface PaginatedPlatformApiKeyList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PlatformApiKey[];
+}
+
+export interface PlatformApiKeyGenerated {
+  id: string;
+  name: string;
+  key: string;
+  created_at: string;
+  expires_at?: string;
+}
+
 // Helper function to get project ID from various possible fields
 export const getProjectId = (project: Project): string | undefined => {
   // Prioritize UUID fields over the id field

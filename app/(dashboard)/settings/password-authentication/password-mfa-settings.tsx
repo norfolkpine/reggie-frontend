@@ -1,197 +1,364 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Eye, EyeOff, Smartphone, Shield, Key, QrCode, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { 
+  changePassword, 
+  getMFAAuthenticators, 
+  addTOTPAuthenticator, 
+  activateTOTPAuthenticator, 
+  deactivateAuthenticator 
+} from '@/api/auth';
+import { AllauthMFAAuthenticator } from '@/types/api';
 
-// Mock function to generate QR code URL (replace with actual API call in production)
-const generateQRCode = () => {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-    'otpauth://totp/SaaSApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=SaaSApp'
-  )}`;
-};
+
 
 export default function PasswordMfaSettings() {
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [mfaEnabled, setMfaEnabled] = useState(false);
-  const [mfaSetupInProgress, setMfaSetupInProgress] = useState(false);
-  const [mfaVerificationCode, setMfaVerificationCode] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [mfaError, setMfaError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // MFA State
+  const [authenticators, setAuthenticators] = useState<AllauthMFAAuthenticator[]>([]);
+  const [isLoadingAuthenticators, setIsLoadingAuthenticators] = useState(true);
+  const [isAddingTOTP, setIsAddingTOTP] = useState(false);
+  const [newTOTPAuthenticator, setNewTOTPAuthenticator] = useState<AllauthMFAAuthenticator | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isActivatingTOTP, setIsActivatingTOTP] = useState(false);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess(false);
+  // Load MFA authenticators on component mount
+  useEffect(() => {
+    loadAuthenticators();
+  }, []);
 
+  const loadAuthenticators = async () => {
+    try {
+      setIsLoadingAuthenticators(true);
+      const response = await getMFAAuthenticators();
+      setAuthenticators(response.data || []);
+    } catch (error) {
+      console.error('Failed to load authenticators:', error);
+      toast.error('Failed to load MFA settings');
+    } finally {
+      setIsLoadingAuthenticators(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords don't match");
+      toast.error("Passwords don't match");
       return;
     }
-
     if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters long');
+      toast.error('Password must be at least 8 characters long');
       return;
     }
-
-    // Here you would typically call an API to update the password
-    console.log('Password change requested');
-    setPasswordSuccess(true);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setIsChangingPassword(false);
-  };
-
-  const handleMfaToggle = () => {
-    if (!mfaEnabled) {
-      setMfaSetupInProgress(true);
-    } else {
-      // Here you would typically call an API to disable MFA
-      setMfaEnabled(false);
-      console.log('MFA disabled');
+    
+    try {
+      setIsChangingPassword(true);
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword
+      });
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      toast.error('Failed to change password. Please check your current password.');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
-  const handleMfaVerification = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here you would typically call an API to verify the MFA code
-    if (mfaVerificationCode === '123456') {
-      // Replace with actual verification
-      setMfaEnabled(true);
-      setMfaSetupInProgress(false);
-      setMfaError('');
-      console.log('MFA enabled');
-    } else {
-      setMfaError('Invalid verification code');
+  const handleAddTOTP = async () => {
+    try {
+      setIsAddingTOTP(true);
+      const response = await addTOTPAuthenticator();
+      setNewTOTPAuthenticator(response.data);
+      toast.success('TOTP authenticator created. Please scan the QR code and enter the verification code.');
+    } catch (error) {
+      console.error('Failed to add TOTP authenticator:', error);
+      toast.error('Failed to create TOTP authenticator');
+    } finally {
+      setIsAddingTOTP(false);
+    }
+  };
+
+  const handleActivateTOTP = async () => {
+    if (!newTOTPAuthenticator || !verificationCode) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+    
+    try {
+      setIsActivatingTOTP(true);
+      await activateTOTPAuthenticator({
+        code: verificationCode
+      });
+      toast.success('TOTP authenticator activated successfully');
+      setNewTOTPAuthenticator(null);
+      setVerificationCode('');
+      await loadAuthenticators();
+    } catch (error) {
+      console.error('Failed to activate TOTP:', error);
+      toast.error('Failed to activate TOTP. Please check your verification code.');
+    } finally {
+      setIsActivatingTOTP(false);
+    }
+  };
+
+  const handleDeactivateAuthenticator = async (authenticatorId: string) => {
+    try {
+      await deactivateAuthenticator(authenticatorId);
+      toast.success('Authenticator removed successfully');
+      await loadAuthenticators();
+    } catch (error) {
+      console.error('Failed to deactivate authenticator:', error);
+      toast.error('Failed to remove authenticator');
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Change Password Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-l font-semibold">Change Password</h3>
-          <Button onClick={() => setIsChangingPassword((prev) => !prev)}>
-            {isChangingPassword ? 'Cancel' : 'Change Password'}
-          </Button>
-        </div>
-
-        {isChangingPassword && (
-          <form onSubmit={handlePasswordChange} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
+      {/* Password Change Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Change Password
+          </CardTitle>
+          <CardDescription>
+            Update your password to keep your account secure.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <div className="relative">
               <Input
                 id="current-password"
-                type="password"
+                type={showCurrentPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                required
+                disabled={isChangingPassword}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                disabled={isChangingPassword}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <div className="relative">
               <Input
                 id="new-password"
-                type="password"
+                type={showNewPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                required
+                disabled={isChangingPassword}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                disabled={isChangingPassword}
+              >
+                {showNewPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <div className="relative">
               <Input
                 id="confirm-password"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                disabled={isChangingPassword}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isChangingPassword}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            {passwordError && (
-              <div className="flex items-center text-red-500">
-                <AlertCircle className="mr-2 h-4 w-4" />
-                <span>{passwordError}</span>
-              </div>
-            )}
-            {passwordSuccess && (
-              <div className="flex items-center text-green-500">
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                <span>Password changed successfully</span>
-              </div>
-            )}
-            <Button type="submit">Update Password</Button>
-          </form>
-        )}
-      </div>
-
-      {/* Two-Factor Authentication Section */}
-      <div>
-        <h3 className="text-l font-semibold mb-4">Two-Factor Authentication</h3>
-        <div className="flex items-center justify-between mb-4">
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {mfaEnabled ? 'Two-factor authentication is enabled' : 'Enable two-factor authentication'}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {mfaEnabled
-                ? 'Your account is protected by two-factor authentication.'
-                : 'Protect your account with an extra layer of security.'}
-            </p>
           </div>
-          <Switch
-            checked={mfaEnabled}
-            onCheckedChange={handleMfaToggle}
-            aria-label="Toggle two-factor authentication"
-          />
-        </div>
-        {mfaSetupInProgress && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Set up Google Authenticator</h3>
-              <ol className="list-decimal list-inside space-y-2">
-                <li>Install Google Authenticator on your mobile device</li>
-                <li>Open Google Authenticator and tap the + icon</li>
-                <li>Select "Scan a QR code" and scan the image below</li>
-              </ol>
+          
+          <Button 
+            onClick={handlePasswordChange} 
+            className="w-full" 
+            disabled={isChangingPassword}
+          >
+            {isChangingPassword ? 'Changing...' : 'Change Password'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* MFA Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your account with two-factor authentication.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current Authenticators */}
+          {isLoadingAuthenticators ? (
+            <div className="text-center py-4">Loading MFA settings...</div>
+          ) : authenticators.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              No authenticators configured.
             </div>
-            <div className="flex justify-center">
-              <img src={generateQRCode()} alt="QR Code for Google Authenticator" className="w-40 h-40" />
+          ) : (
+            <div className="space-y-3">
+              <p className="font-medium">Active Authenticators:</p>
+              {authenticators.map((auth) => (
+                <div key={auth.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Smartphone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="font-medium">{auth.type.toUpperCase()} Authenticator</div>
+                      <div className="text-sm text-muted-foreground">
+                        Added on {new Date(auth.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="default">Active</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeactivateAuthenticator(auth.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <form onSubmit={handleMfaVerification} className="space-y-4">
+          )}
+          
+          <Separator />
+          
+          {/* Add New TOTP Authenticator */}
+          {!newTOTPAuthenticator ? (
+            <Button 
+              onClick={handleAddTOTP} 
+              className="w-full"
+              disabled={isAddingTOTP}
+            >
+              <Smartphone className="mr-2 h-4 w-4" />
+              {isAddingTOTP ? 'Setting up...' : 'Add TOTP Authenticator'}
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm font-medium mb-2">Scan this QR code with your authenticator app:</p>
+                <div className="flex justify-center">
+                  {newTOTPAuthenticator.qr_code_url ? (
+                    <img 
+                      src={newTOTPAuthenticator.qr_code_url} 
+                      alt="QR Code" 
+                      className="border rounded-lg" 
+                    />
+                  ) : (
+                    <div className="p-8 border rounded-lg bg-muted">
+                      <QrCode className="h-16 w-16 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-2">QR Code not available</p>
+                    </div>
+                  )}
+                </div>
+                {newTOTPAuthenticator.secret && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Manual entry key:</p>
+                    <code className="text-sm font-mono">{newTOTPAuthenticator.secret}</code>
+                  </div>
+                )}
+              </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="mfa-code">Enter the 6-digit code from Google Authenticator</Label>
+                <Label htmlFor="verification-code">Verification Code</Label>
                 <Input
-                  id="mfa-code"
+                  id="verification-code"
                   type="text"
-                  inputMode="numeric"
-                  pattern="\d{6}"
+                  placeholder="Enter 6-digit code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
                   maxLength={6}
-                  value={mfaVerificationCode}
-                  onChange={(e) => setMfaVerificationCode(e.target.value)}
-                  required
+                  disabled={isActivatingTOTP}
                 />
               </div>
-              {mfaError && (
-                <div className="flex items-center text-red-500">
-                  <AlertCircle className="mr-2 h-4 w-4" />
-                  <span>{mfaError}</span>
-                </div>
-              )}
-              <Button type="submit">Verify and Enable</Button>
-            </form>
-          </div>
-        )}
-      </div>
+              
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={handleActivateTOTP} 
+                  className="flex-1"
+                  disabled={isActivatingTOTP || !verificationCode}
+                >
+                  <Key className="mr-2 h-4 w-4" />
+                  {isActivatingTOTP ? 'Activating...' : 'Verify and Activate'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setNewTOTPAuthenticator(null);
+                    setVerificationCode('');
+                  }}
+                  disabled={isActivatingTOTP}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

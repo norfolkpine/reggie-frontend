@@ -5,7 +5,13 @@ import "../styles/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
-
+import { ThemeProvider } from "@/components/theme-provider"
+import AuthGuard from "@/components/auth-guard"
+import { SearchProvider } from "@/contexts/search-context"
+import { cn } from "@/lib/utils"
+import { AppProvider } from "@/config/AppProvider"
+import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
+import { AiPanelProvider } from "@/contexts/ai-panel-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -50,13 +56,3 @@ export default function RootLayout({
     </html>
   )
 }
-
-
-
-import AuthGuard from "@/components/auth-guard"
-import { SearchProvider } from "@/contexts/search-context"
-import { cn } from "@/lib/utils"
-import { AppProvider } from "@/config/AppProvider"
-import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
-import { AiPanelProvider } from "@/contexts/ai-panel-context"
-

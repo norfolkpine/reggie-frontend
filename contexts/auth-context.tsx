@@ -61,6 +61,10 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       return;
     }
 
+    if(allowedRoutes.includes(window.location.pathname)){
+      return;
+    }
+
     // Redirect to sign-in page using Next.js router (no page refresh)
     router.push('/sign-in');
   }, [router]);
@@ -130,12 +134,12 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
             setUser(response.data.user);
           });
         } catch (error) {
-          
-          
+
+
           flushSync(() => {
             setUser(null);
           });
-          
+
         }
       setLoading(false);
     }

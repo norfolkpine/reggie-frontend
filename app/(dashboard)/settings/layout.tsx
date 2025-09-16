@@ -5,7 +5,6 @@ import {
   IconBrowserCheck,
   IconNotification,
   IconPalette,
-  IconTool,
   IconUser,
   IconCreditCard,
   IconLayoutList,
@@ -14,6 +13,7 @@ import {
   IconLock,
   IconDeviceLaptop,
   IconBuilding,
+  IconKey,
 } from '@tabler/icons-react'
 import SidebarNav from './components/sidebar-nav'
 import { useHeader } from '@/contexts/header-context';
@@ -25,11 +25,6 @@ const sidebarNavItems = [
     title: 'Profile',
     icon: <IconUser size={18} />,
     href: '/settings',
-  },
-  {
-    title: 'Account',
-    icon: <IconTool size={18} />,
-    href: '/settings/account',
   },
   {
     title: 'Appearance',
@@ -72,24 +67,19 @@ const sidebarNavItems = [
     ]
   },
   {
-    title: 'Emails',
-    icon: <IconMail size={18} />,
-    href: '/settings/emails',
-  },
-  {
     title: 'Password and MFA',
     icon: <IconLock size={18} />,
     href: '/settings/password-authentication',
   },
   {
-    title: 'Sessions',
-    icon: <IconDeviceLaptop size={18} />,
-    href: '/settings/sessions',
-  },
-  {
     title: 'Teams',
     icon: <IconBuilding size={18} />,
     href: '/settings/teams',
+  },
+  {
+    title: 'API Keys',
+    icon: <IconKey size={18} />,
+    href: '/settings/api-keys',
   }
 ]
 
@@ -97,7 +87,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const { setHeaderCustomContent } = useHeader()
 
     const headerContent = useMemo(() => (
-    <div className="text-lg font-medium text-gray-900">
+    <div className="text-lg font-medium ">
       Settings
     </div>
   ), []);
@@ -110,8 +100,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     return () => setHeaderCustomContent(null);
   }, [setHeaderCustomContent, headerContent]);
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className=" bg-background">
+      <div className="container mx-auto p-4">
        
         <div className='flex flex-1 flex-col space-y-8 md:space-y-2 md:overflow-hidden lg:flex-row lg:space-x-12 lg:space-y-0'>
           <aside className='top-0 lg:sticky lg:w-1/5'>

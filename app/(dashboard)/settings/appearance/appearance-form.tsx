@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
 
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/custom/button'
@@ -31,26 +33,88 @@ const appearanceFormSchema = z.object({
 
 type AppearanceFormValues = z.infer<typeof appearanceFormSchema>
 
-// This can come from your database or API.
-const defaultValues: Partial<AppearanceFormValues> = {
-  theme: 'light',
-}
+// Font class mappings
+const fontClasses = {
+  inter: 'font-inter',
+  manrope: 'font-manrope', 
+  system: 'font-system'
+} as const
 
 export function AppearanceForm() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [currentFont, setCurrentFont] = useState<string>('inter')
+
+  // Function to apply font without saving (for initial load)
+  function applyFontToDocumentOnly(fontName: string) {
+    // Remove existing font classes from document body
+    document.body.classList.remove('font-inter', 'font-manrope', 'font-system')
+    
+    // Add new font class
+    const fontClass = fontClasses[fontName as keyof typeof fontClasses]
+    if (fontClass) {
+      document.body.classList.add(fontClass)
+    }
+  }
+
+  // Ensure component is mounted before accessing theme
+  useEffect(() => {
+    setMounted(true)
+    // Get current font from localStorage or default to 'inter'
+    const savedFont = localStorage.getItem('font-preference') || 'inter'
+    setCurrentFont(savedFont)
+    
+    // Apply saved font to document on mount
+    applyFontToDocumentOnly(savedFont)
+  }, [])
+
   const form = useForm<AppearanceFormValues>({
     resolver: zodResolver(appearanceFormSchema),
-    defaultValues,
+    defaultValues: {
+      theme: (theme as 'light' | 'dark') || 'light',
+      font: currentFont as 'inter' | 'manrope' | 'system',
+    },
   })
 
+  // Update form when theme changes externally
+  useEffect(() => {
+    if (mounted && theme) {
+      form.setValue('theme', theme as 'light' | 'dark')
+    }
+  }, [theme, mounted, form])
+
+  function applyFontToDocument(fontName: string) {
+    // Remove existing font classes from document body
+    document.body.classList.remove('font-inter', 'font-manrope', 'font-system')
+    
+    // Add new font class
+    const fontClass = fontClasses[fontName as keyof typeof fontClasses]
+    if (fontClass) {
+      document.body.classList.add(fontClass)
+    }
+    
+    // Save font preference to localStorage
+    localStorage.setItem('font-preference', fontName)
+    setCurrentFont(fontName)
+  }
+
   function onSubmit(data: AppearanceFormValues) {
+    // Apply theme change
+    setTheme(data.theme)
+    
+    // Apply font change
+    applyFontToDocument(data.font)
+    
+    // Show success toast
     toast({
-      title: 'You submitted the following values:',
-      description: (
-        <pre className='mt-2 w-[340px] rounded-md bg-slate-950 p-4'>
-          <code className='text-white'>{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
+      title: 'Settings updated',
+      description: `Theme set to ${data.theme} and font set to ${data.font}.`,
     })
+  }
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return null
   }
 
   return (
