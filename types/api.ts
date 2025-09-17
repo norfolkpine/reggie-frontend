@@ -482,8 +482,6 @@ export interface VaultFile {
   shared_with_teams: number[];
   inherited_users: string;
   inherited_teams: string;
-  is_folder: number; // 1 if folder, 0 if file
-  parent_id: number; // Parent folder ID, 0 if root level
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
 }

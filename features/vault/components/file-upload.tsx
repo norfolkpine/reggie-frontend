@@ -15,7 +15,6 @@ import { useAuth } from "@/contexts/auth-context"
 interface FileUploadProps {
   onUploadComplete: (files: any[]) => void
   projectId: string
-  parentId?: number
   title?: string
 }
 
@@ -25,7 +24,7 @@ interface UploadingFile {
   error?: string
 }
 
-export function FileUpload({ onUploadComplete, projectId, parentId = 0, title }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, projectId, title }: FileUploadProps) {
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
@@ -112,8 +111,7 @@ export function FileUpload({ onUploadComplete, projectId, parentId = 0, title }:
           const result = await uploadFiles({ 
             file: fileObj.file, 
             project_uuid: projectId,
-            uploaded_by: user?.id || 0,
-            parent_id: parentId
+            uploaded_by: user?.id || 0
           });
           uploadedFiles.push(result);
         } catch (err) {

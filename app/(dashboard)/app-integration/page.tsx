@@ -160,7 +160,6 @@ export default function Apps() {
 
           const nangoInstance = new Nango();
           setNango(nangoInstance);
-
           console.log('[Nango] Nango instance created:', nangoInstance);
 
           console.log('[Nango] Session token stored, Connect UI will be initialized on demand');
@@ -215,7 +214,6 @@ export default function Apps() {
     console.log('[Nango] Initializing new Connect UI...');
 
     try {
-
       if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
         console.error('[Nango] Missing required environment variables: NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
         toast({
@@ -315,7 +313,6 @@ export default function Apps() {
       });
 
       console.log("connectUI", connectUI);
-
       console.log(`[Nango] Setting session token: ${nangoSessionToken}`);
       connectUI.setSessionToken(nangoSessionToken);
       setNangoConnect(connectUI);
