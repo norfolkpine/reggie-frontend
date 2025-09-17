@@ -25,6 +25,7 @@ import {
 import { KnowledgeBaseManager } from "@/features/knowledge-base/components/knowledge-base-manager";
 import { FileManager } from "@/features/knowledge-base/components/file-manager";
 import { adminService } from "@/api/admin";
+import { TokenLogs } from "@/features/system/token-logs";
 
 interface SystemStats {
   totalUsers: number;
@@ -323,6 +324,8 @@ export default function AdminDashboard() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
+          <TabsTrigger value="token-usage">Token Usage</TabsTrigger>
+          <TabsTrigger value="system-logs">System Logs</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
@@ -445,6 +448,47 @@ export default function AdminDashboard() {
                   <KnowledgeBaseManager />
                 </TabsContent>
               </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="token-usage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Token Usage
+              </CardTitle>
+              <CardDescription>Track token usage and consumption</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="log" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="log">Token logs</TabsTrigger>
+                  <TabsTrigger value="total">Total Usage</TabsTrigger>
+                </TabsList>
+                <TabsContent value="total" className="space-y-4">
+                  {/* TODO: Add token usage component */}
+                </TabsContent>
+                <TabsContent value="log" className="space-y-4">
+                  <TokenLogs />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="system-logs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                System Logs
+              </CardTitle>
+              <CardDescription>Audit system logs and activities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* TODO: Add system logs component */}
             </CardContent>
           </Card>
         </TabsContent>
