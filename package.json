@@ -2,7 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
-  "overrides":{
+  "overrides": {
     "chalk": "5.3.0",
     "strip-ansi": "7.1.0",
     "color-convert": "2.0.1",
@@ -14,7 +14,8 @@
   "scripts": {
     "dev": "next dev --port 5173",
     "build": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
+    "start:legacy": "next start",
     "lint": "next lint"
   },
   "exports": {

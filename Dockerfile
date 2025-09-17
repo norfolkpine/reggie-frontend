@@ -52,11 +52,14 @@ ARG SENTRY_AUTH_TOKEN
 
 WORKDIR /app
 
-# Only copy over the necessary files from the build stage
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy the standalone output
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Set environment variables (can be customized)
 ENV NODE_ENV=production
@@ -69,8 +72,14 @@ ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 
+# Switch to non-root user
+USER nextjs
+
 # Expose the port Next.js runs on
 EXPOSE 3000
 
+# Set the hostname to 0.0.0.0 to allow external connections
+ENV HOSTNAME="0.0.0.0"
+
 # Start the Next.js app
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
