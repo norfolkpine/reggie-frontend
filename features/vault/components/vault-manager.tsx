@@ -5,13 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, attemptDeleteFile, moveVaultFiles } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2, FolderPlus, Folder } from "lucide-react";
-import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2 } from "lucide-react";
+import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -20,10 +20,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, D
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
 import { DeleteProjectDialog } from "./delete-project-dialog";
-import { CreateFolderDialog } from "./create-folder-dialog";
-import { DeleteFolderConfirmationDialog } from "./delete-folder-confirmation-dialog";
-import { useAiPanel } from "@/contexts/ai-panel-context";
-import { VaultAiChat } from "./vault-ai-chat";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -47,6 +43,9 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { isSafeUrl } from '@/lib/utils/url';
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useHeader } from "@/contexts/header-context";
 
 // Extended VaultFile interface with additional properties from the API response
@@ -54,7 +53,6 @@ interface VaultFile extends BaseVaultFile {
   filename?: string;
   original_filename?: string;
   size?: number;
-  type?: number;
   // type is not included in the interface as we're accessing it with (file as any).type
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
 }
@@ -69,10 +67,12 @@ export function VaultManager() {
   const [loading, setLoading] = useState(true);
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showAllFiles, setShowAllFiles] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -90,24 +90,6 @@ export function VaultManager() {
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
-  
-  // Folder navigation state
-  const [currentFolderId, setCurrentFolderId] = useState(0) // 0 means root level
-  const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{id: number, name: string}[]>([])
-  
-  // Delete folder confirmation state
-  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false)
-  const [folderToDelete, setFolderToDelete] = useState<VaultFile | null>(null)
-  const [folderChildrenCount, setFolderChildrenCount] = useState(0)
-  
-  // Drag and drop state
-  const [isDragging, setIsDragging] = useState(false)
-  const [draggedFiles, setDraggedFiles] = useState<number[]>([])
-  const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
-  
-  // AI Panel from layout context
-  const { openPanel: openAiPanel, setCurrentContext } = useAiPanel();
 
   // Set header actions and custom content
   useEffect(() => {
@@ -190,12 +172,10 @@ export function VaultManager() {
     { id: 'actions', header: 'Actions' }
   ];
 
-
-
   useEffect(() => {
     fetchProject();
     fetchFiles();
-  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
+  }, [projectId, currentPage, itemsPerPage]);
 
   // Reset to first page when search query or filters change
   useEffect(() => {
@@ -241,8 +221,7 @@ export function VaultManager() {
         projectId,
         currentPage,
         itemsPerPage,
-        searchQuery,
-        currentFolderId
+        searchQuery
       );
       
       setFilesCount(response.count);
@@ -254,16 +233,14 @@ export function VaultManager() {
         // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-        // Or extract extension from filename
+                // Or extract extension from filename
         const fileExtension = file.original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
         
         return {
           ...file,
-          file_type: file.is_folder === 1 ? 'folder' : fileExtension
+          file_type: fileExtension
         };
       });
-      
-      // Files are already filtered by parent_id on the backend, so just set them directly
       setVaultFiles(filesWithType);
     } catch (error) {
       console.error('Error fetching vault files:', error);
@@ -278,15 +255,20 @@ export function VaultManager() {
   // Memoize filtered files to prevent unnecessary re-computations
   const filteredFiles = useMemo(() => {
     return vaultFiles.filter(file => {
-      // Apply file type filters (search is handled by backend)
+      // Apply file type filters
       const fileType = file.file_type || '';
       const matchesType = showAllFiles || 
         (activeFilters.length === 0) || 
         activeFilters.some((filter: string) => fileType.includes(filter));
       
-      return matchesType;
+      // Apply search filter
+      const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        false;
+      
+      return matchesType && matchesSearch;
     });
-  }, [vaultFiles, showAllFiles, activeFilters]);
+  }, [vaultFiles, showAllFiles, activeFilters, searchQuery]);
 
   // Memoize the select all checkbox state
   const selectAllChecked = useMemo(() => {
@@ -372,184 +354,74 @@ export function VaultManager() {
   };
 
   const handleFileDelete = useCallback(async (fileId: number) => {
-    // Find the file/folder to delete
-    const fileToDelete = vaultFiles.find(f => f.id === fileId);
-    if (!fileToDelete) {
-      toast({
-        title: "Error",
-        description: "File not found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if it's a folder
-    if (fileToDelete.is_folder === 1) {
-      try {
-        // Try to delete folder or get contents info
-        const result = await attemptDeleteFile(fileId);
-        if (result.success) {
-          // Successfully deleted (empty folder or file)
-          toast({
-            title: "Success",
-            description: "Folder deleted successfully",
-          });
-          fetchFiles();
-          setSelectedFiles(prev => prev.filter(id => id !== fileId));
-        } else if (result.needsConfirmation){
-          // Folder has contents, show confirmation dialog
-          setFolderToDelete(fileToDelete);
-          setFolderChildrenCount(result.children_count || 0);
-          setDeleteFolderDialogOpen(true);
-        }
-      } catch (error) {
-        // Handle deletion errors
-        const { message } = handleApiError(error);
-        toast({
-          title: "Error",
-          description: message || "Failed to delete folder",
-          variant: "destructive",
-        });
-      }
-    } else {
-      // Handle regular file deletion
-      try {
-        await deleteVaultFile(fileId, false);
-        toast({
-          title: "Success",
-          description: "File deleted successfully",
-        });
-        fetchFiles();
-        setSelectedFiles([]);
-      } catch (error) {
-        const { message } = handleApiError(error);
-        toast({
-          title: "Error",
-          description: message || "Failed to delete file",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [toast, vaultFiles]);
-
-  const handleConfirmFolderDelete = useCallback(async () => {
-    if (!folderToDelete) return;
-    
     try {
-      // Force delete the folder and all its contents
-      await deleteVaultFile(folderToDelete.id, true);
-      
+      await deleteVaultFile(fileId);
       toast({
         title: "Success",
-        description: `Folder "${folderToDelete.original_filename}" and all its contents deleted successfully`,
+        description: "File deleted successfully",
       });
-      
-      fetchFiles();
+      fetchFiles(); // Refresh the file list
+      // Clear selected files after deletion
       setSelectedFiles([]);
-      
-      // Reset dialog state
-      setFolderToDelete(null);
-      setFolderChildrenCount(0);
-      setDeleteFolderDialogOpen(false);
     } catch (error) {
       const { message } = handleApiError(error);
       toast({
         title: "Error",
-        description: message || "Failed to delete folder",
+        description: message || "Failed to delete file",
         variant: "destructive",
       });
     }
-  }, [folderToDelete, toast]);
+  }, [toast]);
   
   const handleBulkDelete = useCallback(async () => {
     if (selectedFiles.length === 0) return;
     
-    // Find selected files and check if any are non-empty folders
-    const selectedItems = vaultFiles.filter(f => selectedFiles.includes(f.id));
-    const foldersNeedingConfirmation: Array<{file: VaultFile; children_count: number}> = [];
-    
     setIsDeleting(true);
     try {
-      // First, try to delete all items and collect folders that need confirmation
-      for (const item of selectedItems) {
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Process deletion one by one
+      for (const fileId of selectedFiles) {
         try {
-          const result = await attemptDeleteFile(item.id);
-          if (!result.success && result.needsConfirmation) {
-            foldersNeedingConfirmation.push({
-              file: item,
-              children_count: result.children_count || 0
-            });
-          }
+          await deleteVaultFile(fileId);
+          successCount++;
         } catch (error) {
-          // Skip errors for now, we'll handle them in the actual deletion
+          console.error(`Failed to delete file ID ${fileId}:`, error);
+          errorCount++;
         }
       }
       
-      if (foldersNeedingConfirmation.length > 0) {
-        // Calculate total items to be deleted including children
-        const totalFolders = foldersNeedingConfirmation.length;
-        const totalChildren = foldersNeedingConfirmation.reduce((sum, folder) => sum + folder.children_count, 0);
-        const totalFiles = selectedItems.filter(item => item.is_folder !== 1).length;
-        const totalItems = totalFiles + totalFolders + totalChildren;
-        
-        // Show confirmation dialog for bulk deletion with folders
-        const confirmMessage = `You are about to delete ${selectedFiles.length} selected items:\n\n` +
-          `• ${totalFiles} files\n` +
-          `• ${totalFolders} folders containing ${totalChildren} items\n\n` +
-          `Total: ${totalItems} items will be deleted permanently.\n\nThis action cannot be undone.`;
-        
-        if (window.confirm(confirmMessage)) {
-          await performBulkDeletion(selectedItems, true);
-        }
-      } else {
-        // No folders need confirmation, proceed with normal deletion
-        await performBulkDeletion(selectedItems, false);
+      // Notify user about the results
+      if (successCount > 0) {
+        toast({
+          title: "Success",
+          description: `${successCount} file${successCount !== 1 ? 's' : ''} deleted successfully`,
+        });
       }
+      
+      if (errorCount > 0) {
+        toast({
+          title: "Error",
+          description: `Failed to delete ${errorCount} file${errorCount !== 1 ? 's' : ''}`,
+          variant: "destructive",
+        });
+      }
+      
+      // Refresh the file list
+      fetchFiles();
+      // Clear selected files
+      setSelectedFiles([]);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to process bulk deletion",
+        description: "An unexpected error occurred during bulk deletion",
         variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedFiles, vaultFiles, toast]);
-
-  // Helper function to perform bulk deletion
-  const performBulkDeletion = async (items: VaultFile[], forceDelete: boolean) => {
-    let successCount = 0;
-    let errorCount = 0;
-    
-    for (const item of items) {
-      try {
-        await deleteVaultFile(item.id, forceDelete);
-        successCount++;
-      } catch (error) {
-        console.error(`Failed to delete item ID ${item.id}:`, error);
-        errorCount++;
-      }
-    }
-    
-    // Notify user about results
-    if (successCount > 0) {
-      toast({
-        title: "Success",
-        description: `${successCount} item${successCount !== 1 ? 's' : ''} deleted successfully`,
-      });
-    }
-    
-    if (errorCount > 0) {
-      toast({
-        title: "Warning",
-        description: `${errorCount} item${errorCount !== 1 ? 's' : ''} failed to delete`,
-        variant: "destructive",
-      });
-    }
-    
-    fetchFiles();
-    setSelectedFiles([]);
-  };
+  }, [selectedFiles, toast]);
   
   const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
@@ -660,154 +532,6 @@ export function VaultManager() {
     }
   };
 
-  const handleCreateFolder = async(name: string) => {
-    if (!user || !projectId) return;
-    
-    try {
-      await createFolder({
-        folderName: name,
-        project_uuid: projectId,
-        uploaded_by: user.id,
-        parent_id: currentFolderId,
-        team: (project?.team as any)?.id || undefined
-      });
-      
-      toast({
-        title: "Success",
-        description: "Folder created successfully"
-      });
-      
-      setCreateFolderOpen(false);
-      fetchFiles(); // Refresh the file list
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create folder. Please try again later.",
-        variant: "destructive"
-      });
-    }
-  }
-
-  // Navigate into a folder
-  const handleFolderClick = (folder: VaultFile) => {
-    if (folder.is_folder !== 1) return;
-    
-    setCurrentFolderId(folder.id);
-    setFolderBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.original_filename || 'Unnamed Folder' }]);
-  };
-
-  // Navigate back to parent folder
-  const handleBreadcrumbClick = (folderId: number) => {
-    if (folderId === 0) {
-      // Go to root
-      setCurrentFolderId(0);
-      setFolderBreadcrumbs([]);
-    } else {
-      // Go to specific folder in breadcrumb
-      const folderIndex = folderBreadcrumbs.findIndex(f => f.id === folderId);
-      if (folderIndex !== -1) {
-        setCurrentFolderId(folderId);
-        setFolderBreadcrumbs(folderBreadcrumbs.slice(0, folderIndex + 1));
-      }
-    }
-  };
-  
-  // Drag and drop handlers
-  const handleDragStart = useCallback((e: React.DragEvent, fileId: number) => {
-    e.stopPropagation();
-    
-    // If the dragged file is selected, drag all selected files
-    // Otherwise, just drag the single file
-    const filesToDrag = selectedFiles.includes(fileId) ? selectedFiles : [fileId];
-    
-    setIsDragging(true);
-    setDraggedFiles(filesToDrag);
-    
-    // Set drag effect
-    e.dataTransfer.effectAllowed = 'move';
-    
-    // Store the dragged file IDs in dataTransfer
-    e.dataTransfer.setData('text/plain', JSON.stringify(filesToDrag));
-  }, [selectedFiles]);
-  
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-    setDraggedFiles([]);
-    setDragOverFolderId(null);
-  }, []);
-  
-  const handleDragOver = useCallback((e: React.DragEvent, folderId?: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Set drag effect
-    e.dataTransfer.dropEffect = 'move';
-    
-    // Only allow dropping on folders or root
-    if (folderId !== undefined) {
-      setDragOverFolderId(folderId);
-    }
-  }, []);
-  
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Check if we're leaving the drop zone entirely
-    const relatedTarget = e.relatedTarget as HTMLElement;
-    if (!e.currentTarget.contains(relatedTarget)) {
-      setDragOverFolderId(null);
-    }
-  }, []);
-  
-  const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    setDragOverFolderId(null);
-    setIsDragging(false);
-    
-    // Get the dragged file IDs
-    const draggedFileIds = draggedFiles.length > 0 ? draggedFiles : JSON.parse(e.dataTransfer.getData('text/plain'));
-    
-    // Prevent dropping a folder into itself or its children
-    const draggedItems = vaultFiles.filter(f => draggedFileIds.includes(f.id));
-    for (const item of draggedItems) {
-      if (item.is_folder === 1 && item.id === targetFolderId) {
-        toast({
-          title: "Invalid operation",
-          description: "Cannot move a folder into itself",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    // Move the files to the target folder
-    try {
-      await moveVaultFiles(draggedFileIds, targetFolderId);
-      
-      toast({
-        title: "Success",
-        description: `Moved ${draggedFileIds.length} item(s) successfully`,
-      });
-      
-      // Refresh the file list
-      fetchFiles();
-      
-      // Clear selection
-      setSelectedFiles([]);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to move files. Please try again.",
-        variant: "destructive",
-      });
-    }
-    
-    setDraggedFiles([]);
-  }, [draggedFiles, vaultFiles, toast]);
-
   if (!project && !loading) {
     return (
       <div className="text-center py-12">
@@ -908,26 +632,6 @@ export function VaultManager() {
                         </DropdownMenu>
                       </div>
                     </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Set context for AI panel
-                        setCurrentContext({
-                          title: currentFolderId === 0 
-                            ? project?.name || 'Root Folder' 
-                            : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
-                          files: vaultFiles,
-                          folderId: currentFolderId,
-                          projectId: projectId
-                        });
-                        openAiPanel();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      Ask AI
-                    </Button>
                     <div className="flex items-center space-x-2">
                       {selectedFiles.length > 0 && (
                         <Button 
@@ -948,10 +652,6 @@ export function VaultManager() {
                           )}
                         </Button>
                       )}
-                      <Button onClick={() => setCreateFolderOpen(true)}>
-                        New Folder
-                        <FolderPlus className="h-4 w-4 mr2" />
-                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button>
@@ -972,46 +672,6 @@ export function VaultManager() {
                       </DropdownMenu>
                     </div>
                   </div>
-                </div>
-                
-                {/* Breadcrumb Navigation with Drop Zone */}
-                <div 
-                  className={`
-                    flex items-center space-x-2 text-sm text-muted-foreground mb-4 p-2 rounded
-                    ${isDragging ? 'border-2 border-dashed border-gray-300' : ''}
-                    ${dragOverFolderId === currentFolderId && isDragging ? 'bg-primary/10 border-primary' : ''}
-                  `}
-                  onDragOver={(e) => isDragging && handleDragOver(e, currentFolderId)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, currentFolderId)}
-                >
-                  {(currentFolderId > 0 || folderBreadcrumbs.length > 0) ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleBreadcrumbClick(0)}
-                        className="h-auto p-1 text-primary hover:text-primary/80"
-                      >
-                        Root
-                      </Button>
-                      {folderBreadcrumbs.map((folder) => (
-                        <div key={folder.id} className="flex items-center">
-                          <span className="mx-1">/</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleBreadcrumbClick(folder.id)}
-                            className="h-auto p-1 text-primary hover:text-primary/80"
-                          >
-                            {folder.name}
-                          </Button>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <span className="text-gray-500">Root folder {isDragging && '(Drop files here)'}</span>
-                  )}
                 </div>
                 
                 <div className="rounded-md border">
@@ -1036,20 +696,7 @@ export function VaultManager() {
                       {filteredFiles.length > 0 ? (
                         filteredFiles
                           .map((file) => (
-                          <TableRow 
-                            key={file.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, file.id)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => file.is_folder === 1 && handleDragOver(e, file.id)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => file.is_folder === 1 && handleDrop(e, file.id)}
-                            className={`
-                              ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
-                              ${dragOverFolderId === file.id && file.is_folder === 1 ? 'bg-primary/10' : ''}
-                              cursor-move
-                            `}
-                          >
+                          <TableRow key={file.id}>
                             <TableCell>
                               <Checkbox 
                                 checked={selectedFiles.includes(file.id)}
@@ -1057,26 +704,14 @@ export function VaultManager() {
                                 aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
                               />
                             </TableCell>
-                            <TableCell className="font-medium">
-                              {file.file_type === "folder" ? 
-                                <div 
-                                  className="flex items-center space-x-2 cursor-pointer hover:text-primary"
-                                  onClick={() => handleFolderClick(file)}
-                                >
-                                  <Folder className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed Folder'}
-                                  </span>
-                                </div> : 
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              }
+                             <TableCell className="font-medium">
+                              <div className="flex items-center space-x-2">
+                                <FileText className="h-5 w-5 text-muted-foreground" />
+                                <span>
+                                  {/* Display original filename if available, otherwise the filename */}
+                                  {file.original_filename || 'Unnamed File'}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
@@ -1229,7 +864,6 @@ export function VaultManager() {
                   <FileUpload
                     onUploadComplete={handleFileUpload}
                     projectId={projectId || ''}
-                    parentId={currentFolderId}
                   />
                 </DialogContent>
               </Dialog>
@@ -1280,27 +914,12 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <CreateFolderDialog
-        open={createFolderOpen}
-        onOpenChange={setCreateFolderOpen}
-        onCreateFolder={handleCreateFolder}
-      />
+
       <DeleteProjectDialog
         open={deleteProjectOpen}
         onOpenChange={setDeleteProjectOpen}
-        projectId={project?.id?.toString() || ''}
-        projectName={project?.name || ''}
+        project={project ? { id: project.id?.toString() || '', name: project.name || '' } : null}
       />
-      <DeleteFolderConfirmationDialog
-        open={deleteFolderDialogOpen}
-        onOpenChange={setDeleteFolderDialogOpen}
-        folder={folderToDelete}
-        childrenCount={folderChildrenCount}
-        onConfirmDelete={handleConfirmFolderDelete}
-        isDeleting={isDeleting}
-      />
-      
-      {/* AI Panel is now handled by layout */}
     </div>
   );
 }
