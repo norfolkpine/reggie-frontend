@@ -3,7 +3,7 @@ import { TOKEN_KEY } from "../lib/constants";
 
 // Environment-based configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Smart hostname detection for development
 function getSmartBaseUrl(): string {
