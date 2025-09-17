@@ -14,7 +14,10 @@
   "scripts": {
     "dev": "next dev --port 5173",
     "build": "next build",
+    "build:debug": "DEBUG=* next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
+    "start:debug": "DEBUG=* next start",
     "lint": "next lint"
   },
   "exports": {

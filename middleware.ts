@@ -1,46 +1,29 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { SESSION_COOKIE_KEY } from "@/lib/constants";
+// middleware.ts - CSP and security headers
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const token = request.cookies.get(SESSION_COOKIE_KEY)?.value;
-  const { pathname } = request.nextUrl;
-
-  // Define public routes that do not require authentication
-  const publicRoutes = ["/sign-in", "/sign-up", "/forgot-password", "/otp"];
-
-  // Check if the current route is a public route
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
-
-  const isApiRoute = pathname.startsWith('/api/');
-
-  if (isApiRoute) {
-    return NextResponse.next();
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  
+  // Security headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  // CSP for API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    );
   }
-
-  if (!token && !isPublicRoute) {
-    // If no token and not a public route, redirect to sign-in
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    return NextResponse.redirect(url);
-  }
-
-  if (token && isPublicRoute) {
-    // If token exists and trying to access a public route, redirect to dashboard
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
+  
+  return response;
 }
 
-// Configure the middleware to run on specific paths
 export const config = {
   matcher: [
-    // Match all routes except for static files, api routes, _next, and public assets
-    "/((?!api|_next/static|_next/image|favicon.ico|assets).*)",
-
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
-}
-
+};

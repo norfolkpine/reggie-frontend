@@ -37,6 +37,9 @@ ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 # Build the Next.js app
 RUN npm run build
 
+# Copy static files to standalone build (required for standalone mode)
+RUN cp -r .next/static .next/standalone/.next/
+
 # ---- Production Stage ----
 FROM node:24.4.1-alpine AS runner
 
@@ -52,11 +55,22 @@ ARG SENTRY_AUTH_TOKEN
 
 WORKDIR /app
 
-# Only copy over the necessary files from the build stage
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy the standalone build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+
+# Ensure static files are properly linked in standalone build
+RUN mkdir -p .next/static && \
+    if [ -d .next/static ]; then \
+        echo "Static files copied successfully"; \
+    else \
+        echo "Warning: Static files not found"; \
+    fi
 
 # Set environment variables (can be customized)
 ENV NODE_ENV=production
@@ -69,8 +83,12 @@ ENV COLLABORATION_WS_URL=$COLLABORATION_WS_URL
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 
+# Change ownership to nextjs user
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
 # Expose the port Next.js runs on
 EXPOSE 3000
 
-# Start the Next.js app
-CMD ["npm", "run", "start"]
+# Start the Next.js app using the standalone server
+CMD ["node", "server.js"]

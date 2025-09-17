@@ -28,6 +28,27 @@ const allowedRoutes = [
   ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
 ];
 
+
+  // Content Security Policy configuration
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' blob: data: https://vercel.live;
+    font-src 'self' https://fonts.gstatic.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+  `;
+
+  export const metadata = {
+    other: {
+      'Content-Security-Policy': cspHeader,
+    },
+  };
+
 export default function RootLayout({
   children,
 }: {

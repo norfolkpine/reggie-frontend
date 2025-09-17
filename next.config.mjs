@@ -14,6 +14,22 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Enable standalone mode for Docker deployment
+  output: 'standalone',
+  // Enable build debugging
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+  // Enable webpack debugging
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    if (!dev) {
+      // Enable source maps in production for debugging
+      config.devtool = 'source-map';
+    }
+    return config;
+  },
   images: {
     unoptimized: true,
   },
@@ -22,11 +38,7 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  env: {
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000',
-    NEXT_PUBLIC_NANGO_API_URL: process.env.NEXT_PUBLIC_NANGO_API_URL,
-    NEXT_PUBLIC_NANGO_BASE_URL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
-  },
+
 }
 
 mergeConfig(nextConfig, userConfig)
@@ -81,4 +93,10 @@ disableLogger: true,
 // https://docs.sentry.io/product/crons/
 // https://vercel.com/docs/cron-jobs
 automaticVercelMonitors: true,
+
+  // Configure for subdirectory deployment (uncomment if needed)
+  // basePath: '/my-app',  // If your app is served from /my-app/
+  // assetPrefix: '/my-app/',  // If assets are served from /my-app/
+  // trailingSlash: true,  // Add trailing slashes to URLs
+
 });
