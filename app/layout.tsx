@@ -6,12 +6,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
 import { ThemeProvider } from "@/components/theme-provider"
-import AuthGuard from "@/components/auth-guard"
-import { SearchProvider } from "@/contexts/search-context"
-import { cn } from "@/lib/utils"
-import { AppProvider } from "@/config/AppProvider"
-import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
-import { AiPanelProvider } from "@/contexts/ai-panel-context"
+
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -36,23 +31,40 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AppProvider>
-        <AuthProvider allowedRoutes={allowedRoutes}>
-          <AuthGuard allowedRoutes={allowedRoutes}>
-            <SearchProvider>
-              <ModalProvider>
-                <ChatSessionProvider>
-                  <AiPanelProvider>
-                    {children}
-                  </AiPanelProvider>
-                </ChatSessionProvider>
-              </ModalProvider>
-            </SearchProvider>
-          </AuthGuard>
-        </AuthProvider>
-        <Toaster />
-        </AppProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          suppressHydrationWarning
+        >
+          <AppProvider>
+          <AuthProvider allowedRoutes={allowedRoutes}>
+            <AuthGuard allowedRoutes={allowedRoutes}>
+              <SearchProvider>
+                <ModalProvider>
+                  <ChatSessionProvider>
+                    <AiPanelProvider>
+                      {children}
+                    </AiPanelProvider>
+                  </ChatSessionProvider>
+                </ModalProvider>
+              </SearchProvider>
+            </AuthGuard>
+          </AuthProvider>
+          <Toaster />
+          </AppProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
 }
+
+
+
+import AuthGuard from "@/components/auth-guard"
+import { SearchProvider } from "@/contexts/search-context"
+import { cn } from "@/lib/utils"
+import { AppProvider } from "@/config/AppProvider"
+import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
+import { AiPanelProvider } from "@/contexts/ai-panel-context"
