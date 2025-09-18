@@ -66,13 +66,15 @@ export async function uploadFiles({
   }
 
   const csrfToken = getCSRFToken();
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+
   try {
     const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/`, {
       method: 'POST',
       body: formData,
-      
+      credentials: 'include',
       headers: {
-        credentials: 'include',
+        ...(token && { "Authorization": `Bearer ${token}` }),
         ...(csrfToken && { "X-CSRFToken": csrfToken }),
       },
     });
