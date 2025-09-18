@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAiPanel } from "@/contexts/ai-panel-context";
 import { cn } from "@/lib/utils";
-import { CustomChat } from "@/features/vault/components/vault-chat";
+import { VaultChat } from "@/features/vault/components/vault-chat";
 
 const MIN_WIDTH = 450;
 const MAX_WIDTH = 800;
@@ -140,8 +140,10 @@ export function AiLayoutPanel() {
 
         {/* Chat Messages Area */}
         <div className="flex-1 flex flex-col min-h-0">
-          <CustomChat
-            agentId=""
+          <VaultChat
+            projectId={currentContext.projectId || ""}
+            folderId={currentContext.folderId?.toString()}
+            fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
             sessionId={undefined}
           />
         </div>

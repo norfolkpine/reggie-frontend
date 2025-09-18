@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -9,8 +9,7 @@ import {
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions";
 import { MessageInput } from "@/components/ui/message-input";
 import { MessageList } from "@/components/ui/message-list";
-import { useAgentChat } from "@/hooks/use-agent-chat";
-import { Paperclip } from "lucide-react";
+import { useVaultChat } from "@/hooks/use-vault-chat";
 import MessageActions from "@/features/chats/components/message-actions";
 import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
@@ -18,19 +17,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Brain, Lightbulb } from "lucide-react";
 
-interface CustomChatProps {
-  agentId: string;
+interface VaultChatProps {
+  projectId: string;
+  folderId?: string;
+  fileIds?: string[];
   sessionId?: string;
   onTitleUpdate?: (title: string | null) => void;
   onNewSessionCreated?: (newSessionId: string) => void;
   onMessageComplete?: () => void;
 }
 
-export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: CustomChatProps) {
+export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
   const { toast } = useToast();
   const [input, setInput] = useState("");
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
@@ -40,65 +39,32 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const {
     messages,
     handleSubmit,
-    uploadFiles, // Destructure the new uploadFiles function
     isLoading,
     error,
     currentDebugMessage,
     currentChatTitle: _currentChatTitle,
     isAgentResponding,
-    fileUploads, // Destructure new state
-    isUploadingFiles, // Destructure new state
-    currentToolCalls, // Add this from useAgentChat
-    currentReasoningSteps, // Add this from useAgentChat
-    isMemoryUpdating, // Add memory updating state
-  } = useAgentChat({
-    agentId,
+    currentToolCalls,
+    currentReasoningSteps,
+    isMemoryUpdating,
+  } = useVaultChat({
+    projectId,
+    folderId,
+    fileIds,
     sessionId,
     onNewSessionCreated,
     onTitleUpdate,
-    reasoning: reasoningEnabled, // Pass reasoning state to hook
-    onMessageComplete, // Pass onMessageComplete to hook
+    reasoning: reasoningEnabled,
+    onMessageComplete,
   });
-  
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    // Only set drag over to false if we're leaving the main container
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
-      const newFiles = droppedFiles.filter(
-        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
-      );
-      if (newFiles.length > 0) {
-        setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
-        uploadFiles(newFiles);
-      }
-    }
-  }, [files, uploadFiles]); // Added uploadFiles to dependency array
 
   const onSubmit = () => {
     // Ensure that input is present before submitting
     if (!input.trim()) return;
-    
-    handleSubmit(input, files); // Pass files to handleSubmit
-    
+
+    handleSubmit(input);
+
     setInput(""); // Clear input after sending
-    setFiles([]); // Clear files after sending
   };
 
   const handleCopy = async (text: string, messageId: string) => {
@@ -299,34 +265,23 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
   return (
     <div className="flex flex-col h-full max-w-full">
-      <div
-        className="flex-1 flex flex-col relative min-h-0"
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {isDragOver && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
-              <div className="text-center">
-                <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                <p className="text-lg font-medium text-gray-900">Drop files here</p>
-                <p className="text-sm text-gray-500">Release to upload</p>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="flex-1 flex flex-col relative min-h-0">
         
         {isEmpty && (
           <div className="flex-1 flex items-center justify-center p-8 min-h-0">
             <PromptSuggestions
-              label="Try these prompts ✨"
+              label="Ask about your vault documents ✨"
               append={(message) => {
                 setInput(message.content);
                 handleSubmit(message.content);
                 setInput("");
               }}
-              suggestions={["Get summaries of documents.", "Extract key insights and patterns."]}
+              suggestions={[
+                "Summarize the key points from all documents",
+                "What are the main themes in these files?",
+                "Extract action items from the documents",
+                "Find information about specific topics"
+              ]}
             />
           </div>
         )}
@@ -429,37 +384,14 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                 onSubmit();
               }}
             >
-              {({ setFiles: setFormFiles }) => (
+              {() => (
                 <MessageInput
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                //   allowAttachments
-                //   files={files}
-                //   setFiles={(newFiles) => {
-                //     if (Array.isArray(newFiles)) {
-                //       const currentFiles = files || [];
-                //       const addedFiles = newFiles.filter(newFile => 
-                //         !currentFiles.some(existingFile => 
-                //           existingFile.name === newFile.name && 
-                //           existingFile.size === newFile.size
-                //         )
-                //       );
-                //       setFiles([...newFiles]);
-                //       // Trigger immediate upload of newly added files
-                //       if (addedFiles.length > 0) {
-                //         uploadFiles(addedFiles);
-                //       }
-                //     } else {
-                //       setFiles([]);
-                //     }
-                //     setFormFiles?.(newFiles);
-                //   }}
                   stop={() => {
-                    // Add logic to stop/abort uploads if needed, via useAgentChat's abortController
+                    // Add logic to stop streaming if needed
                   }}
-                  isGenerating={isLoading} // isLoading now includes isUploadingFiles
-                //   fileUploads={fileUploads} // Pass down fileUploads
-                //   isUploadingFiles={isUploadingFiles} // Pass down isUploadingFiles
+                  isGenerating={isLoading}
                 />
               )}
             </ChatForm>
