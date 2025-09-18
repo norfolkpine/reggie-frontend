@@ -20,6 +20,7 @@ const allowedRoutes = [
   "/sign-up",
   "/forgot-password",
   "/test-token-expiration",
+  "/test-csrf-fix",
   ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
 ];
 

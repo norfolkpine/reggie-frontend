@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -19,11 +19,8 @@ import {
   IconEyeOff,
   IconTrash,
   IconCopy,
-  IconRefresh,
-  IconEdit,
   IconToggleLeft,
   IconToggleRight,
-  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { formatDistanceToNow } from "date-fns";
 import { ApiKeyCardProps } from "../types";
@@ -32,9 +29,7 @@ export function ApiKeyCard({
   apiKey,
   isVisible,
   onToggleVisibility,
-  onEdit,
   onToggleStatus,
-  onRegenerate,
   onDelete,
   onCopy,
 }: ApiKeyCardProps) {
@@ -49,16 +44,8 @@ export function ApiKeyCard({
     });
   };
 
-  // Check if key is expired
-  const isExpired = (expiresAt?: string) => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
-
-  const expired = isExpired(apiKey.expires_at);
-
   return (
-    <Card className={expired ? 'border-red-200 bg-red-50' : ''}>
+    <Card>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -74,26 +61,10 @@ export function ApiKeyCard({
                     Inactive
                   </Badge>
                 )}
-                {expired && (
-                  <Badge variant="destructive">
-                    <IconAlertTriangle className="h-3 w-3 mr-1" />
-                    Expired
-                  </Badge>
-                )}
               </div>
             </div>
-            {apiKey.description && (
-              <CardDescription>{apiKey.description}</CardDescription>
-            )}
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(apiKey)}
-            >
-              <IconEdit className="h-4 w-4" />
-            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -105,30 +76,6 @@ export function ApiKeyCard({
                 <IconToggleLeft className="h-4 w-4 text-gray-400" />
               )}
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <IconRefresh className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Regenerate API Key</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will generate a new API key and invalidate the current one.
-                    Any applications using the current key will need to be updated.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onRegenerate(apiKey.id, apiKey.name)}
-                  >
-                    Regenerate
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -189,29 +136,15 @@ export function ApiKeyCard({
         </div>
 
         {/* Key Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <Label className="text-xs text-muted-foreground">Created</Label>
             <p>{formatDate(apiKey.created_at)}</p>
           </div>
-          {apiKey.expires_at && (
-            <div>
-              <Label className="text-xs text-muted-foreground">Expires</Label>
-              <p className={expired ? 'text-red-600' : ''}>
-                {formatDate(apiKey.expires_at)}
-              </p>
-            </div>
-          )}
           {apiKey.last_used_at && (
             <div>
               <Label className="text-xs text-muted-foreground">Last Used</Label>
               <p>{formatDistanceToNow(new Date(apiKey.last_used_at), { addSuffix: true })}</p>
-            </div>
-          )}
-          {apiKey.usage_count !== undefined && (
-            <div>
-              <Label className="text-xs text-muted-foreground">Usage Count</Label>
-              <p>{apiKey.usage_count.toLocaleString()}</p>
             </div>
           )}
         </div>
