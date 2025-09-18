@@ -370,8 +370,8 @@ export default function Sidebar() {
   return (
     <div
       className={cn(
-        "h-full flex flex-col bg-sidebar-background transition-all duration-300",
-        isExpanded ? "w-64" : "w-16"
+        "h-full flex flex-col transition-all duration-300",
+        isExpanded ? "w-full" : "w-full"
       )}
     >
       {isExpanded ? (
@@ -597,7 +597,7 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-sidebar-accent scrollbar-track-transparent">
             <div className="p-3 space-y-2">
               
             </div>
@@ -638,7 +638,7 @@ export default function Sidebar() {
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-2">
+          <div className="flex-1 overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-sidebar-accent scrollbar-track-transparent">
             <div className="flex flex-col items-center space-y-4">
               {/* Navigation items */}
               {/* Update the collapsed sidebar navigation items rendering
@@ -673,9 +673,9 @@ export default function Sidebar() {
                         <Plus className="h-3 w-3" />
                       </Button>
                     )}
-                    {/* Documents popover */}
-                    {item.name === "Documents" && pathname.startsWith("/documents") && (
-                      <div className="absolute left-12 top-0 z-10 bg-sidebar-background border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
+                     {/* Documents popover */}
+                     {item.name === "Documents" && pathname.startsWith("/documents") && (
+                       <div className="absolute left-12 top-0 z-10 bg-background border rounded shadow p-2 flex flex-col gap-1 min-w-[120px]">
                         {loadingDocs ? (
                           <span className="text-xs text-muted-foreground p-2">Loading...</span>
                         ) : (

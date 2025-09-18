@@ -2,50 +2,33 @@ import { api } from '@/lib/api-client';
 import { 
   PlatformApiKey, 
   PlatformApiKeyCreate, 
-  PlatformApiKeyUpdate, 
   PaginatedPlatformApiKeyList,
   PlatformApiKeyGenerated
 } from '../types/api';
 
-const ENDPOINT = '/api/platform-api-keys/';
+export async function getPlatformApiKeys(page: number = 1): Promise<PaginatedPlatformApiKeyList> {
+  // Since Opie doesn't provide a list endpoint, return empty results
+  return {
+    count: 0,
+    next: null,
+    previous: null,
+    results: []
+  };
+}
 
-// Get all API keys for the current user
-export const getPlatformApiKeys = async (page: number = 1): Promise<PaginatedPlatformApiKeyList> => {
-  const response = await api.get(`${ENDPOINT}?page=${page}`);
-  return response as PaginatedPlatformApiKeyList;
-};
+export async function getPlatformApiKey(id: string): Promise<PlatformApiKey> {
+  // Opie API doesn't provide a get endpoint
+  throw new Error('Get API key operation not supported by Opie API');
+}
 
-// Get a specific API key by ID
-export const getPlatformApiKey = async (id: string): Promise<PlatformApiKey> => {
-  const response = await api.get(`${ENDPOINT}${id}/`);
-  return response as PlatformApiKey;
-};
-
-// Generate a new API key
-export const createPlatformApiKey = async (data: PlatformApiKeyCreate): Promise<PlatformApiKeyGenerated> => {
-  const response = await api.post(ENDPOINT, data);
+export async function createPlatformApiKey(data: PlatformApiKeyCreate): Promise<PlatformApiKeyGenerated> {
+  // For external Opie API, we need to use the full URL
+  const response = await api.post(`/users/api-keys/create/`);
   return response as PlatformApiKeyGenerated;
-};
+}
 
-// Update an existing API key
-export const updatePlatformApiKey = async (id: string, data: PlatformApiKeyUpdate): Promise<PlatformApiKey> => {
-  const response = await api.patch(`${ENDPOINT}${id}/`, data);
+export async function revokePlatformApiKey(id: string): Promise<PlatformApiKey> {
+  // For external Opie API, we need to use the full URL
+  const response = await api.post(`/users/api-keys/revoke/`, { id });
   return response as PlatformApiKey;
-};
-
-// Delete an API key
-export const deletePlatformApiKey = async (id: string): Promise<void> => {
-  await api.delete(`${ENDPOINT}${id}/`);
-};
-
-// Regenerate an API key (creates new key, invalidates old one)
-export const regeneratePlatformApiKey = async (id: string): Promise<PlatformApiKeyGenerated> => {
-  const response = await api.post(`${ENDPOINT}${id}/regenerate/`);
-  return response as PlatformApiKeyGenerated;
-};
-
-// Revoke an API key (disable immediately)
-export const revokePlatformApiKey = async (id: string): Promise<PlatformApiKey> => {
-  const response = await api.post(`${ENDPOINT}${id}/revoke/`);
-  return response as PlatformApiKey;
-};
+}
