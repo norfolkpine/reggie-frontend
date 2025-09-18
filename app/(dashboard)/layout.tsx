@@ -22,7 +22,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto rounded-b-xl min-h-0">
-        <div className="h-full">
+        <div className="h-full min-h-0">
           {children}
         </div>
       </div>
