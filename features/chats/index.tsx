@@ -88,9 +88,12 @@ export default function ChatsComponent() {
     }
   }, [selectedChat]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    
     return () => {
+      document.body.style.overflow = 'unset';
+      
       if (urlUpdateTimeoutRef.current) {
         clearTimeout(urlUpdateTimeoutRef.current);
       }
@@ -192,9 +195,9 @@ export default function ChatsComponent() {
   };
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-[calc(100vh-8rem)] overflow-hidden" style={{ height: 'calc(100vh - 8rem)' }}>
       <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <CustomChat
           agentId={selectedChat.agentCode || DEFAULT_AGENT_ID}
           sessionId={selectedChat.id || undefined}

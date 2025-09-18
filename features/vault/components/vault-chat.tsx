@@ -278,9 +278,7 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
               }}
               suggestions={[
                 "Summarize the key points from all documents",
-                "What are the main themes in these files?",
-                "Extract action items from the documents",
-                "Find information about specific topics"
+                "What are the main themes in these files?"
               ]}
             />
           </div>
