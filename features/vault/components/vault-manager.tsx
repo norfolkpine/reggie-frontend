@@ -23,7 +23,6 @@ import { DeleteProjectDialog } from "./delete-project-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { DeleteFolderConfirmationDialog } from "./delete-folder-confirmation-dialog";
 import { useAiPanel } from "@/contexts/ai-panel-context";
-import { VaultAiChat } from "./vault-ai-chat";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
