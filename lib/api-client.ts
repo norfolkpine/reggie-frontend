@@ -204,7 +204,8 @@ export async function refreshCSRFToken(): Promise<boolean> {
 
 // Improved response handling with better error management
 async function handleResponse(response: Response, httpMethod?: string): Promise<unknown> {
-  if (!response.ok) {
+  // Check if response is not ok OR if it has an error status (like 400)
+  if (!response.ok || response.status >= 400) {
     if (response.status === 401 || response.status === 403) {
       // Handle authentication/authorization errors
       const context = authManager.getAuthContext();
@@ -221,12 +222,31 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
     }
     
     // Try to parse error response, fallback to status text
+    let errorData;
     try {
-      const errorData = await response.json();
-      throw errorData;
-    } catch {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      errorData = await response.json();
+    } catch (parseError) {
+      // If JSON parsing fails, create a generic error
+      const errorObj = {
+        status: response.status,
+        statusText: response.statusText,
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        errors: [{
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: 'http_error',
+          param: undefined
+        }]
+      };
+      throw errorObj;
     }
+    
+    // If we successfully parsed the JSON, create enhanced error and throw it
+    const enhancedError = {
+      ...errorData,
+      status: response.status,
+      statusText: response.statusText
+    };
+    throw enhancedError;
   }
   
   // If 204 No Content and DELETE, return nothing
@@ -268,6 +288,7 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Accept": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...(config.headers as Record<string, string>),
