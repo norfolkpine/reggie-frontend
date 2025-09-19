@@ -253,7 +253,7 @@ export default function ChatsComponent() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] overflow-hidden relative" style={{ height: 'calc(100vh - 8rem)' }}>
+    <div className="flex h-[calc(100vh-6rem)] overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
       {/* Mobile backdrop */}
       {isMobileDockOpen && (
         <div 
