@@ -20,6 +20,7 @@ const allowedRoutes = [
   "/sign-up",
   "/forgot-password",
   "/test-token-expiration",
+  "/test-csrf-fix",
   ...(process.env.NODE_ENV === 'development' ? ["/sentry-example-page"] : [])
 ];
 
@@ -44,7 +45,9 @@ export default function RootLayout({
               <SearchProvider>
                 <ModalProvider>
                   <ChatSessionProvider>
-                    {children}
+                    <AiPanelProvider>
+                      {children}
+                    </AiPanelProvider>
                   </ChatSessionProvider>
                 </ModalProvider>
               </SearchProvider>
@@ -65,4 +68,5 @@ import { SearchProvider } from "@/contexts/search-context"
 import { cn } from "@/lib/utils"
 import { AppProvider } from "@/config/AppProvider"
 import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
+import { AiPanelProvider } from "@/contexts/ai-panel-context"
 

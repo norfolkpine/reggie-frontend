@@ -10,8 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, Settings2 } from "lucide-react";
-import { Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -19,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
-import { DeleteProjectDialog } from "./delete-project-dialog";
+// import { DeleteProjectDialog } from "./delete-project-dialog";
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -47,6 +46,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useHeader } from "@/contexts/header-context";
+import { useAiPanel } from "@/contexts/ai-panel-context";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -89,7 +89,11 @@ export function VaultManager() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  // const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const { openPanel: openAiPanel, setCurrentContext } = useAiPanel();
+  const [currentFolderId, setCurrentFolderId] = useState(0) // 0 means root level
+  const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{id: number, name: string}[]>([])
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
 
   // Set header actions and custom content
   useEffect(() => {
@@ -632,6 +636,25 @@ export function VaultManager() {
                         </DropdownMenu>
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Set context for AI panel
+                        setCurrentContext({
+                          title: currentFolderId === 0 
+                            ? project?.name || 'Root Folder' 
+                            : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
+                          files: vaultFiles,
+                          folderId: currentFolderId,
+                          projectId: projectId
+                        });
+                        openAiPanel();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Ask AI
+                    </Button>
                     <div className="flex items-center space-x-2">
                       {selectedFiles.length > 0 && (
                         <Button 
@@ -652,6 +675,10 @@ export function VaultManager() {
                           )}
                         </Button>
                       )}
+                      <Button onClick={() => setCreateFolderOpen(true)}>
+                        New Folder
+                        <FolderPlus className="h-4 w-4 mr2" />
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button>
@@ -914,12 +941,13 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+{/* 
       <DeleteProjectDialog
         open={deleteProjectOpen}
         onOpenChange={setDeleteProjectOpen}
         project={project ? { id: project.id?.toString() || '', name: project.name || '' } : null}
-      />
+      /> */}
+
     </div>
   );
 }

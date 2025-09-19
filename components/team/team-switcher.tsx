@@ -208,7 +208,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative z-20">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {isCollapsed ? (
@@ -239,7 +239,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
         <DropdownMenuContent
           align={isCollapsed ? "start" : "end"}
           side="top"
-          className="w-64 z-[9999]"
+          className="w-64 z-50"
           sideOffset={8}
           alignOffset={isCollapsed ? 0 : -10}
           avoidCollisions={true}
