@@ -14,6 +14,7 @@ import {
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { AgentThinking } from "@/components/ui/agent-thinking"
+import { ReferencesData } from "@/types/message"
 
 const chatBubbleVariants = cva(
   "group/message relative break-words rounded-lg p-3 text-sm",
@@ -133,6 +134,7 @@ export interface Message {
   parts?: MessagePart[]
   toolCalls?: ToolCall[]
   reasoningSteps?: ReasoningStep[]
+  references?: ReferencesData[]
 }
 
 export interface ToolCall {
@@ -173,6 +175,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   parts,
   toolCalls,
   reasoningSteps,
+  references,
 }) => {
   const files = useMemo(() => {
     if (!experimental_attachments) return [];
@@ -204,7 +207,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         };
       }
       return null;
-    }).filter(Boolean);
+    }).filter((file): file is File | { name: string; type: string; url: string } => file !== null);
   }, [experimental_attachments]);
 
   const isUser = role === "user"
@@ -219,7 +222,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       <div
         className={cn("flex flex-col", isUser ? "items-end" : "items-start")}
       >
-        {files ? (
+        {files && files.length > 0 ? (
           <div className="mb-1 flex flex-wrap gap-2">
             {files.map((file, index) => {
               return <FilePreview file={file} key={index} />
@@ -336,6 +339,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       {toolInvocations && toolInvocations.length > 0 && (
         <ToolCall toolInvocations={toolInvocations} />
       )}
+
+      {/* References display */}
+      {references && references.length > 0 && (
+        <ReferencesDisplay references={references} />
+      )}
     </div>
   )
 }
@@ -344,6 +352,88 @@ function dataUrlToUint8Array(data: string) {
   const base64 = data.split(",")[1]
   const buf = Buffer.from(base64, "base64")
   return new Uint8Array(buf)
+}
+
+const ReferencesDisplay = ({ references }: { references: ReferencesData[] }) => {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className="w-full">
+      <Collapsible
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        className="group w-full overflow-hidden rounded-lg border bg-muted/50"
+      >
+        <div className="flex items-center p-2">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+              <span>References ({references.reduce((acc, ref) => acc + ref.references.length, 0)})</span>
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent forceMount>
+          <motion.div
+            initial={false}
+            animate={isOpen ? "open" : "closed"}
+            variants={{
+              open: { height: "auto", opacity: 1 },
+              closed: { height: 0, opacity: 0 },
+            }}
+            transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+            className="border-t"
+          >
+            <div className="p-3 space-y-3">
+              {references.map((refGroup, groupIndex) => (
+                <div key={groupIndex} className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Query: "{refGroup.query}"
+                  </div>
+                  <div className="space-y-2">
+                    {refGroup.references.map((ref, refIndex) => (
+                      <div
+                        key={refIndex}
+                        className="rounded-md border bg-background p-3 text-sm"
+                      >
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">
+                              {ref.meta_data.file_name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Page {ref.meta_data.page_label}
+                            </span>
+                          </div>
+                          <a
+                            href={ref.meta_data.file_path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View File
+                          </a>
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          <div>File Type: {ref.meta_data.file_type}</div>
+                          <div>Size: {(ref.meta_data.file_size / 1024).toFixed(1)} KB</div>
+                          <div>Modified: {new Date(ref.meta_data.last_modified_date).toLocaleDateString()}</div>
+                        </div>
+                        <blockquote className="border-l-4 border-blue-200 pl-4 py-2 my-2 bg-blue-50/50 rounded-r-md">
+                          <div className="text-sm text-foreground whitespace-pre-wrap italic">
+                            "{ref.content}"
+                          </div>
+                        </blockquote>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
 }
 
 const ReasoningBlock = ({ part, fullWidth = false }: { part: ReasoningPart, fullWidth?: boolean }) => {
