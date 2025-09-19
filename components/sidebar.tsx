@@ -11,7 +11,6 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft,
   ChevronRight,
   ChevronDown,
   BookOpen,
@@ -64,6 +63,7 @@ import { useRemoveDoc } from "@/features/docs/doc-management/api/useRemoveDoc";
 import { Doc } from "@/features/docs/doc-management/types";
 import { useProjects } from "@/features/vault/api/useProjects";
 import { DeleteProjectDialog } from "@/features/vault/components/delete-project-dialog";
+import { useSidebar } from "@/contexts/sidebar-context";
 
 
 const FolderShieldIcon = () => (
@@ -154,7 +154,7 @@ export default function Sidebar() {
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const { isExpanded } = useSidebar();
 
   const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
     null
@@ -257,9 +257,6 @@ export default function Sidebar() {
 
 
 
-  const toggleSidebar = useCallback(() => {
-    setIsExpanded(!isExpanded);
-  }, [isExpanded]);
 
   const handleNavItemClick = useCallback((url: string) => {
     // Always navigate to /chat for new sessions when clicking Assistant
@@ -378,18 +375,9 @@ export default function Sidebar() {
         // Expanded sidebar content
         <div className="flex flex-col h-full">
           <div className="p-3 flex flex-col gap-3">
-            {/* Header with logo and collapse button */}
+            {/* Header with logo */}
             <div className="flex items-center justify-between">
               <span className="font-semibold text-xl">Reggie</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                title="Minimize sidebar"
-                onClick={toggleSidebar}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
             </div>
 
            
@@ -612,18 +600,9 @@ export default function Sidebar() {
         // Minimized sidebar content
         <div className="flex flex-col h-full">
           <div className="p-3 flex flex-col items-center gap-3">
-            {/* Logo and collapse button */}
+            {/* Logo */}
             <div className="flex items-center justify-between w-full">
               <span className="font-semibold">R</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                title="Expand sidebar"
-                onClick={toggleSidebar}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
 
             {/* Plus button (New Chat) in collapsed view */}
