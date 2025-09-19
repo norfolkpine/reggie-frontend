@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Menu, RefreshCcw, Bot } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
@@ -29,6 +29,10 @@ export default function ChatsComponent() {
   // Ref to track URL update timeout
   const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Mobile dock state
+  const [isMobileDockOpen, setIsMobileDockOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
   // Initialize state with URL params
   const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 
       id: sessionId || "", 
@@ -41,23 +45,59 @@ export default function ChatsComponent() {
     sessionId: selectedChat.id || undefined,
   });
 
+  // Handle mobile detection and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Set header actions and custom content
   useEffect(() => {
-    setHeaderActions([
+    const actions = isMobile ? [
+      {
+        label: "Menu",
+        onClick: () => setIsMobileDockOpen(true),
+        icon: <Menu className="h-4 w-4" />,
+        variant: "outline" as const,
+        size: "sm" as const
+      },
+      {
+        label: "",
+        onClick: handleChangeAgent,
+        variant: "outline" as const,
+        size: "sm" as const,
+        icon: <Bot className="h-4 w-4" />,
+      },
+      {
+        label: "",
+        onClick: handleNewChat,
+        icon: <Plus className="h-4 w-4" /> ,
+        variant: "default" as const,
+        size: "sm" as const
+      }
+    ] : [
       {
         label: "Change Agent",
         onClick: handleChangeAgent,
-        variant: "outline",
-        size: "sm"
+        variant: "outline" as const,
+        size: "sm" as const
       },
       {
         label: "New Chat",
         onClick: handleNewChat,
         icon: <Plus className="h-4 w-4" />,
-        variant: "default",
-        size: "sm"
+        variant: "default" as const,
+        size: "sm" as const
       }
-    ]);
+    ];
+    
+    setHeaderActions(actions);
 
     // Set chat title as custom content next to the page title
     setHeaderCustomContent(
@@ -71,7 +111,7 @@ export default function ChatsComponent() {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, currentChatTitle]);
+  }, [setHeaderActions, setHeaderCustomContent, currentChatTitle, isMobile]);
 
   // Update selectedChat when URL params change
   useEffect(() => {
@@ -91,18 +131,31 @@ export default function ChatsComponent() {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     
+    // Handle escape key to close mobile dock
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileDockOpen) {
+        setIsMobileDockOpen(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    
     return () => {
       document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleEscape);
       
       if (urlUpdateTimeoutRef.current) {
         clearTimeout(urlUpdateTimeoutRef.current);
       }
     };
-  }, []);
+  }, [isMobileDockOpen]);
 
   const handleSelectChat = (chatId: string, agentCode?: string | null) => {
     // Update internal state
     setSelectedChat({ id: chatId, agentCode: agentCode || DEFAULT_AGENT_ID });
+    
+    // Close mobile dock when chat is selected
+    setIsMobileDockOpen(false);
     
     // Navigate to the chat session URL
     const newPath = `/chat/${chatId}${agentCode ? `?agentId=${agentCode}` : ''}`;
@@ -116,6 +169,11 @@ export default function ChatsComponent() {
 
   const handleNewChat = async () => {
     console.log("handleNewChat called");
+    
+    // Close mobile dock if open
+    if (isMobile) {
+      setIsMobileDockOpen(false);
+    }
     
     try {
       // Create a new session immediately
@@ -195,8 +253,32 @@ export default function ChatsComponent() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] overflow-hidden" style={{ height: 'calc(100vh - 8rem)' }}>
-      <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+    <div className="flex h-[calc(100vh-8rem)] overflow-hidden relative" style={{ height: 'calc(100vh - 8rem)' }}>
+      {/* Mobile backdrop */}
+      {isMobileDockOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileDockOpen(false)}
+        />
+      )}
+      
+      {/* Desktop dock - always visible on desktop */}
+      <div className="hidden md:block">
+        <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+      </div>
+      
+      {/* Mobile dock - overlay on mobile */}
+      {isMobileDockOpen && (
+        <div className="fixed inset-y-0 left-0 z-50 w-full max-w-sm sm:max-w-md bg-background border-r border-border md:hidden">
+          <AgentChatDock 
+            onSelectChat={handleSelectChat} 
+            onNewChat={handleNewChat}
+            isMobile={true}
+            onClose={() => setIsMobileDockOpen(false)}
+          />
+        </div>
+      )}
+      
       <div className="flex-1 flex flex-col overflow-hidden">
         <CustomChat
           agentId={selectedChat.agentCode || DEFAULT_AGENT_ID}

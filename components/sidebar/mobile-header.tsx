@@ -13,10 +13,10 @@ interface MobileHeaderProps {
   customContent?: React.ReactNode;
 }
 
-export function MobileHeader({ 
-  className, 
-  actions = [], 
-  customContent 
+export function MobileHeader({
+  className,
+  actions = [],
+  customContent,
 }: MobileHeaderProps) {
   const { toggle } = useMobileNav();
 
@@ -32,7 +32,9 @@ export function MobileHeader({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          {customContent || <h1 className="text-xl font-medium text-foreground">Reggie</h1>}
+          {customContent || (
+            <h1 className="text-xl font-medium text-foreground">Reggie</h1>
+          )}
         </div>
 
         {actions.length > 0 && (
@@ -44,7 +46,11 @@ export function MobileHeader({
                 size={action.size || "sm"}
                 onClick={action.onClick}
               >
-                {action.icon && <span className="mr-2">{action.icon}</span>}
+                {action.icon && action.label ? (
+                  <span className="mr-2">{action.icon}</span>
+                ) : action.icon && !action.label ? (
+                  <span>{action.icon}</span>
+                ) : null}
                 {action.label}
               </Button>
             ))}
