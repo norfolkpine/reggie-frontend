@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface AiPanelContextType {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export function AiPanelProvider({ children }: AiPanelProviderProps) {
     folderId: 0,
     projectId: '',
   });
+  const pathname = usePathname();
 
   const openPanel = (context?: Partial<AiPanelContextType['currentContext']>) => {
     if (context) {
@@ -58,6 +60,12 @@ export function AiPanelProvider({ children }: AiPanelProviderProps) {
   const setCurrentContext = (context: Partial<AiPanelContextType['currentContext']>) => {
     setCurrentContextState(prev => ({ ...prev, ...context }));
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsOpen(false);
+    }
+  }, [pathname]); 
 
   const value: AiPanelContextType = {
     isOpen,
