@@ -47,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useHeader } from "@/contexts/header-context";
 import { useAiPanel } from "@/contexts/ai-panel-context";
+import { InstructionsDialog } from "./instructions-dialog";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -94,7 +95,8 @@ export function VaultManager() {
   const [currentFolderId, setCurrentFolderId] = useState(0) // 0 means root level
   const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{id: number, name: string}[]>([])
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [instructions, setInstructions] = useState("");
   // Set header actions and custom content
   useEffect(() => {
     if (loading) {
@@ -119,11 +121,13 @@ export function VaultManager() {
       // Set the back button and project name with edit functionality
       setHeaderActions([
         {
-          label: "Back to Vault",
-          onClick: () => router.push("/vault"),
+          label: "",
+          onClick: () => {
+            setShowInstructionsDialog(true);
+          },
           variant: "ghost",
-          size: "sm",
-          icon: <ArrowLeft className="h-4 w-4" />
+          size: "icon",
+          icon: <Settings className="h-4 w-4" />
         },
         // {
         //   label: "Delete Project",
@@ -941,6 +945,12 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <InstructionsDialog
+            open={showInstructionsDialog}
+            onOpenChange={setShowInstructionsDialog}
+            instructions={instructions}
+            setInstructions={setInstructions}
+          />
 {/* 
       <DeleteProjectDialog
         open={deleteProjectOpen}

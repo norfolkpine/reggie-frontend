@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
+import { ErrorList, ApiError } from "@/components/ui/error-list";
 import { useRouter } from "next/navigation";
 import { register } from "@/api/auth";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { LinkButton } from "@/components/link-button";
 import { useToast } from "@/components/ui/use-toast";
+import { AuthErrorResponse } from "@/types/api";
 
 type SignUpFormProps = HTMLAttributes<HTMLDivElement>;
 
@@ -56,6 +58,7 @@ const formSchema = z
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [apiErrors, setApiErrors] = useState<ApiError[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -72,6 +75,9 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true);
+      setApiErrors([]); // Clear any previous API errors
+      form.clearErrors(); // Clear any previous form errors
+      
       await register({
         email: data.email,
         password2: data.password1,
@@ -93,20 +99,117 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
       }, 3000);
       
     } catch (error: any) {
-      const { hasFieldErrors, message } = handleApiError(error, form.setError);
-
-      if (!hasFieldErrors) {
+      // The API client throws the parsed JSON directly, so error should be the response data
+      const responseData = error
+      
+      // Handle the specific error structure with status and errors array
+      if (responseData.status && responseData.errors && Array.isArray(responseData.errors)) {
+        
+        // Convert API errors to our ApiError format
+        const apiErrorList: ApiError[] = responseData.errors.map((err: AuthErrorResponse['errors'][0]) => ({
+          message: err.message,
+          code: err.code,
+          param: err.param
+        }));
+        
+        setApiErrors(apiErrorList);
+        
+        // Also set field-specific errors for form validation
+        responseData.errors.forEach((err: AuthErrorResponse['errors'][0]) => {
+          if (err.param && err.message) {
+            // Map the param to the form field name
+            const fieldName = err.param === 'password1' ? 'password1' : 
+                            err.param === 'password2' ? 'password2' : 
+                            err.param === 'email' ? 'email' : 
+                            err.param === 'username' ? 'username' : err.param;
+            form.setError(fieldName as any, { 
+              message: err.message 
+            });
+          }
+        });
+        
+        // Show toast with the first error message
+        const firstError = responseData.errors[0];
+        if (firstError && firstError.message) {
+          toast({
+            variant: "destructive",
+            title: "Sign-up Failed",
+            description: firstError.message,
+          });
+        }
+      } else if (responseData.errors && Array.isArray(responseData.errors)) {
+        // Handle case where errors array exists but no status
+        const apiErrorList: ApiError[] = responseData.errors.map((err: any) => ({
+          message: err.message || err.detail || 'Unknown error',
+          code: err.code || 'unknown',
+          param: err.param
+        }));
+        
+        setApiErrors(apiErrorList);
+        
+        // Set field-specific errors
+        responseData.errors.forEach((err: any) => {
+          if (err.param && (err.message || err.detail)) {
+            const fieldName = err.param === 'password1' ? 'password1' : 
+                            err.param === 'password2' ? 'password2' : 
+                            err.param === 'email' ? 'email' : 
+                            err.param === 'username' ? 'username' : err.param;
+            form.setError(fieldName as any, { 
+              message: err.message || err.detail
+            });
+          }
+        });
+        
+        // Show toast with the first error message
+        const firstError = responseData.errors[0];
+        if (firstError && (firstError.message || firstError.detail)) {
+          toast({
+            variant: "destructive",
+            title: "Sign-up Failed",
+            description: firstError.message || firstError.detail,
+          });
+        }
+      } else if (responseData.message) {
+        // Handle case where response has a direct message property
+        setApiErrors([{
+          message: responseData.message,
+          code: 'unknown',
+          param: undefined
+        }])
         toast({
           variant: "destructive",
-          title: "Error",
-          description: message || "Failed to create account. Please try again.",
+          title: "Sign-up Failed",
+          description: responseData.message,
         });
-      } else if (error.errors && error.errors.length > 0) {
+      } else if (responseData.detail) {
+        // Handle case where response has a detail property
+        setApiErrors([{
+          message: responseData.detail,
+          code: 'unknown',
+          param: undefined
+        }])
         toast({
           variant: "destructive",
-          title: "Error",
-          description: error.errors.map((error: any) => error.message).join(', ') || "Failed to create account. Please try again.",
+          title: "Sign-up Failed",
+          description: responseData.detail,
         });
+      } else {
+        // Fallback to existing error handling
+        const { hasFieldErrors, message } = handleApiError(error, form.setError);
+        
+        if (!hasFieldErrors) {
+          const errorMessage = message || "Failed to create account. Please try again.";
+          setApiErrors([{
+            message: errorMessage,
+            code: 'unknown',
+            param: undefined
+          }]);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: errorMessage,
+          });
+        }
       }
     } finally {
       setIsLoading(false);
@@ -138,6 +241,9 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     <div className={cn("grid gap-6", className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
+          {/* API Errors Display */}
+          <ErrorList errors={apiErrors} />
+          
           <div className="grid gap-2">
             <FormField
               control={form.control}

@@ -79,14 +79,31 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       await authApi.logout();
       
       setStatus('LOGGED_OUT');
+      
+      // Clear all localStorage data
       localStorage.clear();
-            // Explicitly clear session cookies to prevent stale state on next login
+      
+      // Explicitly clear known application keys for extra safety
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('vault_active_tab');
+      localStorage.removeItem('chat-dock-state');
+      localStorage.removeItem('font-preference');
+      localStorage.removeItem('kb_active_tab');
+      localStorage.removeItem('kb_selected_kb_id');
+      localStorage.removeItem('docs_config');
+      localStorage.removeItem('selected_chat_state');
+      localStorage.removeItem('active_team');
+      
+      // Explicitly clear session cookies to prevent stale state on next login
       const clearAuthCookies = () => {
         if (typeof document === 'undefined') return;
         document.cookie = "csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "sessionid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       };
       clearAuthCookies();
+      
       flushSync(() => {
         setUser(null);
       });

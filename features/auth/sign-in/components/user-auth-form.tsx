@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { handleApiError } from '@/lib/utils/handle-api-error'
 import { PasswordInput } from '@/components/password-input'
 import { LinkButton } from '@/components/link-button'
+import { ErrorList, ApiError } from '@/components/ui/error-list'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
@@ -46,6 +47,7 @@ const formSchema = z.object({
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
+  const [apiErrors, setApiErrors] = useState<ApiError[]>([])
   const { login } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -64,6 +66,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     try {
       setIsLoading(true)
       setGeneralError(null) // Clear any previous general errors
+      setApiErrors([]) // Clear any previous API errors
       form.clearErrors() // Clear any previous form errors
       
       await login({
@@ -77,20 +80,28 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
       router.replace(search.get('redirect') || '/')
     } catch (error: any) {
-      console.log('Login error received:', error) // Debug logging
+      // The API client throws the parsed JSON directly, so error should be the response data
+      const responseData = error
       
-      // Handle the specific error structure
-      if (error.errors && Array.isArray(error.errors)) {
-        console.log('Processing errors array:', error.errors) // Debug logging
-        let hasFieldErrors = false
+      // Handle the specific error structure with status and errors array
+      if (responseData.status && responseData.errors && Array.isArray(responseData.errors)) {
         
-        error.errors.forEach((err: AuthErrorResponse['errors'][0]) => {
-          console.log('Processing error:', err) // Debug logging
+        // Convert API errors to our ApiError format
+        const apiErrorList: ApiError[] = responseData.errors.map((err: AuthErrorResponse['errors'][0]) => ({
+          message: err.message,
+          code: err.code,
+          param: err.param
+        }))
+        
+        setApiErrors(apiErrorList)
+        
+        // Also set field-specific errors for form validation
+        let hasFieldErrors = false
+        responseData.errors.forEach((err: AuthErrorResponse['errors'][0]) => {
           if (err.param && err.message) {
             // Map the param to the form field name
             const fieldName = err.param === 'password' ? 'password' : 
                             err.param === 'email' ? 'email' : err.param
-            console.log('Setting form error for field:', fieldName, 'with message:', err.message) // Debug logging
             form.setError(fieldName as any, { 
               message: err.message 
             })
@@ -98,17 +109,8 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           }
         })
         
-        // If no field-specific errors, show as general error
-        if (!hasFieldErrors) {
-          const firstError = error.errors[0]
-          if (firstError && firstError.message) {
-            console.log('Setting general error:', firstError.message) // Debug logging
-            setGeneralError(firstError.message)
-          }
-        }
-        
         // Show toast with the first error message
-        const firstError = error.errors[0]
+        const firstError = responseData.errors[0]
         if (firstError && firstError.message) {
           toast({
             variant: 'destructive',
@@ -116,35 +118,116 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             description: firstError.message,
           })
         }
-      } else if (error.message) {
-        // Handle case where error has a direct message property
-        console.log('Error has direct message property:', error.message)
-        setGeneralError(error.message)
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: error.message,
+      } else if (responseData.errors && Array.isArray(responseData.errors)) {
+        // Handle case where errors array exists but no status
+        const apiErrorList: ApiError[] = responseData.errors.map((err: any) => ({
+          message: err.message || err.detail || 'Unknown error',
+          code: err.code || 'unknown',
+          param: err.param
+        }))
+        
+        setApiErrors(apiErrorList)
+        
+        // Set field-specific errors
+        let hasFieldErrors = false
+        responseData.errors.forEach((err: any) => {
+          if (err.param && (err.message || err.detail)) {
+            const fieldName = err.param === 'password' ? 'password' : 
+                            err.param === 'email' ? 'email' : err.param
+            form.setError(fieldName as any, { 
+              message: err.message || err.detail
+            })
+            hasFieldErrors = true
+          }
         })
-      } else if (error.detail) {
-        // Handle case where error has a detail property
-        console.log('Error has detail property:', error.detail)
-        setGeneralError(error.detail)
+        
+        // Show toast with the first error message
+        const firstError = responseData.errors[0]
+        if (firstError && (firstError.message || firstError.detail)) {
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: firstError.message || firstError.detail,
+          })
+        }
+      } else if (responseData.message) {
+        // Handle case where response has a direct message property
+        setGeneralError(responseData.message)
+        setApiErrors([{
+          message: responseData.message,
+          code: 'unknown',
+          param: undefined
+        }])
         toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: error.detail,
+          description: responseData.message,
+        })
+      } else if (responseData.detail) {
+        // Handle case where response has a detail property
+        setGeneralError(responseData.detail)
+        setApiErrors([{
+          message: responseData.detail,
+          code: 'unknown',
+          param: undefined
+        }])
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: responseData.detail,
+        })
+      } else if (typeof responseData === 'string') {
+        // Handle case where response data is a string
+        setApiErrors([{
+          message: responseData,
+          code: 'unknown',
+          param: undefined
+        }])
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: responseData,
+        })
+      } else if (responseData.message && !responseData.message.includes('HTTP')) {
+        // Handle case where error has a message but it's not an HTTP error
+        setApiErrors([{
+          message: responseData.message,
+          code: 'unknown',
+          param: undefined
+        }])
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: responseData.message,
+        })
+      } else if (responseData.message && responseData.message.includes('HTTP')) {
+        // Handle case where we get a generic HTTP error
+        setApiErrors([{
+          message: responseData.message,
+          code: 'http_error',
+          param: undefined
+        }])
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: responseData.message,
         })
       } else {
-        console.log('No errors array found, using fallback error handling') // Debug logging
         // Fallback to existing error handling
         const { hasFieldErrors, message } = handleApiError(error, form.setError)
         
         if (!hasFieldErrors) {
-          setGeneralError(message || 'Failed to login')
+          const errorMessage = message || 'Failed to login'
+          setGeneralError(errorMessage)
+          setApiErrors([{
+            message: errorMessage,
+            code: 'unknown',
+            param: undefined
+          }])
           toast({
             variant: 'destructive',
             title: 'Error',
-            description: message || 'Failed to login',
+            description: errorMessage,
           })
         }
       }
@@ -157,8 +240,11 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     <div className={cn('grid gap-6', className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          {/* General Error Display */}
-          {generalError && (
+          {/* API Errors Display */}
+          <ErrorList errors={apiErrors} />
+          
+          {/* General Error Display (fallback) */}
+          {generalError && apiErrors.length === 0 && (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{generalError}</AlertDescription>
             </Alert>
