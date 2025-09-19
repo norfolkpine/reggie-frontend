@@ -6,12 +6,16 @@ import { HeaderProvider, useHeader } from "@/contexts/header-context";
 import { useAiPanel } from "@/contexts/ai-panel-context";
 import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
 import { SidebarProvider, useSidebar } from "@/contexts/sidebar-context";
+import { MobileNavProvider } from "@/contexts/mobile-nav-context";
+import { MobileHeader, MobileSidebarDrawer } from "@/components/sidebar/index";
+import { useResponsiveStore } from "@/stores/useResponsiveStore";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { customHeader, headerActions, headerCustomContent } = useHeader();
   const { isOpen: isAiPanelOpen, panelWidth } = useAiPanel();
+  const { isMobile } = useResponsiveStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -65,17 +69,28 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         }}
         ref={scrollContainerRef}
       >
-        <div className={`transition-all duration-200 ${
-          isScrolled 
-            ? 'sticky top-0 z-50 rounded-none shadow-md bg-background' 
-            : 'rounded-t-xl'
-        }`}>
-          <PageHeader 
+        {/* Mobile Header */}
+        {isMobile && (
+          <MobileHeader 
             actions={headerActions || []}
             customContent={headerCustomContent}
-            showSidebarToggle={true}
           />
-        </div>
+        )}
+        
+        {/* Desktop Header */}
+        {!isMobile && (
+          <div className={`transition-all duration-200 ${
+            isScrolled 
+              ? 'sticky top-0 z-50 rounded-none shadow-md bg-background' 
+              : 'rounded-t-xl'
+          }`}>
+            <PageHeader 
+              actions={headerActions || []}
+              customContent={headerCustomContent}
+            />
+          </div>
+        )}
+        
         <div className="flex-1 overflow-auto px-1">
           {children}
         </div>
@@ -89,6 +104,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
 function SidebarLayout({ children }: { children: React.ReactNode }) {
   const { isExpanded } = useSidebar();
+  const { isMobile } = useResponsiveStore();
   
   return (
     <div 
@@ -99,23 +115,25 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
         '--header-height': 'calc(var(--spacing) * 14)'
       } as React.CSSProperties}
     >
-      {/* Sidebar Container */}
-      <div className="group peer text-sidebar-foreground hidden md:block" data-state={isExpanded ? "expanded" : "collapsed"} data-collapsible="" data-variant="inset" data-side="left">
-        {/* Sidebar Gap - maintains layout space */}
-        <div className={cn(
-          "relative bg-transparent transition-[width] duration-200 ease-linear",
-          isExpanded ? "w-64" : "w-16"
-        )}></div>
-         {/* Fixed Sidebar Container */}
-         <div className={cn(
-           "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex left-0",
-           isExpanded ? "w-64" : "w-16"
-         )}>
-           <div className="bg-background flex h-full w-full flex-col overflow-hidden">
-             <Sidebar />
+      {/* Desktop Sidebar Container */}
+      {!isMobile && (
+        <div className="group peer text-sidebar-foreground hidden md:block" data-state={isExpanded ? "expanded" : "collapsed"} data-collapsible="" data-variant="inset" data-side="left">
+          {/* Sidebar Gap - maintains layout space */}
+          <div className={cn(
+            "relative bg-transparent transition-[width] duration-200 ease-linear",
+            isExpanded ? "w-64" : "w-16"
+          )}></div>
+           {/* Fixed Sidebar Container */}
+           <div className={cn(
+             "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex left-0",
+             isExpanded ? "w-64" : "w-16"
+           )}>
+             <div className="bg-background flex h-full w-full flex-col overflow-hidden">
+               <Sidebar />
+             </div>
            </div>
-         </div>
-      </div>
+        </div>
+      )}
       
        {/* Main Content Area */}
        <main className="bg-background relative flex w-full flex-1 flex-col p-2">
@@ -123,6 +141,9 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>
       </main>
+      
+      {/* Mobile Navigation Drawer */}
+      {isMobile && <MobileSidebarDrawer />}
     </div>
   );
 }
@@ -134,7 +155,9 @@ export default function RootLayout({
 }) {
   return (
     <SidebarProvider>
-      <SidebarLayout>{children}</SidebarLayout>
+      <MobileNavProvider>
+        <SidebarLayout>{children}</SidebarLayout>
+      </MobileNavProvider>
     </SidebarProvider>
   );
 }

@@ -48,6 +48,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
+import { useMobileNav } from "@/contexts/mobile-nav-context";
 import { ChatSession, getChatSessions } from "@/api/chat-sessions";
 import { IconBubble, IconMenu } from "@tabler/icons-react";
 import { chatStorage } from "@/lib/utils/chat-storage";
@@ -148,13 +149,14 @@ const navigationItems: NavigationItem[] = [
 // ];
 
 // Update the sidebar component to handle chat item clicks
-export default function Sidebar() {
+export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
   const pathname = usePathname();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isExpanded } = useSidebar();
+  const { close: closeMobileNav } = useMobileNav();
 
   const [hoveredHistoryItem, setHoveredHistoryItem] = useState<string | null>(
     null
@@ -262,14 +264,24 @@ export default function Sidebar() {
     // Always navigate to /chat for new sessions when clicking Assistant
     if (url === "/chat") {
       router.push("/chat");
-      return;
+    } else {
+      router.push(url);
     }
-    router.push(url);
-  }, [router]);
+    
+    // Close mobile navigation drawer if in mobile mode
+    if (isMobile) {
+      closeMobileNav();
+    }
+  }, [router, isMobile, closeMobileNav]);
 
   const handleChatItemClick = useCallback((url: string) => {
     router.push(url);
-  }, [router]);
+    
+    // Close mobile navigation drawer if in mobile mode
+    if (isMobile) {
+      closeMobileNav();
+    }
+  }, [router, isMobile, closeMobileNav]);
 
   const handleHistoryItemClick = useCallback((
     sessionId: string,
@@ -281,7 +293,12 @@ export default function Sidebar() {
       url += `?${params.toString()}`;
     }
     router.push(url);
-  }, [router]);
+    
+    // Close mobile navigation drawer if in mobile mode
+    if (isMobile) {
+      closeMobileNav();
+    }
+  }, [router, isMobile, closeMobileNav]);
 
   const renderIcon = useCallback((icon?: ChatItem["icon"]) => {
     if (!icon) return null;
@@ -376,12 +393,12 @@ export default function Sidebar() {
         <div className="flex flex-col h-full">
           <div className="p-3 flex flex-col gap-3">
             {/* Header with logo */}
-            <div className="flex items-center justify-between">
+            {!isMobile && (
+              <div className="flex items-center justify-between">
               <span className="font-semibold text-xl">Reggie</span>
             </div>
-
-           
-
+            )}
+            
             {/* Navigation items */}
             <div className="space-y-1">
               {/* Update the expanded sidebar navigation items rendering
@@ -611,7 +628,12 @@ export default function Sidebar() {
               size="icon"
               className="rounded-full w-10 h-10"
               title="New Chat"
-              onClick={() => router.push("/chat")}
+              onClick={() => {
+                router.push("/chat");
+                if (isMobile) {
+                  closeMobileNav();
+                }
+              }}
             >
               <Plus className="h-5 w-5" />
             </Button>
