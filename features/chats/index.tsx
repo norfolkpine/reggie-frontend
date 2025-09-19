@@ -61,7 +61,7 @@ export default function ChatsComponent() {
   useEffect(() => {
     const actions = isMobile ? [
       {
-        label: "Menu",
+        label: "History",
         onClick: () => setIsMobileDockOpen(true),
         icon: <Menu className="h-4 w-4" />,
         variant: "outline" as const,
