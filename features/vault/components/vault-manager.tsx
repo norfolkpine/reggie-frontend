@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, updateVaultFile, VaultFilesResponse } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
@@ -97,6 +97,10 @@ export function VaultManager() {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
   const [instructions, setInstructions] = useState("");
+  const [renameFileOpen, setRenameFileOpen] = useState(false);
+  const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
+  const [newFileName, setNewFileName] = useState("");
+  const [isRenamingFile, setIsRenamingFile] = useState(false);
   // Set header actions and custom content
   useEffect(() => {
     if (loading) {
@@ -542,6 +546,40 @@ export function VaultManager() {
     }
   };
 
+  // Add a function to handle file rename
+  const handleFileRename = async () => {
+    if (!fileToRename || !newFileName.trim()) return;
+    setIsRenamingFile(true);
+    try {
+      await updateVaultFile(fileToRename.id, { original_filename: newFileName.trim() });
+      toast({ 
+        title: "File renamed", 
+        description: `File renamed to '${newFileName.trim()}'.` 
+      });
+      setRenameFileOpen(false);
+      setFileToRename(null);
+      setNewFileName("");
+      // Refresh file list
+      fetchFiles();
+    } catch (error) {
+      const { message } = handleApiError(error);
+      toast({ 
+        title: "Error renaming file", 
+        description: message || "Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsRenamingFile(false);
+    }
+  };
+
+  // Add a function to open rename dialog
+  const openRenameDialog = (file: VaultFile) => {
+    setFileToRename(file);
+    setNewFileName(file.original_filename || '');
+    setRenameFileOpen(true);
+  };
+
   if (!project && !loading) {
     return (
       <div className="text-center py-12">
@@ -778,6 +816,10 @@ export function VaultManager() {
                                     <Download className="mr-2 h-4 w-4" />
                                     Download
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openRenameDialog(file)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Rename
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem>
                                     <Link className="mr-2 h-4 w-4" />
                                     Copy Link
@@ -961,6 +1003,38 @@ export function VaultManager() {
               }
             }}
           />
+
+      {/* Rename File Dialog */}
+      <Dialog open={renameFileOpen} onOpenChange={setRenameFileOpen}>
+        <DialogContent onClick={e => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+            <DialogDescription>
+              Enter a new name for the file.
+            </DialogDescription>
+          </DialogHeader>
+          <Input 
+            value={newFileName} 
+            onChange={e => setNewFileName(e.target.value)} 
+            placeholder="New file name" 
+            autoFocus
+          />
+          <DialogFooter>
+            <Button 
+              onClick={() => setRenameFileOpen(false)} 
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleFileRename} 
+              disabled={isRenamingFile || !newFileName.trim()}
+            >
+              {isRenamingFile ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 {/* 
       <DeleteProjectDialog
         open={deleteProjectOpen}

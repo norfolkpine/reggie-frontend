@@ -100,6 +100,16 @@ export async function deleteVaultFile(fileId: number): Promise<void> {
     throw new Error(message || 'Failed to delete file');
   }
 }
+
+export async function updateVaultFile(fileId: number, data: { original_filename?: string }): Promise<VaultFile> {
+  try {
+    const response = await api.patch(`/reggie/api/v1/vault-files/${fileId}/`, data);
+    return response as VaultFile;
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to update file');
+  }
+}
 export async function chatWithVaultAgent(params: {
   project_uuid: string;
   parent_id?: number;
