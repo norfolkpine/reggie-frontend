@@ -118,7 +118,7 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
       </div>
       
        {/* Main Content Area */}
-       <main className="bg-background relative flex w-full flex-1 flex-col p-4">
+       <main className="bg-background relative flex w-full flex-1 flex-col p-2">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>

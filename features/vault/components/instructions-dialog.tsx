@@ -28,7 +28,8 @@ export function InstructionsDialog({ open, onOpenChange, instructions, setInstru
             placeholder="Write instructions for Reggie..."
             value={instructions}
             onChange={e => setInstructions(e.target.value)}
-            className="min-h-[150px] text-md"
+            className="h-[250px] min-h-[150px] text-sm"
+            style={{ minHeight: 150, height: 250 }}
             autoFocus
           />
         </div>

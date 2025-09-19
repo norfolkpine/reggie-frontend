@@ -4,7 +4,13 @@ import { usePathname } from "next/navigation";
 import { getPageTitle } from "@/lib/navigation";
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import { useSidebar } from "@/contexts/sidebar-context";
 
 interface HeaderAction {
@@ -53,9 +59,9 @@ export function PageHeader({
               onClick={toggleSidebar}
             >
               {isExpanded ? (
-                <ChevronLeft className="h-4 w-4" />
+                <PanelLeftClose className="h-4 w-4" />
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <PanelLeftOpen className="h-4 w-4" />
               )}
             </Button>
             <div className="h-6 w-px bg-border"></div>
@@ -79,7 +85,11 @@ export function PageHeader({
               size={action.size || "sm"}
               onClick={action.onClick}
             >
-              {action.icon && <span className="mr-2">{action.icon}</span>}
+              {action.icon && action.label ? (
+                <span className="mr-2">{action.icon}</span>
+              ) : action.icon && !action.label ? (
+                <span>{action.icon}</span>
+              ) : null}
               {action.label}
             </Button>
           ))}
