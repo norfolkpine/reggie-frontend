@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { useCunninghamTheme } from '@/cunningham';
 import { useResponsiveStore } from '@/stores/';
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
+import { QueryClientProvider as CustomQueryClientProvider, useQueryClientContext } from '@/contexts/query-client-context';
 
 
 /**
@@ -26,9 +27,10 @@ const queryClient = new QueryClient({
   defaultOptions,
 });
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
+function AppProviderContent({ children }: { children: React.ReactNode }) {
   const { theme } = useCunninghamTheme();
   const { replace } = useRouter();
+  const { setQueryClient } = useQueryClientContext();
 
   const initializeResizeListener = useResponsiveStore(
     (state) => state.initializeResizeListener,
@@ -40,6 +42,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [initializeResizeListener]);
 
   useEffect(() => {
+    // Set the query client in the context
+    setQueryClient(queryClient);
+    
     queryClient.setDefaultOptions({
       ...defaultOptions,
       mutations: {
@@ -62,13 +67,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
-  }, [replace]);
+  }, [replace, setQueryClient]);
 
   return (
+    <CunninghamProvider theme={theme}>
+      {children}
+    </CunninghamProvider>
+  );
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  return (
     <QueryClientProvider client={queryClient}>
-      <CunninghamProvider theme={theme}>
+      <CustomQueryClientProvider>
+        <AppProviderContent>
           {children}
-      </CunninghamProvider>
+        </AppProviderContent>
+      </CustomQueryClientProvider>
     </QueryClientProvider>
   );
 }

@@ -1,0 +1,15 @@
+/* Sidebar Styles */
+.sidebar-divider {
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin: 0.5rem 0;
+}
+
+.sidebar-divider--collapsed {
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin: 0.25rem 0;
+  width: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+}

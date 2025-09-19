@@ -8,6 +8,8 @@ import { useEffect } from "react";
 import { ensureCSRFToken, setAuthContext } from "@/lib/api-client";
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 import { useRouter } from "next/navigation";
+import { clearAllStorage } from "@/lib/utils/storage-clear";
+import { useQueryClientContext } from "./query-client-context";
 
 export interface AuthContext {
   isAuthenticated: boolean;
@@ -28,6 +30,7 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
   const isAuthenticated = !!user;
   const [status, setStatus] = React.useState<string | 'LOGGED_IN' | 'LOGGED_OUT'>('LOGGED_OUT');
   const router = useRouter();
+  const { queryClient } = useQueryClientContext();
   
   useEffect(() => {
     const storedUser = getStoredUser();
@@ -80,37 +83,21 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       
       setStatus('LOGGED_OUT');
       
-      // Clear all localStorage data
-      localStorage.clear();
-      
-      // Explicitly clear known application keys for extra safety
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem('vault_active_tab');
-      localStorage.removeItem('chat-dock-state');
-      localStorage.removeItem('font-preference');
-      localStorage.removeItem('kb_active_tab');
-      localStorage.removeItem('kb_selected_kb_id');
-      localStorage.removeItem('docs_config');
-      localStorage.removeItem('selected_chat_state');
-      localStorage.removeItem('active_team');
-      
-      // Explicitly clear session cookies to prevent stale state on next login
-      const clearAuthCookies = () => {
-        if (typeof document === 'undefined') return;
-        document.cookie = "csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "sessionid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      };
-      clearAuthCookies();
+      // Clear all storage data and caches comprehensively
+      await clearAllStorage(queryClient || undefined);
       
       flushSync(() => {
         setUser(null);
       });
     } catch (error) {
       console.error("Logout failed:", error);
+      // Even if logout API fails, we should still clear local storage
+      await clearAllStorage(queryClient || undefined);
+      flushSync(() => {
+        setUser(null);
+      });
     }
-  }, []);
+  }, [queryClient]);
 
   const login = async (credentials: Login) => {
     try {

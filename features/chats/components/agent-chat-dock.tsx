@@ -35,10 +35,14 @@ const AgentChatDock = memo(function AgentChatDock({
   onSelectChat,
   onNewChat,
   selectedSessionId: selectedSessionIdProp,
+  isMobile = false,
+  onClose,
 }: {
   onSelectChat?: (chatId: string, agentCode?: string | null) => void
   onNewChat?: () => void
   selectedSessionId?: string
+  isMobile?: boolean
+  onClose?: () => void
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
@@ -74,6 +78,13 @@ const AgentChatDock = memo(function AgentChatDock({
     }
     return null
   })
+
+  // Set default tab for mobile when dock opens
+  useEffect(() => {
+    if (isMobile && !activeTab) {
+      setActiveTab("all")
+    }
+  }, [isMobile, activeTab])
 
   // Save dock state to localStorage whenever it changes
   useEffect(() => {
@@ -190,9 +201,10 @@ const AgentChatDock = memo(function AgentChatDock({
   }
 
   return (
-    <div className="flex bg-background sticky top-16 self-start h-full">
-      {/* Left Sidebar with Icons */}
-      <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible">
+    <div className={`${isMobile ? 'flex flex-col h-full' : 'flex bg-background sticky top-16 self-start h-full'}`}>
+      {/* Left Sidebar with Icons - hidden on mobile */}
+      {!isMobile && (
+        <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible">
         {dockItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id
@@ -224,11 +236,12 @@ const AgentChatDock = memo(function AgentChatDock({
             </div>
           )
         })}
-      </div>
+        </div>
+      )}
 
       {/* Main Panel */}
       {activeTab && (
-        <div className="w-96 bg-card border-r border-border flex flex-col">
+        <div className={`${isMobile ? 'w-full flex-1' : 'w-96'} bg-card ${!isMobile ? 'border-r border-border' : ''} flex flex-col`}>
           {/* Header */}
           <div className="flex items-center justify-between p-2 border-b border-border">
             <div className="flex items-center gap-2">
@@ -239,17 +252,52 @@ const AgentChatDock = memo(function AgentChatDock({
                   return <Icon className="w-4 h-4 text-blue-600" />
                 })()}
               </div> */}
-              <h2 className="font-semibold text-foreground">{getTabLabel(activeTab)}</h2>
+              <h2 className="font-semibold text-foreground">
+                {activeTab ? getTabLabel(activeTab) : 'Chat History'}
+              </h2>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setActiveTab(null)}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                onClick={() => isMobile ? onClose?.() : setActiveTab(null)}
+              >
                 <X className="w-4 h-4 text-muted-foreground" />
               </Button>
             </div>
           </div>
 
+          {/* Mobile Tab Navigation */}
+          {isMobile && (
+            <div className="w-full bg-card border-b border-border flex-shrink-0">
+              <div className="flex overflow-x-auto">
+                {dockItems.map((item) => {
+                  const Icon = item.icon
+                  const isActive = activeTab === item.id
+
+                  return (
+                    <button
+                      key={`mobile-tab-${item.id}`}
+                      onClick={() => handleTabClick(item.id)}
+                      className={cn(
+                        "flex-1 min-w-0 flex flex-col items-center justify-center py-3 px-1 sm:px-2 text-xs font-medium transition-colors whitespace-nowrap",
+                        isActive
+                          ? "bg-primary/10 text-primary border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 mb-1 flex-shrink-0" />
+                      <span className="truncate text-center">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* New Chat Button & Search Bar */}
-          <div className="p-2 border-b border-border">
+          <div className="p-2 sm:p-3 border-b border-border">
             <Button
               onClick={() => {
                 console.log("New Chat button clicked");
@@ -258,23 +306,27 @@ const AgentChatDock = memo(function AgentChatDock({
                 } else {
                   console.log("onNewChat function not provided");
                 }
+                // Close mobile dock when new chat is created
+                if (isMobile) {
+                  onClose?.();
+                }
               }}
-              className="w-full bg-card hover:bg-accent text-foreground hover:text-foreground justify-start mb-2 h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-border rounded-lg"
+              className="w-full bg-card hover:bg-accent text-foreground hover:text-foreground justify-start mb-2 h-9 sm:h-10 font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-border rounded-lg"
               size="sm"
             >
               <Plus className="w-4 h-4 mr-2 text-muted-foreground" />
-              New Chat
+              <span className="truncate">New Chat</span>
             </Button>
             <Input
               placeholder="Type to search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
+              className="w-full h-9 sm:h-10"
             />
           </div>
 
           {/* Chat History Sections */}
-          <div className="flex-1 overflow-y-auto px-1 pb-4" onScroll={handleScroll}>
+          <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-4" onScroll={handleScroll}>
             {sections.map((section, sectionIndex) => (
               <div key={section.title} className="mb-4">
                 <button
@@ -291,7 +343,7 @@ const AgentChatDock = memo(function AgentChatDock({
                         <div
                           key={`chat ${item.id} ${itemIndex}`}
                           className={cn(
-                            "rounded-lg p-2 transition-colors duration-150 group relative",
+                            "rounded-lg p-2 sm:p-3 transition-colors duration-150 group relative",
                             (selectedSessionId === item.id || editingSessionId === item.id) ? "bg-accent" : "",
                     "hover:bg-accent"
                           )}
@@ -330,20 +382,20 @@ const AgentChatDock = memo(function AgentChatDock({
                                 />
                               </div>
                             ) : (
-                              <h4 className="font-medium text-sm text-foreground mb-1">
+                              <h4 className="font-medium text-sm sm:text-base text-foreground mb-1 line-clamp-2">
                                 {item.title.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                               </h4>
                             )}
 
                             <div className="mb-1">
-                              <span className="inline-block bg-card text-foreground text-xs font-medium px-1.5 py-0.5 rounded-full border border-border">
+                              <span className="inline-block bg-card text-foreground text-xs font-medium px-2 py-1 rounded-full border border-border">
                                 {item.agent && item.agent.split('-').pop()?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="w-3 h-3" />
-                              {item.timestamp}
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{item.timestamp}</span>
                             </div>
                           </div>
 
