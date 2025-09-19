@@ -212,6 +212,8 @@ export function VaultManager() {
       setLoading(true);
       const data = await getProject(projectId);
       setProject(data);
+      // Load existing custom instructions
+      setInstructions(data.instruction?.content || "");
     } catch (error) {
       toast({
         title: "Error",
@@ -950,6 +952,14 @@ export function VaultManager() {
             onOpenChange={setShowInstructionsDialog}
             instructions={instructions}
             setInstructions={setInstructions}
+            projectUuid={projectId}
+            onSave={(newInstructions) => {
+              setInstructions(newInstructions);
+              // Update the project state with the new instructions
+              if (project) {
+                setProject({ ...project, custom_instruction: newInstructions });
+              }
+            }}
           />
 {/* 
       <DeleteProjectDialog
