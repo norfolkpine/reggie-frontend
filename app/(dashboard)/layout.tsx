@@ -56,7 +56,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-full gap-2">
       <div 
         className={cn(
-          "bg-white border shadow-sm flex flex-col overflow-hidden transition-all duration-300",
+          "bg-background border shadow-sm flex flex-col overflow-hidden transition-all duration-300",
           isAiPanelOpen ? "rounded-xl" : "rounded-xl"
         )}
         style={{
@@ -66,7 +66,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       >
         <div className={`transition-all duration-200 ${
           isScrolled 
-            ? 'sticky top-0 z-50 rounded-none shadow-md bg-white' 
+            ? 'sticky top-0 z-50 rounded-none shadow-md bg-background' 
             : 'rounded-t-xl'
         }`}>
           <PageHeader 
