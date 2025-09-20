@@ -188,7 +188,7 @@ export function VaultManager() {
   useEffect(() => {
     fetchProject();
     fetchFiles();
-  }, [projectId, currentPage, itemsPerPage]);
+  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
   // Reset to first page when search query or filters change
   useEffect(() => {
@@ -234,7 +234,8 @@ export function VaultManager() {
         projectId,
         currentPage,
         itemsPerPage,
-        searchQuery
+        searchQuery,
+        currentFolderId
       );
       
       setFilesCount(response.count);
@@ -247,7 +248,7 @@ export function VaultManager() {
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
                 // Or extract extension from filename
-        const fileExtension = file.original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
+        const fileExtension = mimeExtension || '';
         
         return {
           ...file,
@@ -928,7 +929,7 @@ export function VaultManager() {
                               />
                             </TableCell>
                             <TableCell className="font-medium">
-                              {file.file_type === "folder" ? 
+                              {file.type === "folder" ? 
                                 <div 
                                   className="flex items-center space-x-2 cursor-pointer hover:text-primary"
                                   onClick={() => handleFolderClick(file)}
@@ -947,7 +948,10 @@ export function VaultManager() {
                               }
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
+                              {file.is_folder? 
+                                <></> :
+                                <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
+                              } 
                             </TableCell>
                             <TableCell>
                               {/* Display file size in KB or MB */}

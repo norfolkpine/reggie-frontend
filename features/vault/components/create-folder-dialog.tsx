@@ -34,7 +34,7 @@ export function CreateFolderDialog({ open, onOpenChange, onCreateFolder }: Creat
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <Input
-              placeholder="E.g. Birthday Party Planning"
+              placeholder="E.g. New Folder"
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
               autoFocus
