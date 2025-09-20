@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -14,8 +14,7 @@ import MessageActions from "@/features/chats/components/message-actions";
 import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Brain, Lightbulb } from "lucide-react";
+import { Paperclip } from "lucide-react";
 
 interface VaultChatProps {
   projectId: string;
@@ -35,17 +34,21 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   const {
     messages,
     handleSubmit,
+    uploadFiles,
     isLoading,
     error,
     currentDebugMessage,
     currentChatTitle: _currentChatTitle,
     isAgentResponding,
     currentToolCalls,
+    isUploadingFiles,
     currentReasoningSteps,
     isMemoryUpdating,
   } = useVaultChat({
@@ -225,6 +228,38 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
     }
   }, [isAgentResponding, lastMessage]);
 
+    
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set drag over to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      // Filter out files that might already be in the list by name and size (basic check)
+      const newFiles = droppedFiles.filter(
+        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
+      );
+      if (newFiles.length > 0) {
+        setFiles((prev) => [...prev, ...newFiles]);
+        // Trigger immediate upload of new files
+        uploadFiles(newFiles);
+      }
+    }
+  }, [files, uploadFiles]); // Added uploadFiles to dependency array
+
   // Manual scroll trigger for streaming responses
   useEffect(() => {
     if (isAgentResponding && messages.length > 0) {
@@ -267,7 +302,24 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
 
   return (
     <div className="flex flex-col h-full max-w-full">
-      <div className="flex-1 flex flex-col relative min-h-0">
+      <div 
+        className="flex-1 flex flex-col relative min-h-0"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+
+        {isDragOver && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+              <div className="text-center">
+                <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                <p className="text-lg font-medium text-gray-900">Drop files here</p>
+                <p className="text-sm text-gray-500">Release to upload</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {isEmpty && (
           <div className="flex-1 flex items-center justify-center p-8 min-h-0">
