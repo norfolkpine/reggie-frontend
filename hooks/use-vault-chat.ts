@@ -28,6 +28,7 @@ interface ReasoningStep {
 }
 
 interface UseVaultChatProps {
+  agentId: string;
   projectId: string;
   folderId?: string | null;
   fileIds?: string[];
@@ -52,6 +53,7 @@ interface UseVaultChatReturn {
 }
 
 export function useVaultChat({
+  agentId,
   projectId,
   folderId = null,
   fileIds = [],
@@ -127,6 +129,7 @@ export function useVaultChat({
         console.error('Error loading session details or messages:', error);
         captureChatError(error, {
           action: 'loadExistingSessionDetails',
+          agentId: agentId,
           projectId: projectId,
           sessionId: ssid,
           apiResponse: error,
@@ -220,6 +223,7 @@ export function useVaultChat({
         file_ids: fileIds,
         message: value,
         session_id: tempSessionId,
+        agentId: agentId,
         reasoning: reasoning,
       };
 
@@ -373,6 +377,7 @@ export function useVaultChat({
                 sessionId: tempSessionId,
                 dataContent: dataContent,
                 apiResponse: e,
+                agentId: agentId,
                 component: 'vault-chat'
               });
             }
@@ -431,6 +436,7 @@ export function useVaultChat({
           captureChatError(e, {
             action: 'releaseReaderLock',
             projectId: projectId,
+            agentId: agentId,
             sessionId: tempSessionId,
             apiResponse: e,
             component: 'vault-chat'
@@ -443,7 +449,7 @@ export function useVaultChat({
         onMessageComplete();
       }
     }
-  }, [projectId, folderId, fileIds, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
+  }, [agentId, projectId, folderId, fileIds, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
 
   return {
     messages,

@@ -19,6 +19,7 @@ import { Brain, Lightbulb } from "lucide-react";
 
 interface VaultChatProps {
   projectId: string;
+  agentId: string;
   folderId?: string;
   fileIds?: string[];
   sessionId?: string;
@@ -27,7 +28,7 @@ interface VaultChatProps {
   onMessageComplete?: () => void;
 }
 
-export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
+export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
     currentReasoningSteps,
     isMemoryUpdating,
   } = useVaultChat({
+    agentId,
     projectId,
     folderId,
     fileIds,
