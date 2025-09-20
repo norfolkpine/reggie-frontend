@@ -100,6 +100,7 @@ export async function deleteVaultFile(fileId: number): Promise<void> {
     throw new Error(message || 'Failed to delete file');
   }
 }
+
 export async function chatWithVaultAgent(params: {
   project_uuid: string;
   parent_id?: number;
@@ -149,4 +150,49 @@ export async function chatWithVaultAgent(params: {
   }
 
   return response;
+}
+export async function createFolder({
+  folderName,
+  project_uuid,
+  parent_id = 0,
+  uploaded_by,
+  team,
+}: {
+  folderName: string;
+  project_uuid: string;
+  uploaded_by?: number;
+  parent_id?: number;
+  team?: number;
+}): Promise<VaultFile> {
+  const formData = new FormData();
+  formData.append('original_filename', folderName);
+  formData.append('project_uuid', project_uuid);
+  formData.append('is_folder', "true");
+  formData.append('uploaded_by', String(uploaded_by));
+  formData.append('parent_id', String(parent_id));
+  formData.append('type', 'folder');
+  if (typeof team !== 'undefined' && team !== null) {
+    formData.append('team', String(team));
+  }
+
+  try {
+    const response = await api.post('/reggie/api/v1/vault-files/', formData);
+    return response as VaultFile;
+  } catch (error: any) {
+    const message = error?.message || 'Failed to create folder';
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
+export async function moveVaultFiles(fileIds: number[], targetFolderId: number): Promise<void> {
+  try {
+    await api.post('/reggie/api/v1/vault-files/move/', {
+      file_ids: fileIds,
+      target_folder_id: targetFolderId
+    });
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to move files');
+  }
 }
