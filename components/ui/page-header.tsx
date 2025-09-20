@@ -38,7 +38,6 @@ export function PageHeader({
   className = "",
   actions = [],
   customContent,
-  showSidebarToggle = false,
 }: PageHeaderProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
@@ -49,8 +48,7 @@ export function PageHeader({
       className={`p-4 flex items-center justify-between w-full ${className} border-b border-border`}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {showSidebarToggle && (
-          <>
+      <>
             <Button
               variant="ghost"
               size="icon"
@@ -66,7 +64,6 @@ export function PageHeader({
             </Button>
             <div className="h-6 w-px bg-border"></div>
           </>
-        )}
         {customContent
           ? customContent
           : pageTitle && (
