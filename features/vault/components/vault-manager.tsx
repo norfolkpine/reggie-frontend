@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -102,6 +102,9 @@ export function VaultManager() {
   const [isDragging, setIsDragging] = useState(false)
   const [draggedFiles, setDraggedFiles] = useState<number[]>([])
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
+
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   // Set header actions and custom content
   useEffect(() => {
     if (loading) {
@@ -686,6 +689,41 @@ export function VaultManager() {
     setDraggedFiles([]);
   }, [draggedFiles, vaultFiles, toast]);
 
+    
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    console.log("files upload~!~~~~~~~~~~~~~~~~~~");
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set drag over to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      // Filter out files that might already be in the list by name and size (basic check)
+      const newFiles = droppedFiles.filter(
+        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
+      );
+      if (newFiles.length > 0) {
+        console.log("newFile", newFiles);
+        setFiles((prev) => [...prev, ...newFiles]);
+        // Trigger immediate upload of new files
+        // uploadFiles(newFiles);
+        handleFileUpload(newFiles);
+      }
+    }
+  }, [files, uploadFiles]); // Added uploadFiles to dependency array
+
   if (!project && !loading) {
     return (
       <div className="text-center py-12">
@@ -887,126 +925,144 @@ export function VaultManager() {
                 </div>
                 
                 <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">
-                            <Checkbox 
-                            checked={selectAllChecked}
-                            onCheckedChange={toggleSelectAll}
-                            aria-label="Select all files"
-                          />
-                        </TableHead>
-                        <TableHead className="w-[350px]">Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Last Modified</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredFiles.length > 0 ? (
-                        filteredFiles.map((file) => (
-                          <TableRow
-                            key={file.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, file.id)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
-                            className={`
-                              ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
-                              ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
-                              cursor-move
-                            `}
-                          >
-                            <TableCell>
+                  <div
+                    className="flex-1 flex flex-col relative min-h-0"
+                    onDragOver={handleFileDragOver}
+                    onDragLeave={handleFileDragLeave}
+                    onDrop={handleFileDrop}
+                  >
+                    {isDragOver && (
+                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+                        <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+                          <div className="text-center">
+                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                            <p className="text-lg font-medium text-gray-900">Drop files here</p>
+                            <p className="text-sm text-gray-500">Release to upload</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">
                               <Checkbox 
-                                checked={selectedFiles.includes(file.id)}
-                                onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
-                                aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {file.type === "folder" ? 
-                                <div 
-                                  className="flex items-center space-x-2 cursor-pointer hover:text-primary"
-                                  onClick={() => handleFolderClick(file)}
-                                >
-                                  <Folder className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {file.original_filename || 'New Folder'}
-                                  </span>
-                                </div> : 
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              }
-                            </TableCell>
-                            <TableCell>
-                              {file.is_folder? 
-                                <></> :
-                                <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
-                              } 
-                            </TableCell>
-                            <TableCell>
-                              {/* Display file size in KB or MB */}
-                              {file.size 
-                                ? file.size < 1024 * 1024 
-                                  ? `${(file.size / 1024).toFixed(1)} KB` 
-                                  : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-                                : 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              {file.created_at ? 
-                                formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
-                                'N/A'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleFilePreview(file)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Preview
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleFileDownload(file)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Link className="mr-2 h-4 w-4" />
-                                    Copy Link
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleFileDelete(file.id)}
+                              checked={selectAllChecked}
+                              onCheckedChange={toggleSelectAll}
+                              aria-label="Select all files"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[350px]">Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Last Modified</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredFiles.length > 0 ? (
+                          filteredFiles.map((file) => (
+                            <TableRow
+                              key={file.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, file.id)}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              className={`
+                                ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
+                                ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
+                                cursor-move
+                              `}
+                            >
+                              <TableCell>
+                                <Checkbox 
+                                  checked={selectedFiles.includes(file.id)}
+                                  onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
+                                  aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {file.type === "folder" ? 
+                                  <div 
+                                    className="flex items-center space-x-2 cursor-pointer hover:text-primary"
+                                    onClick={() => handleFolderClick(file)}
                                   >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <span>
+                                      {file.original_filename || 'New Folder'}
+                                    </span>
+                                  </div> : 
+                                  <div className="flex items-center space-x-2">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                    <span>
+                                      {file.original_filename || 'Unnamed File'}
+                                    </span>
+                                  </div>
+                                }
+                              </TableCell>
+                              <TableCell>
+                                {file.is_folder? 
+                                  <></> :
+                                  <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
+                                } 
+                              </TableCell>
+                              <TableCell>
+                                {/* Display file size in KB or MB */}
+                                {file.size 
+                                  ? file.size < 1024 * 1024 
+                                    ? `${(file.size / 1024).toFixed(1)} KB` 
+                                    : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                                  : 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {file.created_at ? 
+                                  formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
+                                  'N/A'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleFilePreview(file)}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Preview
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleFileDownload(file)}>
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <Link className="mr-2 h-4 w-4" />
+                                      Copy Link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => handleFileDelete(file.id)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                              No files found.
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="h-24 text-center">
-                            No files found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
               
