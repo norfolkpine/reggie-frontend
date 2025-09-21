@@ -3,7 +3,7 @@ import { getCSRFToken } from '@/api';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
+import { TOKEN_KEY } from "../lib/constants";
 
 export interface UploadFileParams {
   file: File;
@@ -53,7 +53,7 @@ export async function uploadFiles({
   formData.append('file', file);
   formData.append('project_uuid', project_uuid);
   formData.append('uploaded_by', String(uploaded_by));
-  formData.append('parent_id', String(parent_id));
+  formData.append('parent_id', String(parent_id ?? 0));
   if (typeof team !== 'undefined') {
     formData.append('team', String(team));
   }
