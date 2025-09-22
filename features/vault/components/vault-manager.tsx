@@ -1023,12 +1023,12 @@ export function VaultManager() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {file.type === "folder" ? 
+                                {file.is_folder ? 
                                   <div 
                                     className="flex items-center space-x-2 cursor-pointer hover:text-primary"
                                     onClick={() => handleFolderClick(file)}
                                   >
-                                      <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
                                     <span>
                                       {file.original_filename || 'New Folder'}
                                     </span>
@@ -1041,18 +1041,9 @@ export function VaultManager() {
                                   </div>
                                 }
                               </TableCell>
-                              <TableCell className="font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              </TableCell>
                               <TableCell>
-                                {file.is_folder? 
-                                  <></> :
+                                {file.is_folder ? 
+                                  <Badge variant="outline">FOLDER</Badge> :
                                   <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
                                 } 
                               </TableCell>
