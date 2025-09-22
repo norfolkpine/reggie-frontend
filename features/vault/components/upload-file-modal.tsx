@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { UploadCloud, X, AlertCircle, FileText } from "lucide-react"
 import { uploadFiles } from "@/api/vault"
+import { useAuth } from "@/contexts/auth-context"
 
 interface UploadFileModalProps {
   open: boolean
@@ -39,6 +40,7 @@ export function UploadFileModal({
   maxFiles = 5,
   title = "Upload files",
 }: UploadFileModalProps) {
+  const { user } = useAuth()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
@@ -104,11 +106,12 @@ export function UploadFileModal({
           prev.map((f, i) => (i === idx ? { ...f, progress: 50 } : f))
         )
 
-        const formData = new FormData()
-        formData.append("file", fileObj.file)
-        formData.append("project", projectId.toString())
-
-        const result = await uploadFiles({ formData })
+        const result = await uploadFiles({
+          file: fileObj.file,
+          project_uuid: projectId.toString(),
+          uploaded_by: user?.id || 0,
+          parent_id: 0, // Root level folder
+        })
         uploaded.push(result)
 
         setFiles((prev) =>

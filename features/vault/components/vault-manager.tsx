@@ -5,12 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, updateVaultFile, VaultFilesResponse } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, VaultFilesResponse, createFolder, updateVaultFile, moveVaultFiles } from "@/api/vault";
 import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles } from "lucide-react";
+import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
-// import { DeleteProjectDialog } from "./delete-project-dialog";
+
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -48,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import { useHeader } from "@/contexts/header-context";
 import { useAiPanel } from "@/contexts/ai-panel-context";
 import { InstructionsDialog } from "./instructions-dialog";
+import { CreateFolderDialog } from "./create-folder-dialog";
 
 // Extended VaultFile interface with additional properties from the API response
 interface VaultFile extends BaseVaultFile {
@@ -97,6 +98,13 @@ export function VaultManager() {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
   const [instructions, setInstructions] = useState("");
+
+  const [isDragging, setIsDragging] = useState(false)
+  const [draggedFiles, setDraggedFiles] = useState<number[]>([])
+  const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
+
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -187,7 +195,7 @@ export function VaultManager() {
   useEffect(() => {
     fetchProject();
     fetchFiles();
-  }, [projectId, currentPage, itemsPerPage]);
+  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
   // Reset to first page when search query or filters change
   useEffect(() => {
@@ -235,7 +243,8 @@ export function VaultManager() {
         projectId,
         currentPage,
         itemsPerPage,
-        searchQuery
+        searchQuery,
+        currentFolderId
       );
       
       setFilesCount(response.count);
@@ -248,7 +257,7 @@ export function VaultManager() {
         const mimeType = (file as any).type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
                 // Or extract extension from filename
-        const fileExtension = file.original_filename?.split('.').pop()?.toLowerCase() || mimeExtension || '';
+        const fileExtension = mimeExtension || '';
         
         return {
           ...file,
@@ -274,8 +283,6 @@ export function VaultManager() {
       const matchesType = showAllFiles || 
         (activeFilters.length === 0) || 
         activeFilters.some((filter: string) => fileType.includes(filter));
-      
-      // Apply search filter
       const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         false;
@@ -422,9 +429,7 @@ export function VaultManager() {
         });
       }
       
-      // Refresh the file list
       fetchFiles();
-      // Clear selected files
       setSelectedFiles([]);
     } catch (error) {
       toast({
@@ -544,8 +549,186 @@ export function VaultManager() {
     } finally {
       setIsRenaming(false);
     }
+  };  
+  
+  const handleFolderClick = (folder: VaultFile) => {
+    if (!folder.is_folder) return;
+    
+    setCurrentFolderId(folder.id);
+    setFolderBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.original_filename || 'New Folder' }]);
   };
 
+  const handleBreadcrumbClick = (folderId: number) => {
+    if (folderId === 0) {
+      // Go to root
+      setCurrentFolderId(0);
+      setFolderBreadcrumbs([]);
+    } else {
+      // Go to specific folder in breadcrumb
+      const folderIndex = folderBreadcrumbs.findIndex(f => f.id === folderId);
+      if (folderIndex !== -1) {
+        setCurrentFolderId(folderId);
+        setFolderBreadcrumbs(folderBreadcrumbs.slice(0, folderIndex + 1));
+      }
+    }
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    try {
+      await createFolder({
+        folderName: name,
+        project_uuid: projectId,
+        uploaded_by: user?.id,
+        parent_id: currentFolderId,
+        team: (project?.team as any)?.id || undefined
+      });
+      
+      toast({
+        title: "Success",
+        description: "Folder created successfully"
+      });
+      
+      setCreateFolderOpen(false);
+      fetchFiles();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create folder. Please try again later.",
+        variant: "destructive"
+      });
+    }
+    console.log("Creating Folder:", name)
+  }
+
+  const handleDragStart = useCallback((e: React.DragEvent, fileId: number) => {
+    e.stopPropagation();
+    
+    // If the dragged file is selected, drag all selected files
+    // Otherwise, just drag the single file
+    const filesToDrag = selectedFiles.includes(fileId) ? selectedFiles : [fileId];
+    
+    setIsDragging(true);
+    setDraggedFiles(filesToDrag);
+    
+    // Set drag effect
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Store the dragged file IDs in dataTransfer
+    e.dataTransfer.setData('text/plain', JSON.stringify(filesToDrag));
+  }, [selectedFiles]);
+  
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+    setDraggedFiles([]);
+    setDragOverFolderId(null);
+  }, []);
+  
+  const handleDragOver = useCallback((e: React.DragEvent, folderId?: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set drag effect
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Only allow dropping on folders or root
+    if (folderId !== undefined) {
+      setDragOverFolderId(folderId);
+    }
+  }, []);
+  
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check if we're leaving the drop zone entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setDragOverFolderId(null);
+    }
+  }, []);
+  
+  const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setDragOverFolderId(null);
+    setIsDragging(false);
+    
+    // Get the dragged file IDs
+    const draggedFileIds = draggedFiles.length > 0 ? draggedFiles : JSON.parse(e.dataTransfer.getData('text/plain'));
+    
+    // Prevent dropping a folder into itself or its children
+    const draggedItems = vaultFiles.filter(f => draggedFileIds.includes(f.id));
+    for (const item of draggedItems) {
+      if (item.is_folder && item.id === targetFolderId) {
+        toast({
+          title: "Invalid operation",
+          description: "Cannot move a folder into itself",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Move the files to the target folder
+    try {
+      await moveVaultFiles(draggedFileIds, targetFolderId);
+      
+      toast({
+        title: "Success",
+        description: `Moved ${draggedFileIds.length} item(s) successfully`,
+      });
+      
+      // Refresh the file list
+      fetchFiles();
+      
+      // Clear selection
+      setSelectedFiles([]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move files. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    setDraggedFiles([]);
+  }, [draggedFiles, vaultFiles, toast]);
+
+    
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    console.log("files upload~!~~~~~~~~~~~~~~~~~~");
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set drag over to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      // Filter out files that might already be in the list by name and size (basic check)
+      const newFiles = droppedFiles.filter(
+        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
+      );
+      if (newFiles.length > 0) {
+        console.log("newFile", newFiles);
+        setFiles((prev) => [...prev, ...newFiles]);
+        // Trigger immediate upload of new files
+        // uploadFiles(newFiles);
+        handleFileUpload(newFiles);
+      }
+    }
+  }, [files, uploadFiles]); // Added uploadFiles to dependency array
   // Add a function to handle file rename
   const handleFileRename = async () => {
     if (!fileToRename || !newFileName.trim()) return;
@@ -616,6 +799,7 @@ export function VaultManager() {
             </TabsList>
             
             <TabsContent value="files" className="mt-4">
+
               {/* Replace with custom file manager UI since shared component doesn't support our vault-specific API needs */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
@@ -744,107 +928,193 @@ export function VaultManager() {
                     </div>
                   </div>
                 </div>
+
+                <div 
+                  className={`
+                    flex items-center space-x-2 text-sm text-muted-foreground mb-4 p-2 rounded
+                  `}
+                >
+                  {(currentFolderId > 0 || folderBreadcrumbs.length > 0) ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleBreadcrumbClick(0)}
+                        className="h-auto p-1 text-primary hover:text-primary/80"
+                      >
+                        Root
+                      </Button>
+                      {folderBreadcrumbs.map((folder) => (
+                        <div key={folder.id} className="flex items-center">
+                          <span className="mx-1">/</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleBreadcrumbClick(folder.id)}
+                            className="h-auto p-1 text-primary hover:text-primary/80"
+                          >
+                            {folder.name}
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <span className="text-gray-500">Root folder</span>
+                  )}
+                </div>
                 
                 <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">
-                            <Checkbox 
-                            checked={selectAllChecked}
-                            onCheckedChange={toggleSelectAll}
-                            aria-label="Select all files"
-                          />
-                        </TableHead>
-                        <TableHead className="w-[350px]">Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Last Modified</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredFiles.length > 0 ? (
-                        filteredFiles
-                          .map((file) => (
-                          <TableRow key={file.id}>
-                            <TableCell>
+                  <div
+                    className="flex-1 flex flex-col relative min-h-0"
+                    onDragOver={handleFileDragOver}
+                    onDragLeave={handleFileDragLeave}
+                    onDrop={handleFileDrop}
+                  >
+                    {isDragOver && (
+                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+                        <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+                          <div className="text-center">
+                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                            <p className="text-lg font-medium text-gray-900">Drop files here</p>
+                            <p className="text-sm text-gray-500">Release to upload</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">
                               <Checkbox 
-                                checked={selectedFiles.includes(file.id)}
-                                onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
-                                aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
-                              />
-                            </TableCell>
-                             <TableCell className="font-medium">
-                              <div className="flex items-center space-x-2">
-                                <FileText className="h-5 w-5 text-muted-foreground" />
-                                <span>
-                                  {/* Display original filename if available, otherwise the filename */}
-                                  {file.original_filename || 'Unnamed File'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              {/* Display file size in KB or MB */}
-                              {file.size 
-                                ? file.size < 1024 * 1024 
-                                  ? `${(file.size / 1024).toFixed(1)} KB` 
-                                  : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-                                : 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              {file.created_at ? 
-                                formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
-                                'N/A'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleFilePreview(file)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Preview
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleFileDownload(file)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openRenameDialog(file)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Link className="mr-2 h-4 w-4" />
-                                    Copy Link
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleFileDelete(file.id)}
+                              checked={selectAllChecked}
+                              onCheckedChange={toggleSelectAll}
+                              aria-label="Select all files"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[350px]">Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Last Modified</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredFiles.length > 0 ? (
+                          filteredFiles.map((file) => (
+                            <TableRow
+                              key={file.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, file.id)}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              className={`
+                                ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
+                                ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
+                                cursor-move
+                              `}
+                            >
+                              <TableCell>
+                                <Checkbox 
+                                  checked={selectedFiles.includes(file.id)}
+                                  onCheckedChange={(checked) => toggleSelectFile(file.id, !!checked)}
+                                  aria-label={`Select ${file.original_filename || 'Unnamed File'}`}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {file.type === "folder" ? 
+                                  <div 
+                                    className="flex items-center space-x-2 cursor-pointer hover:text-primary"
+                                    onClick={() => handleFolderClick(file)}
                                   >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                      <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <span>
+                                      {file.original_filename || 'New Folder'}
+                                    </span>
+                                  </div> : 
+                                  <div className="flex items-center space-x-2">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                    <span>
+                                      {file.original_filename || 'Unnamed File'}
+                                    </span>
+                                  </div>
+                                }
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center space-x-2">
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                  <span>
+                                    {/* Display original filename if available, otherwise the filename */}
+                                    {file.original_filename || 'Unnamed File'}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {file.is_folder? 
+                                  <></> :
+                                  <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
+                                } 
+                              </TableCell>
+                              <TableCell>
+                                {/* Display file size in KB or MB */}
+                                {file.size 
+                                  ? file.size < 1024 * 1024 
+                                    ? `${(file.size / 1024).toFixed(1)} KB` 
+                                    : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                                  : 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {file.created_at ? 
+                                  formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
+                                  'N/A'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleFilePreview(file)}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Preview
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleFileDownload(file)}>
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <Link className="mr-2 h-4 w-4" />
+                                      Copy Link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openRenameDialog(file)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => handleFileDelete(file.id)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                              No files found.
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="h-24 text-center">
-                            No files found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
               
@@ -990,19 +1260,19 @@ export function VaultManager() {
         </DialogContent>
       </Dialog>
       <InstructionsDialog
-            open={showInstructionsDialog}
-            onOpenChange={setShowInstructionsDialog}
-            instructions={instructions}
-            setInstructions={setInstructions}
-            projectUuid={projectId}
-            onSave={(newInstructions) => {
-              setInstructions(newInstructions);
-              // Update the project state with the new instructions
-              if (project) {
-                setProject({ ...project, custom_instruction: newInstructions });
-              }
-            }}
-          />
+        open={showInstructionsDialog}
+        onOpenChange={setShowInstructionsDialog}
+        instructions={instructions}
+        setInstructions={setInstructions}
+        projectUuid={projectId}
+        onSave={(newInstructions) => {
+          setInstructions(newInstructions);
+          // Update the project state with the new instructions
+          if (project) {
+            setProject({ ...project, custom_instruction: newInstructions });
+          }
+        }}
+      />
 
       {/* Rename File Dialog */}
       <Dialog open={renameFileOpen} onOpenChange={setRenameFileOpen}>
@@ -1035,12 +1305,17 @@ export function VaultManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-{/* 
+      {/* 
       <DeleteProjectDialog
         open={deleteProjectOpen}
         onOpenChange={setDeleteProjectOpen}
         project={project ? { id: project.id?.toString() || '', name: project.name || '' } : null}
       /> */}
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        onCreateFolder={handleCreateFolder}
+      />
 
     </div>
   );

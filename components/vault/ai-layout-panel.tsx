@@ -141,6 +141,7 @@ export function AiLayoutPanel() {
         {/* Chat Messages Area */}
         <div className="flex-1 flex flex-col min-h-0">
           <VaultChat
+            agentId = {`vault_${currentContext.projectId}` || ""}
             projectId={currentContext.projectId || ""}
             folderId={currentContext.folderId?.toString()}
             fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
