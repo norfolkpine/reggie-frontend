@@ -1,4 +1,4 @@
-name: Deploy Frontend to GCP VM (Streamlined)
+name: Deploy Frontend to GCP VM (Optimized)
 
 on:
   push:
@@ -13,7 +13,6 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,11 +31,7 @@ jobs:
       - name: Build and Push Docker image
         run: |
           IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
-          echo "Building and pushing Docker image: $IMAGE_FRONTEND"
-          
-          # Build with cache and push in one step
           docker buildx build --builder default \
-            --platform linux/amd64 \
             --build-arg NEXT_PUBLIC_DEFAULT_AGENT_ID="$NEXT_PUBLIC_DEFAULT_AGENT_ID" \
             --build-arg NEXT_PUBLIC_API_ORIGIN="$NEXT_PUBLIC_API_ORIGIN" \
             --build-arg NEXT_PUBLIC_API_BASE_URL="$NEXT_PUBLIC_API_BASE_URL" \
@@ -45,8 +40,7 @@ jobs:
             --build-arg COLLABORATION_WS_URL="$COLLABORATION_WS_URL" \
             --build-arg NEXT_PUBLIC_SENTRY_DSN="$NEXT_PUBLIC_SENTRY_DSN" \
             --build-arg SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN" \
-            --cache-from type=gha \
-            --cache-to type=gha,mode=max \
+            --platform linux/amd64 \
             --push \
             -t "$IMAGE_FRONTEND" .
         env:
@@ -61,68 +55,21 @@ jobs:
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Deploy on VM (single optimized step)
+      - name: Deploy on VM (single command)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: github-actions
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 10m
           script: |
-            # Set variables
-            IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
-            
-            # Create frontend directory if it doesn't exist
-            mkdir -p ~/frontend
             cd ~/frontend
-            
-            # Create docker-compose.yml if it doesn't exist
-            if [ ! -f docker-compose.yml ]; then
-              cat > docker-compose.yml << 'EOF'
-            version: '3.8'
-            services:
-              frontend:
-                container_name: frontend-app
-                image: ${IMAGE_FRONTEND}
-                ports:
-                  - "5173:3000"
-                env_file:
-                  - .env.frontend
-                restart: unless-stopped
-                environment:
-                  - NODE_ENV=production
-            EOF
-            fi
-            
-            # Create .env.frontend if it doesn't exist
-            if [ ! -f .env.frontend ]; then
-              echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env.frontend
-            fi
-            
-            # Update image in docker-compose.yml
+            # Update docker-compose.yml with new image
+            IMAGE_FRONTEND=gcr.io/${PROJECT_ID}/${IMAGE_NAME_FRONTEND}:latest
             sed -i "s|\${IMAGE_FRONTEND}|$IMAGE_FRONTEND|g" docker-compose.yml
             
-            # Authenticate with GCP (if not already done)
-            if [ ! -f gcp-key.json ]; then
-              echo '${{ secrets.GCP_SA_KEY }}' > gcp-key.json
-              sudo gcloud auth activate-service-account --key-file=gcp-key.json
-              sudo gcloud auth configure-docker gcr.io --quiet
-            fi
-            
-            # Deploy with optimized commands
-            echo "Pulling latest image..."
-            sudo docker-compose pull --quiet
-            
-            echo "Stopping and removing old container..."
-            sudo docker-compose down --remove-orphans || true
-            
-            echo "Starting new container..."
+            # Pull and restart
+            sudo docker-compose pull
             sudo docker-compose up -d --remove-orphans
-            
-            echo "Cleaning up unused images..."
-            sudo docker image prune -f
-            
-            echo "Deployment completed successfully!"
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
