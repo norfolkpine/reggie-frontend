@@ -55,7 +55,6 @@ interface VaultFile extends BaseVaultFile {
   filename?: string;
   original_filename?: string;
   size?: number;
-  // type is not included in the interface as we're accessing it with (file as any).type
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
 }
 
@@ -259,11 +258,18 @@ export function VaultManager() {
       
       // Add file_type property based on filename extension or MIME type
       const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
-        // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
-        const mimeType = (file as any).type;
+        // For folders, don't set a file_type
+        if (file.is_folder) {
+          return {
+            ...file,
+            file_type: 'folder'
+          };
+        }
+        
+        // For files, use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
+        const mimeType = file.type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-                // Or extract extension from filename
-        const fileExtension = mimeExtension || '';
+        const fileExtension = mimeExtension || 'unknown';
         
         return {
           ...file,
@@ -871,8 +877,25 @@ export function VaultManager() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div 
+      className="flex-1 flex flex-col h-full relative"
+      onDragOver={handleFileDragOver}
+      onDragLeave={handleFileDragLeave}
+      onDrop={handleFileDrop}
+    >
       {/* Header removed - now handled by layout */}
+
+      {isDragOver && (
+        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+            <div className="text-center">
+              <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+              <p className="text-lg font-medium text-gray-900">Drop files here</p>
+              <p className="text-sm text-gray-500">Release to upload</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (
@@ -1061,21 +1084,7 @@ export function VaultManager() {
                 <div className="rounded-md border">
                   <div
                     className="flex-1 flex flex-col relative min-h-0"
-                    onDragOver={handleFileDragOver}
-                    onDragLeave={handleFileDragLeave}
-                    onDrop={handleFileDrop}
                   >
-                    {isDragOver && (
-                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-                        <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
-                          <div className="text-center">
-                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                            <p className="text-lg font-medium text-gray-900">Drop files here</p>
-                            <p className="text-sm text-gray-500">Release to upload</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1119,12 +1128,12 @@ export function VaultManager() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {file.type === "folder" ? 
+                                {file.is_folder ? 
                                   <div 
                                     className="flex items-center space-x-2 cursor-pointer hover:text-primary"
                                     onClick={() => handleFolderClick(file)}
                                   >
-                                      <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
                                     <span>
                                       {file.original_filename || 'New Folder'}
                                     </span>
@@ -1138,10 +1147,9 @@ export function VaultManager() {
                                 }
                               </TableCell>
                               <TableCell>
-                                {file.is_folder? 
-                                  <></> :
-                                  <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
-                                } 
+                                <Badge variant="outline">
+                                  {file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}
+                                </Badge>
                               </TableCell>
                               <TableCell>
                                 {/* Display file size in KB or MB */}
