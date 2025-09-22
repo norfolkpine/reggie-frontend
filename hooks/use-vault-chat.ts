@@ -9,6 +9,7 @@ import { ToolCall } from '@/components/ui/chat-message';
 import { captureChatError } from '@/lib/error-handler';
 import { getCSRFToken } from '@/api';
 import { uploadFiles as apiUploadFiles } from '@/api/files';
+import { ReferencesData } from '@/types/message';
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Message {
   toolCalls?: ToolCall[];
   reasoningSteps?: ReasoningStep[];
   experimental_attachments?: { name: string; contentType: string; url: string }[];
+  references?: ReferencesData[];
 }
 
 interface ReasoningStep {
@@ -479,6 +481,24 @@ export function useVaultChat({
                 setIsAgentResponding(!isAgentResponding);
               } else if (parsedData.event === "MemoryUpdateStarted") {
                 setIsMemoryUpdating(true);
+              } else if (parsedData.event === "References") {
+                // Handle references data
+                if (parsedData.extra_data?.references) {
+                  const referencesData: ReferencesData[] = parsedData.extra_data.references;
+                  
+                  // Update the last assistant message with references
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        references: referencesData,
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               }

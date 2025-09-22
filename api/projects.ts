@@ -56,8 +56,8 @@ export const updateProject = async (id: string, project: Omit<Project, 'id' | 'c
   return response as Project;
 };
 
-export const patchProject = async (id: number, project: PatchedProject) => {
-  const response = await api.post(`/reggie/api/v1/projects/${id}/`, project);
+export const patchProject = async (id: string | number, project: PatchedProject) => {
+  const response = await api.patch(`/reggie/api/v1/projects/${id}/`, project);
   return response as Project;
 };
 

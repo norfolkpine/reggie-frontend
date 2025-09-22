@@ -19,6 +19,10 @@ export interface Project {
   updated_at?: string;
   name?: string;
   description?: string;
+  custom_instruction?: string;
+  instruction?: {
+    content?: string;
+  };
   owner?: number;
   team?: number;
   tags?: string[];
