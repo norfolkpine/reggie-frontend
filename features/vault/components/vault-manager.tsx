@@ -55,8 +55,13 @@ interface VaultFile extends BaseVaultFile {
   filename?: string;
   original_filename?: string;
   size?: number;
-  // type is not included in the interface as we're accessing it with (file as any).type
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
+}
+
+interface UploadingFile {
+  file: File
+  progress: number
+  error?: string
 }
 
 export function VaultManager() {
@@ -104,7 +109,7 @@ export function VaultManager() {
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<UploadingFile[]>([])
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -253,11 +258,18 @@ export function VaultManager() {
       
       // Add file_type property based on filename extension or MIME type
       const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
-        // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
-        const mimeType = (file as any).type;
+        // For folders, don't set a file_type
+        if (file.is_folder) {
+          return {
+            ...file,
+            file_type: 'folder'
+          };
+        }
+        
+        // For files, use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
+        const mimeType = file.type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-                // Or extract extension from filename
-        const fileExtension = mimeExtension || '';
+        const fileExtension = mimeExtension || 'unknown';
         
         return {
           ...file,
@@ -323,6 +335,8 @@ export function VaultManager() {
 
   const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
+
+    console.log("uploadFiles", uploadFiles);
     
     // Close the upload dialog
     setIsUploadDialogOpen(false);
@@ -710,24 +724,52 @@ export function VaultManager() {
     }
   }, []);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleFileDrop = useCallback(async(e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
     const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
-      const newFiles = droppedFiles.filter(
-        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
-      );
-      if (newFiles.length > 0) {
-        console.log("newFile", newFiles);
-        setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
-        // uploadFiles(newFiles);
-        handleFileUpload(newFiles);
+
+    const supportedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png', '.jpg', '.jpeg']
+    const validFiles = droppedFiles.filter(file => {
+      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return supportedFileTypes.includes(extension);
+    });
+    
+    if (validFiles.length === 0) {
+      toast({title: "File Upload Failed", description:"No supported file types selected."});
+      return;
+    }
+    
+    if (validFiles.length !== droppedFiles.length) {
+      toast({title: "File Upload Failed", description:`${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.`});
+    }
+    
+    const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))];
+    setFiles(updatedFiles);
+
+    if (!user) {
+      toast({title: "File Upload Failed", description:"You must be logged in to upload files."});
+      return;
+    }
+
+    const uploadedFiles = [];
+    for (const fileObj of updatedFiles) {
+      try {
+        // Pass file and project parameters directly to the uploadFiles function
+        const result = await uploadFiles({ 
+          file: fileObj.file, 
+          project_uuid: projectId,
+          uploaded_by: user?.id || 0
+        });
+        uploadedFiles.push(result);
+      } catch (err) {
+        console.error("Error uploading file:", fileObj.file.name, err);
       }
     }
+
+    handleFileUpload(uploadedFiles);
+
   }, [files, uploadFiles]); // Added uploadFiles to dependency array
   // Add a function to handle file rename
   const handleFileRename = async () => {
@@ -1003,12 +1045,12 @@ export function VaultManager() {
                           filteredFiles.map((file) => (
                             <TableRow
                               key={file.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, file.id)}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              // draggable
+                              // onDragStart={(e) => handleDragStart(e, file.id)}
+                              // onDragEnd={handleDragEnd}
+                              // onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              // onDragLeave={handleDragLeave}
+                              // onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
                               className={`
                                 ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
                                 ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
@@ -1023,12 +1065,12 @@ export function VaultManager() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {file.type === "folder" ? 
+                                {file.is_folder ? 
                                   <div 
                                     className="flex items-center space-x-2 cursor-pointer hover:text-primary"
                                     onClick={() => handleFolderClick(file)}
                                   >
-                                      <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
                                     <span>
                                       {file.original_filename || 'New Folder'}
                                     </span>
@@ -1041,20 +1083,10 @@ export function VaultManager() {
                                   </div>
                                 }
                               </TableCell>
-                              <TableCell className="font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              </TableCell>
                               <TableCell>
-                                {file.is_folder? 
-                                  <></> :
-                                  <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
-                                } 
+                                <Badge variant="outline">
+                                  {file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}
+                                </Badge>
                               </TableCell>
                               <TableCell>
                                 {/* Display file size in KB or MB */}
