@@ -59,6 +59,12 @@ interface VaultFile extends BaseVaultFile {
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
 }
 
+interface UploadingFile {
+  file: File
+  progress: number
+  error?: string
+}
+
 export function VaultManager() {
   const params = useParams();
   const router = useRouter();
@@ -104,7 +110,7 @@ export function VaultManager() {
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<UploadingFile[]>([])
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -323,6 +329,8 @@ export function VaultManager() {
 
   const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
+
+    console.log("uploadFiles", uploadFiles);
     
     // Close the upload dialog
     setIsUploadDialogOpen(false);
@@ -710,24 +718,52 @@ export function VaultManager() {
     }
   }, []);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleFileDrop = useCallback(async(e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
     const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
-      const newFiles = droppedFiles.filter(
-        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
-      );
-      if (newFiles.length > 0) {
-        console.log("newFile", newFiles);
-        setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
-        // uploadFiles(newFiles);
-        handleFileUpload(newFiles);
+
+    const supportedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png', '.jpg', '.jpeg']
+    const validFiles = droppedFiles.filter(file => {
+      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return supportedFileTypes.includes(extension);
+    });
+    
+    if (validFiles.length === 0) {
+      toast({title: "File Upload Failed", description:"No supported file types selected."});
+      return;
+    }
+    
+    if (validFiles.length !== droppedFiles.length) {
+      toast({title: "File Upload Failed", description:`${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.`});
+    }
+    
+    const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))];
+    setFiles(updatedFiles);
+
+    if (!user) {
+      toast({title: "File Upload Failed", description:"You must be logged in to upload files."});
+      return;
+    }
+
+    const uploadedFiles = [];
+    for (const fileObj of updatedFiles) {
+      try {
+        // Pass file and project parameters directly to the uploadFiles function
+        const result = await uploadFiles({ 
+          file: fileObj.file, 
+          project_uuid: projectId,
+          uploaded_by: user?.id || 0
+        });
+        uploadedFiles.push(result);
+      } catch (err) {
+        console.error("Error uploading file:", fileObj.file.name, err);
       }
     }
+
+    handleFileUpload(uploadedFiles);
+
   }, [files, uploadFiles]); // Added uploadFiles to dependency array
   // Add a function to handle file rename
   const handleFileRename = async () => {
@@ -1003,12 +1039,12 @@ export function VaultManager() {
                           filteredFiles.map((file) => (
                             <TableRow
                               key={file.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, file.id)}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              // draggable
+                              // onDragStart={(e) => handleDragStart(e, file.id)}
+                              // onDragEnd={handleDragEnd}
+                              // onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              // onDragLeave={handleDragLeave}
+                              // onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
                               className={`
                                 ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
                                 ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
