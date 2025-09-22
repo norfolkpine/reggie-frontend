@@ -17,7 +17,7 @@ import { AgentThinking } from "@/components/ui/agent-thinking"
 import { ReferencesData } from "@/types/message"
 
 const chatBubbleVariants = cva(
-  "group/message relative break-words rounded-lg p-3 text-sm",
+  "group/message relative break-words rounded-lg p-4 text-sm",
   {
     variants: {
       isUser: {
