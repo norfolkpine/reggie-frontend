@@ -1,5 +1,6 @@
 "use client";
 import type React from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Sidebar from "@/components/sidebar";
 import { PageHeader } from "@/components/ui/page-header";
 import { HeaderProvider, useHeader } from "@/contexts/header-context";
@@ -36,38 +37,39 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // If custom header is provided, use it; otherwise use PageHeader with actions/content
   if (customHeader) {
     return (
-      <div className="flex h-full gap-2">
-        <div 
+      <PanelGroup direction="horizontal" className="h-full gap-1">
+        <Panel 
+          defaultSize={isAiPanelOpen ? 70 : 100}
+          minSize={isAiPanelOpen ? 30 : 100}
           className={cn(
-            "bg-white border shadow-sm flex flex-col overflow-hidden transition-all duration-300",
-            isAiPanelOpen ? "rounded-xl" : "rounded-xl"
+            "bg-white border shadow-sm flex flex-col overflow-hidden transition-all duration-300 rounded-xl"
           )}
-          style={{
-            width: isAiPanelOpen ? `calc(100% - ${panelWidth}px - 5px)` : '100%'
-          }}
         >
           {customHeader}
-          <div className="flex-1 overflow-auto px-1">
+          <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
             {children}
           </div>
-        </div>
-        {/* AI Panel */}
-        <AiLayoutPanel />
-      </div>
+        </Panel>
+        {isAiPanelOpen && (
+          <>
+            <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-200 transition-colors" />
+            <Panel defaultSize={30} minSize={20} maxSize={50}>
+              <AiLayoutPanel />
+            </Panel>
+          </>
+        )}
+      </PanelGroup>
     );
   }
 
   return (
-    <div className="flex h-full gap-2">
-      <div 
+    <PanelGroup direction="horizontal" className="h-full gap-1">
+      <Panel 
+        defaultSize={isAiPanelOpen ? 70 : 100}
+        minSize={isAiPanelOpen ? 30 : 100}
         className={cn(
-          "bg-background border shadow-sm flex flex-col overflow-hidden transition-all duration-300",
-          isAiPanelOpen ? "rounded-xl" : "rounded-xl"
+          "bg-background border shadow-sm flex flex-col overflow-hidden transition-all duration-300 rounded-xl"
         )}
-        style={{
-          width: isAiPanelOpen ? `calc(100% - ${panelWidth}px - 5px)` : '100%'
-        }}
-        ref={scrollContainerRef}
       >
         {/* Mobile Header */}
         {isMobile && (
@@ -91,14 +93,20 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           </div>
         )}
         
-        <div className="flex-1 overflow-auto px-1">
+        <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
           {children}
         </div>
-      </div>
+      </Panel>
       
-      <AiLayoutPanel />
-
-    </div>
+      {isAiPanelOpen && (
+        <>
+          <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-200 transition-colors" />
+          <Panel defaultSize={30} minSize={20} maxSize={50}>
+            <AiLayoutPanel />
+          </Panel>
+        </>
+      )}
+    </PanelGroup>
   );
 }
 
