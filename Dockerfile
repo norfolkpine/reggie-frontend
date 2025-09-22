@@ -14,14 +14,14 @@ ARG COLLABORATION_WS_URL
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_AUTH_TOKEN
 
-# Install dependencies
+# Install dependencies first (better caching)
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN if [ -f package-lock.json ]; then npm ci; \
     elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install; \
     elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
     else npm install; fi
 
-# Copy all files
+# Copy source code (separate layer for better caching)
 COPY . .
 
 # Set environment variables for build
@@ -52,11 +52,19 @@ ARG SENTRY_AUTH_TOKEN
 
 WORKDIR /app
 
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
 # Only copy over the necessary files from the build stage
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package.json ./package.json
+
+# Change ownership to nextjs user
+RUN chown -R nextjs:nodejs /app
+USER nextjs
 
 # Set environment variables (can be customized)
 ENV NODE_ENV=production
@@ -73,4 +81,4 @@ ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 EXPOSE 3000
 
 # Start the Next.js app
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
