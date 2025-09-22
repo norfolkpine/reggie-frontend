@@ -818,8 +818,25 @@ export function VaultManager() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div 
+      className="flex-1 flex flex-col h-full relative"
+      onDragOver={handleFileDragOver}
+      onDragLeave={handleFileDragLeave}
+      onDrop={handleFileDrop}
+    >
       {/* Header removed - now handled by layout */}
+
+      {isDragOver && (
+        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+            <div className="text-center">
+              <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+              <p className="text-lg font-medium text-gray-900">Drop files here</p>
+              <p className="text-sm text-gray-500">Release to upload</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (
@@ -1008,21 +1025,7 @@ export function VaultManager() {
                 <div className="rounded-md border">
                   <div
                     className="flex-1 flex flex-col relative min-h-0"
-                    onDragOver={handleFileDragOver}
-                    onDragLeave={handleFileDragLeave}
-                    onDrop={handleFileDrop}
                   >
-                    {isDragOver && (
-                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-                        <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
-                          <div className="text-center">
-                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                            <p className="text-lg font-medium text-gray-900">Drop files here</p>
-                            <p className="text-sm text-gray-500">Release to upload</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
