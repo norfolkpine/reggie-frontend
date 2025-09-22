@@ -55,7 +55,6 @@ interface VaultFile extends BaseVaultFile {
   filename?: string;
   original_filename?: string;
   size?: number;
-  // type is not included in the interface as we're accessing it with (file as any).type
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
 }
 
@@ -259,11 +258,18 @@ export function VaultManager() {
       
       // Add file_type property based on filename extension or MIME type
       const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
-        // Use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
-        const mimeType = (file as any).type;
+        // For folders, don't set a file_type
+        if (file.is_folder) {
+          return {
+            ...file,
+            file_type: 'folder'
+          };
+        }
+        
+        // For files, use the MIME type if available (e.g., 'application/pdf' -> 'pdf')
+        const mimeType = file.type;
         const mimeExtension = mimeType ? mimeType.split('/')[1] : '';
-                // Or extract extension from filename
-        const fileExtension = mimeExtension || '';
+        const fileExtension = mimeExtension || 'unknown';
         
         return {
           ...file,
@@ -1059,12 +1065,12 @@ export function VaultManager() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {file.type === "folder" ? 
+                                {file.is_folder ? 
                                   <div 
                                     className="flex items-center space-x-2 cursor-pointer hover:text-primary"
                                     onClick={() => handleFolderClick(file)}
                                   >
-                                      <Folder className="h-5 w-5 text-muted-foreground" />
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
                                     <span>
                                       {file.original_filename || 'New Folder'}
                                     </span>
@@ -1077,20 +1083,10 @@ export function VaultManager() {
                                   </div>
                                 }
                               </TableCell>
-                              <TableCell className="font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              </TableCell>
                               <TableCell>
-                                {file.is_folder? 
-                                  <></> :
-                                  <Badge variant="outline">{file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}</Badge>
-                                } 
+                                <Badge variant="outline">
+                                  {file.file_type ? file.file_type.toUpperCase() : 'UNKNOWN'}
+                                </Badge>
                               </TableCell>
                               <TableCell>
                                 {/* Display file size in KB or MB */}
