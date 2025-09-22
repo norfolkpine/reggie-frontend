@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
+import { Loader2, Settings, Activity, CheckCircle, AlertCircle, Clock, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -59,6 +59,12 @@ interface VaultFile extends BaseVaultFile {
   file_type?: string; // This is derived from the filename extension or MIME type for filtering
 }
 
+interface UploadingFile {
+  file: File
+  progress: number
+  error?: string
+}
+
 export function VaultManager() {
   const params = useParams();
   const router = useRouter();
@@ -104,7 +110,7 @@ export function VaultManager() {
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null)
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<UploadingFile[]>([])
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -323,6 +329,8 @@ export function VaultManager() {
 
   const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
+
+    console.log("uploadFiles", uploadFiles);
     
     // Close the upload dialog
     setIsUploadDialogOpen(false);
@@ -697,7 +705,6 @@ export function VaultManager() {
 
     
   const handleFileDragOver = useCallback((e: React.DragEvent) => {
-    console.log("files upload~!~~~~~~~~~~~~~~~~~~");
     e.preventDefault();
     setIsDragOver(true);
   }, []);
@@ -710,24 +717,52 @@ export function VaultManager() {
     }
   }, []);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleFileDrop = useCallback(async(e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
     const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
-      const newFiles = droppedFiles.filter(
-        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
-      );
-      if (newFiles.length > 0) {
-        console.log("newFile", newFiles);
-        setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
-        // uploadFiles(newFiles);
-        handleFileUpload(newFiles);
+
+    const supportedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png', '.jpg', '.jpeg']
+    const validFiles = droppedFiles.filter(file => {
+      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return supportedFileTypes.includes(extension);
+    });
+    
+    if (validFiles.length === 0) {
+      toast({title: "File Upload Failed", description:"No supported file types selected."});
+      return;
+    }
+    
+    if (validFiles.length !== droppedFiles.length) {
+      toast({title: "File Upload Failed", description:`${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.`});
+    }
+    
+    const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))];
+    setFiles(updatedFiles);
+
+    if (!user) {
+      toast({title: "File Upload Failed", description:"You must be logged in to upload files."});
+      return;
+    }
+
+    const uploadedFiles = [];
+    for (const fileObj of updatedFiles) {
+      try {
+        // Pass file and project parameters directly to the uploadFiles function
+        const result = await uploadFiles({ 
+          file: fileObj.file, 
+          project_uuid: projectId,
+          uploaded_by: user?.id || 0
+        });
+        uploadedFiles.push(result);
+      } catch (err) {
+        console.error("Error uploading file:", fileObj.file.name, err);
       }
     }
+
+    handleFileUpload(uploadedFiles);
+
   }, [files, uploadFiles]); // Added uploadFiles to dependency array
   // Add a function to handle file rename
   const handleFileRename = async () => {
@@ -762,6 +797,66 @@ export function VaultManager() {
     setNewFileName(file.original_filename || '');
     setRenameFileOpen(true);
   };
+
+
+  const getStatusBadge = useCallback((status: string) => {
+    if (!status) return null;
+    
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gray-50 text-gray-700 border-gray-200"
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'completed':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
+            <CheckCircle className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'processing':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Error
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  }, []);
 
   if (!project && !loading) {
     return (
@@ -991,10 +1086,11 @@ export function VaultManager() {
                               aria-label="Select all files"
                             />
                           </TableHead>
-                          <TableHead className="w-[350px]">Name</TableHead>
+                          <TableHead className="w-[300px]">Name</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Size</TableHead>
                           <TableHead>Last Modified</TableHead>
+                          <TableHead>Embedding</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1003,12 +1099,12 @@ export function VaultManager() {
                           filteredFiles.map((file) => (
                             <TableRow
                               key={file.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, file.id)}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              // draggable
+                              // onDragStart={(e) => handleDragStart(e, file.id)}
+                              // onDragEnd={handleDragEnd}
+                              // onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              // onDragLeave={handleDragLeave}
+                              // onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
                               className={`
                                 ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
                                 ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
@@ -1041,15 +1137,6 @@ export function VaultManager() {
                                   </div>
                                 }
                               </TableCell>
-                              <TableCell className="font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <span>
-                                    {/* Display original filename if available, otherwise the filename */}
-                                    {file.original_filename || 'Unnamed File'}
-                                  </span>
-                                </div>
-                              </TableCell>
                               <TableCell>
                                 {file.is_folder? 
                                   <></> :
@@ -1068,6 +1155,12 @@ export function VaultManager() {
                                 {file.created_at ? 
                                   formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
                                   'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {file.is_folder? 
+                                  <></> : 
+                                  getStatusBadge(file.embedding_status)
+                                }
                               </TableCell>
                               <TableCell className="text-right">
                                 <DropdownMenu>

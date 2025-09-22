@@ -488,6 +488,7 @@ export interface VaultFile {
   inherited_teams: string;
   is_folder: Boolean; 
   type: string;
+  embedding_status: string;
   parent_id: number; // Parent folder ID, 0 if root level
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
