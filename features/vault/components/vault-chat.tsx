@@ -253,12 +253,16 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
         df => !(files && files.some(f => f.name === df.name && f.size === df.size))
       );
       if (newFiles.length > 0) {
+        const fileSize = newFiles[0].size/1024/1024;
+        if (fileSize > parseFloat(Number(process.env.NEXT_PUBLIC_CHAT_UPLOAD_LIMIT))) {
+          toast({title: "Upload Error", description: "Too large file, please upload less than 15MB!"});
+          return;
+        }
         setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
         uploadFiles(newFiles);
       }
     }
-  }, [files, uploadFiles]); // Added uploadFiles to dependency array
+  }, [files, uploadFiles]); 
 
   // Manual scroll trigger for streaming responses
   useEffect(() => {
