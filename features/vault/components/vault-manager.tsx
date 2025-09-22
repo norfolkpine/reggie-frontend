@@ -10,7 +10,7 @@ import { Project, VaultFile as BaseVaultFile } from "@/types/api";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Settings, Activity, ArrowLeft, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
+import { Loader2, Settings, Activity, CheckCircle, AlertCircle, Clock, Edit, FolderPlus, Folder, Plus, FileText, Filter, ChevronDown, Eye, Download, Link, Trash2, MoreHorizontal, UploadCloud, Sparkles, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SearchInput from "@/components/ui/search-input";
 import { formatDistanceToNow } from "date-fns";
@@ -711,7 +711,6 @@ export function VaultManager() {
 
     
   const handleFileDragOver = useCallback((e: React.DragEvent) => {
-    console.log("files upload~!~~~~~~~~~~~~~~~~~~");
     e.preventDefault();
     setIsDragOver(true);
   }, []);
@@ -805,6 +804,66 @@ export function VaultManager() {
     setRenameFileOpen(true);
   };
 
+
+  const getStatusBadge = useCallback((status: string) => {
+    if (!status) return null;
+    
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gray-50 text-gray-700 border-gray-200"
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'completed':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
+            <CheckCircle className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'processing':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {status}
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Error
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  }, []);
+
   if (!project && !loading) {
     return (
       <div className="text-center py-12">
@@ -818,8 +877,25 @@ export function VaultManager() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div 
+      className="flex-1 flex flex-col h-full relative"
+      onDragOver={handleFileDragOver}
+      onDragLeave={handleFileDragLeave}
+      onDrop={handleFileDrop}
+    >
       {/* Header removed - now handled by layout */}
+
+      {isDragOver && (
+        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+            <div className="text-center">
+              <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+              <p className="text-lg font-medium text-gray-900">Drop files here</p>
+              <p className="text-sm text-gray-500">Release to upload</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-4 mt-4">
         {loading ? (
@@ -1008,21 +1084,7 @@ export function VaultManager() {
                 <div className="rounded-md border">
                   <div
                     className="flex-1 flex flex-col relative min-h-0"
-                    onDragOver={handleFileDragOver}
-                    onDragLeave={handleFileDragLeave}
-                    onDrop={handleFileDrop}
                   >
-                    {isDragOver && (
-                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-                        <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
-                          <div className="text-center">
-                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                            <p className="text-lg font-medium text-gray-900">Drop files here</p>
-                            <p className="text-sm text-gray-500">Release to upload</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1033,10 +1095,11 @@ export function VaultManager() {
                               aria-label="Select all files"
                             />
                           </TableHead>
-                          <TableHead className="w-[350px]">Name</TableHead>
+                          <TableHead className="w-[300px]">Name</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Size</TableHead>
                           <TableHead>Last Modified</TableHead>
+                          <TableHead>Embedding</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1100,6 +1163,12 @@ export function VaultManager() {
                                 {file.created_at ? 
                                   formatDistanceToNow(new Date(file.created_at), { addSuffix: true }) : 
                                   'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {file.is_folder? 
+                                  <></> : 
+                                  getStatusBadge(file.embedding_status)
+                                }
                               </TableCell>
                               <TableCell className="text-right">
                                 <DropdownMenu>
