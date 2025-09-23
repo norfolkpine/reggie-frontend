@@ -72,7 +72,7 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
     // Ensure that input is present before submitting
     if (!input.trim()) return;
 
-    const reference = folderId === "0" ? `(You can reference this infomations - projectId: ${projectId})` : `(You can reference this infomations - folderId: ${folderId}, projectId: ${projectId})`;
+    const reference = folderId === "0" ? `(You can reference this infomations - This is Root Folder and projectId: ${projectId})` : `(You can reference this infomations - folderId: ${folderId}, projectId: ${projectId})`;
 
     handleSubmit(input, reference);
 
