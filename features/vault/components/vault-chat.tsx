@@ -248,14 +248,13 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
       const newFiles = droppedFiles.filter(
         df => !(files && files.some(f => f.name === df.name && f.size === df.size))
       );
       if (newFiles.length > 0) {
         const fileSize = newFiles[0].size/1024/1024;
         if (fileSize > parseFloat(Number(process.env.NEXT_PUBLIC_CHAT_UPLOAD_LIMIT))) {
-          toast({title: "Upload Error", description: "Too large file, please upload less than 15MB!"});
+          toast({title: "Upload Error", description: "Too large file, please upload less than 15MB!", variant: "destructive"});
           return;
         }
         setFiles((prev) => [...prev, ...newFiles]);
