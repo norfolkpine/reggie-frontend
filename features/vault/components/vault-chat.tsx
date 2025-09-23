@@ -15,6 +15,7 @@ import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
 import { Paperclip } from "lucide-react";
+import { useAiPanel } from "@/contexts/ai-panel-context";
 
 interface VaultChatProps {
   projectId: string;
@@ -37,6 +38,10 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  const {
+  currentContext,
+  } = useAiPanel();
 
   const {
     messages,
@@ -67,7 +72,9 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
     // Ensure that input is present before submitting
     if (!input.trim()) return;
 
-    handleSubmit(input);
+    const reference = folderId === "0" ? `(You can reference this infomations - projectId: ${projectId})` : `(You can reference this infomations - folderId: ${folderId}, projectId: ${projectId})`;
+
+    handleSubmit(input, reference);
 
     setInput(""); // Clear input after sending
   };
@@ -334,8 +341,8 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
                 setInput("");
               }}
               suggestions={[
-                "Summarize the key points from all documents",
-                "What are the main themes in these files?"
+                "Summarize this folder.",
+                "Analyze each file."
               ]}
             />
           </div>

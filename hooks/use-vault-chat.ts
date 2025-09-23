@@ -45,7 +45,7 @@ interface UseVaultChatProps {
 
 interface UseVaultChatReturn {
   messages: Message[];
-  handleSubmit: (value?: string) => void;
+  handleSubmit: (value?: string, references?: string) => void;
   uploadFiles: (files: File[]) => Promise<void>; 
   isLoading: boolean;
   error: string | null;
@@ -250,7 +250,7 @@ export function useVaultChat({
     }
   }, [agentId, sessionCreated, internalSessionId, onNewSessionCreated]);
 
-  const handleSubmit = useCallback(async (value?: string, filesToUpload?: File[]) => {
+  const handleSubmit = useCallback(async (value?: string, references?: string, filesToUpload?: File[]) => {
     if (!value?.trim() || (isLoading && !isInitializing)) return;
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -336,7 +336,7 @@ export function useVaultChat({
         project_id: projectId,
         folder_id: folderId,
         file_ids: fileIds,
-        message: userMessageContent,
+        message: userMessageContent + references,
         session_id: tempSessionId,
         agentId: agentId,
         reasoning: reasoning,
