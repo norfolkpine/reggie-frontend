@@ -164,13 +164,13 @@ const RootDropZone: React.FC<RootDropZoneProps> = ({ onMoveItem, children }) => 
     <div 
       ref={attachRef}
       className={`
-        ${isOver ? 'bg-blue-25 border-2 border-dashed border-blue-300 rounded-lg' : ''}
+        ${isOver ? 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg' : ''}
         transition-all duration-200
       `}
     >
       {children}
       {isOver && (
-        <div className="text-center py-4 text-blue-600 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg mt-2">
+        <div className="text-center py-4 text-primary bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg mt-2">
           Drop here to move to root directory
         </div>
       )}
@@ -212,9 +212,9 @@ const DraggableTableRow: React.FC<DraggableTableRowProps> = ({
     <TableRow
       ref={attachRef}
       className={`
-        ${isDragging ? 'opacity-50 bg-gray-100 border-2 border-dashed border-gray-300' : ''}
-        ${isOver ? 'bg-blue-50 border-2 border-blue-300 shadow-md' : ''}
-        ${item.type === 'folder' && !isDragging && !isOver ? 'hover:bg-gray-50' : ''}
+        ${isDragging ? 'opacity-50 bg-muted border-2 border-dashed border-border' : ''}
+        ${isOver ? 'bg-primary/10 border-2 border-primary/30 shadow-md' : ''}
+        ${item.type === 'folder' && !isDragging && !isOver ? 'hover:bg-muted' : ''}
         transition-all duration-200 ease-in-out
       `}
       style={{ 
@@ -1380,16 +1380,16 @@ export function FileManager() {
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 mb-4 text-sm">
         <span 
-          className={`${!currentCollectionUuid ? 'text-gray-900 font-semibold' : 'text-blue-600 hover:text-blue-800 cursor-pointer font-medium'}`}
+          className={`${!currentCollectionUuid ? 'text-foreground font-semibold' : 'text-primary hover:text-primary/80 cursor-pointer font-medium'}`}
           onClick={!currentCollectionUuid ? undefined : navigateToRoot}
         >
           Root
         </span>
         {breadcrumbs.map((crumb, index) => (
           <React.Fragment key={crumb.uuid || index}>
-            <span className="text-gray-400">/</span>
+            <span className="text-muted-foreground">/</span>
             <span 
-              className={`text-blue-600 hover:text-blue-800 cursor-pointer font-medium ${
+              className={`text-primary hover:text-primary/80 cursor-pointer font-medium ${
                 index === breadcrumbs.length - 1 ? 'font-semibold' : ''
               }`}
               onClick={async () => {
@@ -1514,11 +1514,11 @@ export function FileManager() {
                         <span 
                           className={`font-medium ml-2 ${
                             item.id === 'go-up' 
-                              ? 'text-gray-500 hover:text-gray-700 cursor-pointer italic' 
+                              ? 'text-muted-foreground hover:text-foreground cursor-pointer italic' 
                               : item.type === 'folder' 
-                                ? 'text-blue-600 hover:text-blue-800 cursor-pointer'
+                                ? 'text-primary hover:text-primary/80 cursor-pointer'
                                 : item.type === 'file'
-                                  ? 'text-gray-900 hover:text-blue-600 cursor-pointer'
+                                  ? 'text-foreground hover:text-primary cursor-pointer'
                                   : ''
                           }`}
                           onClick={() => handleItemClick(item)}
