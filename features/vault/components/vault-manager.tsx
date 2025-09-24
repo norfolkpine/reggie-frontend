@@ -200,6 +200,13 @@ export function VaultManager() {
   useEffect(() => {
     fetchProject();
     fetchFiles();
+    setCurrentContext({
+      title: currentFolderId === 0 ? project?.name || 'Root Folder' : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
+      files: vaultFiles,
+      folderId: currentFolderId,
+      projectId: projectId
+    });
+
   }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
   // Reset to first page when search query or filters change
@@ -985,7 +992,6 @@ export function VaultManager() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Set context for AI panel
                         setCurrentContext({
                           title: currentFolderId === 0 
                             ? project?.name || 'Root Folder' 

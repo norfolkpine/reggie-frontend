@@ -15,6 +15,7 @@ import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
 import { Paperclip } from "lucide-react";
+import { useAiPanel } from "@/contexts/ai-panel-context";
 
 interface VaultChatProps {
   projectId: string;
@@ -37,6 +38,10 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
   const [isDragOver, setIsDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  const {
+  currentContext,
+  } = useAiPanel();
 
   const {
     messages,
@@ -67,7 +72,9 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
     // Ensure that input is present before submitting
     if (!input.trim()) return;
 
-    handleSubmit(input);
+    const reference = folderId === "0" ? `(You can reference this infomations - This is Root Folder and projectId: ${projectId})` : `(You can reference this infomations - folderId: ${folderId}, projectId: ${projectId})`;
+
+    handleSubmit(input, reference);
 
     setInput(""); // Clear input after sending
   };
@@ -248,17 +255,20 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
-      // Filter out files that might already be in the list by name and size (basic check)
       const newFiles = droppedFiles.filter(
         df => !(files && files.some(f => f.name === df.name && f.size === df.size))
       );
       if (newFiles.length > 0) {
+        const fileSize = newFiles[0].size/1024/1024;
+        if (fileSize > parseFloat(Number(process.env.NEXT_PUBLIC_CHAT_UPLOAD_LIMIT))) {
+          toast({title: "Upload Error", description: "Too large file, please upload less than 15MB!", variant: "destructive"});
+          return;
+        }
         setFiles((prev) => [...prev, ...newFiles]);
-        // Trigger immediate upload of new files
         uploadFiles(newFiles);
       }
     }
-  }, [files, uploadFiles]); // Added uploadFiles to dependency array
+  }, [files, uploadFiles]); 
 
   // Manual scroll trigger for streaming responses
   useEffect(() => {
@@ -331,8 +341,8 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
                 setInput("");
               }}
               suggestions={[
-                "Summarize the key points from all documents",
-                "What are the main themes in these files?"
+                "Summarize this folder.",
+                "Analyze each file."
               ]}
             />
           </div>
