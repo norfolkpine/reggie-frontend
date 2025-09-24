@@ -13,13 +13,13 @@ type TokenUsageRow = {
   id: string | number;
   user_email: string;
   team_name?: string | null;
-  operation_type?: string | null; // chat | embedding | rerank | tool
-  provider?: string | null;
-  model?: string | null;
-  prompt_tokens?: number | null;
-  completion_tokens?: number | null;
+  // operation_type?: string | null; // chat | embedding | rerank | tool
+  model_provider?: string | null;
+  model_name?: string | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
   total_tokens: number;
-  created_at: string; // ISO datetime
+  created_at: string;
 };
 
 type PaginatedResponse<T> = {
@@ -83,9 +83,9 @@ export function TokenLogs() {
   function onSort(field: string) {
     setCurrentPage(1);
     setOrdering((prev) => {
-      if (prev === field) return `-${field}`; // toggle desc
-      if (prev === `-${field}`) return field; // toggle asc
-      return `-${field}`; // default to desc when new
+      if (prev === field) return `-${field}`; 
+      if (prev === `-${field}`) return field; 
+      return `-${field}`; 
     });
   }
 
@@ -115,11 +115,11 @@ export function TokenLogs() {
             <TableHead><SortButton field="created_at" label="Date" /></TableHead>
             <TableHead><SortButton field="user_email" label="User" /></TableHead>
             <TableHead><SortButton field="team_name" label="Team" /></TableHead>
-            <TableHead><SortButton field="operation_type" label="Operation" /></TableHead>
-            <TableHead><SortButton field="provider" label="Provider" /></TableHead>
-            <TableHead><SortButton field="model" label="Model" /></TableHead>
-            <TableHead className="text-right"><SortButton field="prompt_tokens" label="Prompt" /></TableHead>
-            <TableHead className="text-right"><SortButton field="completion_tokens" label="Completion" /></TableHead>
+            {/* <TableHead><SortButton field="operation_type" label="Operation" /></TableHead> */}
+            <TableHead><SortButton field="model_provider" label="Provider" /></TableHead>
+            <TableHead><SortButton field="model_name" label="Model" /></TableHead>
+            <TableHead className="text-right"><SortButton field="input_tokens" label="Prompt" /></TableHead>
+            <TableHead className="text-right"><SortButton field="output_tokens" label="Completion" /></TableHead>
             <TableHead className="text-right"><SortButton field="total_tokens" label="Total" /></TableHead>
           </TableRow>
         </TableHeader>
@@ -150,8 +150,8 @@ export function TokenLogs() {
             </TableRow>
           )}
           {!loading && !error && rows.map((r) => {
-            const prompt = r.prompt_tokens ?? 0;
-            const completion = r.completion_tokens ?? 0;
+            const prompt = r.input_tokens ?? 0;
+            const completion = r.output_tokens ?? 0;
             const total = r.total_tokens ?? prompt + completion;
             const date = new Date(r.created_at);
             return (
@@ -159,9 +159,9 @@ export function TokenLogs() {
                 <TableCell className="whitespace-nowrap">{date.toLocaleString()}</TableCell>
                 <TableCell className="whitespace-nowrap">{r.user_email}</TableCell>
                 <TableCell className="whitespace-nowrap">{r.team_name ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap capitalize">{r.operation_type ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">{r.provider ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">{r.model ?? "—"}</TableCell>
+                {/* <TableCell className="whitespace-nowrap capitalize">{r.operation_type ?? "—"}</TableCell> */}
+                <TableCell className="whitespace-nowrap">{r.model_provider ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap">{r.model_name ?? "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{prompt.toLocaleString()}</TableCell>
                 <TableCell className="text-right tabular-nums">{completion.toLocaleString()}</TableCell>
                 <TableCell className="text-right tabular-nums font-medium">{total.toLocaleString()}</TableCell>
@@ -169,9 +169,6 @@ export function TokenLogs() {
             );
           })}
         </TableBody>
-        <TableCaption>
-          Sorted by {ordering.replace("-", "")} {ordering.startsWith("-") ? "(desc)" : "(asc)"}
-        </TableCaption>
       </Table>
 
       {itemsCount >= 0 && (
