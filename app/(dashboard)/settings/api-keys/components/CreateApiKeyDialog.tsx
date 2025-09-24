@@ -60,12 +60,7 @@ export function CreateApiKeyDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <IconPlus className="h-4 w-4 mr-2" />
-          Generate New Key
-        </Button>
-      </DialogTrigger>
+      
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Generate New API Key</DialogTitle>
