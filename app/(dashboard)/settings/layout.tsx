@@ -80,6 +80,11 @@ const sidebarNavItems = [
     title: 'API Keys',
     icon: <IconKey size={18} />,
     href: '/settings/api-keys',
+  },
+  {
+    title: 'App Integrations',
+    icon: <IconDeviceLaptop size={18} />,
+    href: '/settings/integrations',
   }
 ]
 

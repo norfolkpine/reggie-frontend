@@ -8,6 +8,20 @@ export interface Integration {
   is_connected: boolean | false;
 }
 
+// Nango integration interface based on the API documentation
+export interface NangoIntegration {
+  unique_key: string;
+  display_name: string;
+  provider: string;
+  logo: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NangoIntegrationsResponse {
+  data: NangoIntegration[];
+}
+
 export interface NangoConnection {
   provider: string;
   user_id: number;
@@ -47,10 +61,6 @@ export const getConnections = async (page: number = 1) => {
   return response as NangoConnection[];
 };
 
-export const getNangoSessions = async () => {
-  const response = await api.get('/integrations/nangosession/');
-  return response;
-};
 
 export const revokeAccess = async (revoke_provider: String) => {
   const response = await api.post('/integrations/revokesession/', revoke_provider);
@@ -60,4 +70,67 @@ export const revokeAccess = async (revoke_provider: String) => {
 export const saveNangoConnection = async (connectionData : Connection) => {
   const response = await api.post('/integrations/connectionsave/', connectionData);
   return response;
+};
+
+// Convert Nango integration to Integration format
+export const convertNangoIntegrationToIntegration = (integration: NangoIntegration): Integration => {
+  return {
+    key: integration.unique_key,
+    title: integration.display_name,
+    description: `Provider: ${integration.provider}`,
+    icon_url: integration.logo,
+    is_connected: false, // This will be updated based on connections if needed
+  };
+};
+
+// Fetch integrations from Nango API
+export const getNangoIntegrations = async (): Promise<Integration[]> => {
+  const nangoApiUrl = process.env.NEXT_PUBLIC_NANGO_API_URL;
+  const nangoToken = process.env.NEXT_PUBLIC_NANGO_SECRET_KEY;
+
+  if (!nangoApiUrl || !nangoToken) {
+    throw new Error('Nango API URL and secret key must be configured');
+  }
+
+  const response = await fetch(`${nangoApiUrl}/integrations`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${nangoToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Nango integrations: ${response.status} ${response.statusText}`);
+  }
+
+  const data: NangoIntegrationsResponse = await response.json();
+  return data.data.map(convertNangoIntegrationToIntegration);
+};
+
+// Create a Nango connect session
+export const createNangoSession = async (integration: string): Promise<string> => {
+  console.log(`[API] Creating Nango session for integration: ${integration}`);
+  try {
+    const response = await api.post('/integrations/nangosession/', { integration });
+    console.log(`[API] Session creation response:`, response);
+    const data = response as any;
+
+    if (data.error) {
+      console.error(`[API] Session creation failed with error: ${data.error}`);
+      throw new Error(`Failed to create Nango session: ${data.error}`);
+    }
+
+    // Nango returns the token in the response
+    if (!data.token) {
+      console.error(`[API] Missing token in response:`, data);
+      throw new Error('Invalid session response: missing token');
+    }
+
+    console.log(`[API] Session token created successfully: ${data.token.substring(0, 20)}...`);
+    return data.token;
+  } catch (error) {
+    console.error(`[API] Session creation failed:`, error);
+    throw error;
+  }
 };

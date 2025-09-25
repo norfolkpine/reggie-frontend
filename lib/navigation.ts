@@ -40,7 +40,7 @@ export const routes = {
   },
   appIntegration: {
     name: "Apps",
-    path: "/app-integration",
+    path: "/settings/integrations",
     icon: LayoutGrid,
     description: "Manage app integrations"
   },

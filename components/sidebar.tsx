@@ -115,11 +115,6 @@ const navigationItems: NavigationItem[] = [
   { type: "divider" }, 
   { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-  {
-    name: "Apps",
-    icon: LayoutGrid,
-    url: "/app-integration",
-  },
   { type: "divider" },
   // SuperUser/Staff Only. Future feature: Allow and restrict for Enterprise users
   { name: "Admin", icon: Shield, url: "/admin" },
@@ -139,7 +134,7 @@ const navigationItems: NavigationItem[] = [
 //   {
 //     name: "Apps",
 //     icon: LayoutGrid,
-//     url: "/app-integration",
+//     url: "/settings/integrations",
 //   },
 //   {
 //     name: "Base Knowledge (Admin)",
