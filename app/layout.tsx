@@ -10,9 +10,9 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Reggie",
-  description: "Compliance and work automation engine",
-    generator: 'v0.dev'
+  title: "Opie",
+  description: "Operational Intelligence Engine - Compliance and work automation platform",
+    generator: 'opie'
 }
 
 const allowedRoutes = [
