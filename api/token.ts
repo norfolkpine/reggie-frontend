@@ -23,3 +23,8 @@ export const getUserTokenSummary = async (page: number = 1,page_size: number,
   });
   return response;
 };
+
+export const getTokenSummarybyUser = async () => {
+  const response = await api.get(`${ENDPOINT}/currentuser/`, {});
+  return response;
+};
