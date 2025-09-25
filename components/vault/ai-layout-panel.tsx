@@ -1,27 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles,
   X,
-  FileText,
-  FolderOpen,
-  ChevronRight,
-  Loader2,
-  Send,
-  GripVertical,
-  User,
-  Bot
+  FolderOpen
 } from "lucide-react";
 import { useAiPanel } from "@/contexts/ai-panel-context";
-import { cn } from "@/lib/utils";
 import { VaultChat } from "@/features/vault/components/vault-chat";
-
-const MIN_WIDTH = 450;
-const MAX_WIDTH = 800;
 
 interface Message {
   id: string;
@@ -33,82 +20,20 @@ interface Message {
 export function AiLayoutPanel() {
   const {
     isOpen,
-    panelWidth,
-    isResizing,
     currentContext,
-    closePanel,
-    setPanelWidth,
-    setIsResizing
+    closePanel
   } = useAiPanel();
 
-  const resizeRef = useRef<HTMLDivElement>(null);
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(0);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    startXRef.current = e.clientX;
-    startWidthRef.current = panelWidth;
-  }, [panelWidth, setIsResizing]);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing) return;
-
-    const deltaX = startXRef.current - e.clientX; // Inverted because panel is on the right
-    const newWidth = Math.min(Math.max(startWidthRef.current + deltaX, MIN_WIDTH), MAX_WIDTH);
-    setPanelWidth(newWidth);
-  }, [isResizing, setPanelWidth]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, [setIsResizing]);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  const handleScroll = () => {
+    // Handle scroll events if needed
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div
-      className="flex h-full bg-white rounded-xl border shadow-sm"
-      style={{ width: panelWidth }}
-    >
-      {/* Resize Handle */}
-      <div
-        ref={resizeRef}
-        className={cn(
-          "w-1 bg-transparent hover:transparent cursor-col-resize flex items-center justify-center group transition-colors relative rounded-l-xl",
-          isResizing && "bg-transparent"
-        )}
-        onMouseDown={handleMouseDown}
-      >
-        {/* Vertical line indicator */}
-        <div className={cn(
-          "absolute left-1 top-4 bottom-4 w-px bg-transparent group-hover:transparent transition-colors rounded-full",
-          isResizing && "bg-transparent"
-        )} />
-        <GripVertical className="w-3 h-3 text-transparent group-hover:transparent relative z-10" />
-      </div>
-
+    <div className="flex h-full bg-white rounded-xl border shadow-sm">
       {/* Panel Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
@@ -139,13 +64,21 @@ export function AiLayoutPanel() {
         </div>
 
         {/* Chat Messages Area */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <VaultChat
-            projectId={currentContext.projectId || ""}
-            folderId={currentContext.folderId?.toString()}
-            fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
-            sessionId={undefined}
-          />
+        <div className="flex-1 relative min-h-0">
+          <div 
+            ref={chatMessagesRef}
+            className="absolute inset-0 overflow-y-auto scroll-smooth px-2"
+            style={{ scrollBehavior: 'smooth' }}
+            onScroll={handleScroll}
+          >
+            <VaultChat
+              agentId = {`vault_${currentContext.projectId}` || ""}
+              projectId={currentContext.projectId || ""}
+              folderId={currentContext.folderId?.toString()}
+              fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
+              sessionId={undefined}
+            />
+          </div>
         </div>
 
       </div>

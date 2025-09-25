@@ -1,0 +1,37 @@
+name: Deploy Frontend to Cloud Run (Most Efficient)
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+env:
+  PROJECT_ID: bh-reggie-test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud builds submit \
+            --config cloudbuild-cloudrun.yaml \
+            --substitutions=_NEXT_PUBLIC_DEFAULT_AGENT_ID="${{ vars.NEXT_PUBLIC_DEFAULT_AGENT_ID }}" \
+            --substitutions=_NEXT_PUBLIC_API_ORIGIN="${{ secrets.NEXT_PUBLIC_API_ORIGIN }}" \
+            --substitutions=_NEXT_PUBLIC_API_BASE_URL="${{ secrets.NEXT_PUBLIC_API_BASE_URL }}" \
+            --substitutions=_NEXT_PUBLIC_NANGO_API_URL="${{ vars.NEXT_PUBLIC_NANGO_API_URL }}" \
+            --substitutions=_NEXT_PUBLIC_NANGO_BASE_URL="${{ vars.NEXT_PUBLIC_NANGO_BASE_URL }}" \
+            --substitutions=_COLLABORATION_WS_URL="${{ secrets.COLLABORATION_WS_URL }}" \
+            --substitutions=_NEXT_PUBLIC_SENTRY_DSN="${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" \
+            --substitutions=_SENTRY_AUTH_TOKEN="${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            --substitutions=_REGION="${{ vars.REGION || 'us-central1' }}"

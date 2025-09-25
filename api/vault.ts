@@ -3,13 +3,14 @@ import { getCSRFToken } from '@/api';
 import { VaultFile } from '../types/api';
 import { handleApiError } from '@/lib/utils/handle-api-error';
 import { BASE_URL } from '@/lib/api-client';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
+import { TOKEN_KEY } from "../lib/constants";
 
 export interface UploadFileParams {
   file: File;
   project_uuid: string;
   uploaded_by: number;
   team?: number;
+  parent_id?: number;
   shared_with_users?: number[];
   shared_with_teams?: number[];
 }
@@ -25,9 +26,10 @@ export async function getVaultFilesByProject(
   projectId: string,
   page: number = 1,
   pageSize: number = 10,
-  search: string = ''
+  search: string = '',
+  parentId: number = 0
 ): Promise<VaultFilesResponse> {
-  let url = `/reggie/api/v1/vault-files/by-project/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}`;
+  let url = `/reggie/api/v1/vault-files/by-project/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}&parent_id=${parentId}`;
   
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;
@@ -44,12 +46,14 @@ export async function uploadFiles({
   team,
   shared_with_users,
   shared_with_teams,
+  parent_id,
 }: UploadFileParams) {
   
   const formData = new FormData();
   formData.append('file', file);
   formData.append('project_uuid', project_uuid);
   formData.append('uploaded_by', String(uploaded_by));
+  formData.append('parent_id', String(parent_id ?? 0));
   if (typeof team !== 'undefined') {
     formData.append('team', String(team));
   }
@@ -159,4 +163,50 @@ export async function chatWithVaultAgent(params: {
   }
 
   return response;
+}
+export async function createFolder({
+  folderName,
+  project_uuid,
+  parent_id = 0,
+  uploaded_by,
+  team,
+}: {
+  folderName: string;
+  project_uuid: string;
+  uploaded_by?: number;
+  parent_id?: number;
+  team?: number;
+}): Promise<VaultFile> {
+  const payload = {
+    folderName:folderName,
+    original_filename:folderName,
+    project_uuid :project_uuid,
+    parent_id :parent_id,
+    uploaded_by :uploaded_by,
+    team : team,
+    is_folder: true,
+    type: "folder"
+  }
+
+  try {
+    console.log("payload", payload);
+    const response = await api.post('/reggie/api/v1/vault-files/', payload);
+    return response as VaultFile;
+  } catch (error: any) {
+    const message = error?.message || 'Failed to create folder';
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
+export async function moveVaultFiles(fileIds: number[], targetFolderId: number): Promise<void> {
+  try {
+    await api.post('/reggie/api/v1/vault-files/move/', {
+      file_ids: fileIds,
+      target_folder_id: targetFolderId
+    });
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to move files');
+  }
 }

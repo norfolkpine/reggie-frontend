@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ChatContainer,
   ChatForm,
@@ -14,11 +14,12 @@ import MessageActions from "@/features/chats/components/message-actions";
 import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Brain, Lightbulb } from "lucide-react";
+import { Paperclip } from "lucide-react";
+import { useAiPanel } from "@/contexts/ai-panel-context";
 
 interface VaultChatProps {
   projectId: string;
+  agentId: string;
   folderId?: string;
   fileIds?: string[];
   sessionId?: string;
@@ -27,27 +28,36 @@ interface VaultChatProps {
   onMessageComplete?: () => void;
 }
 
-export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
+export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  const {
+  currentContext,
+  } = useAiPanel();
 
   const {
     messages,
     handleSubmit,
+    uploadFiles,
     isLoading,
     error,
     currentDebugMessage,
     currentChatTitle: _currentChatTitle,
     isAgentResponding,
     currentToolCalls,
+    isUploadingFiles,
     currentReasoningSteps,
     isMemoryUpdating,
   } = useVaultChat({
+    agentId,
     projectId,
     folderId,
     fileIds,
@@ -62,7 +72,9 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
     // Ensure that input is present before submitting
     if (!input.trim()) return;
 
-    handleSubmit(input);
+    const reference = folderId === "0" ? `(You can reference this infomations - This is Root Folder and projectId: ${projectId})` : `(You can reference this infomations - folderId: ${folderId}, projectId: ${projectId})`;
+
+    handleSubmit(input, reference);
 
     setInput(""); // Clear input after sending
   };
@@ -223,6 +235,41 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
     }
   }, [isAgentResponding, lastMessage]);
 
+    
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set drag over to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      const newFiles = droppedFiles.filter(
+        df => !(files && files.some(f => f.name === df.name && f.size === df.size))
+      );
+      if (newFiles.length > 0) {
+        const fileSize = newFiles[0].size/1024/1024;
+        if (fileSize > parseFloat(Number(process.env.NEXT_PUBLIC_CHAT_UPLOAD_LIMIT))) {
+          toast({title: "Upload Error", description: "Too large file, please upload less than 15MB!", variant: "destructive"});
+          return;
+        }
+        setFiles((prev) => [...prev, ...newFiles]);
+        uploadFiles(newFiles);
+      }
+    }
+  }, [files, uploadFiles]); 
+
   // Manual scroll trigger for streaming responses
   useEffect(() => {
     if (isAgentResponding && messages.length > 0) {
@@ -265,7 +312,24 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
 
   return (
     <div className="flex flex-col h-full max-w-full">
-      <div className="flex-1 flex flex-col relative min-h-0">
+      <div 
+        className="flex-1 flex flex-col relative min-h-0"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+
+        {isDragOver && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+              <div className="text-center">
+                <Paperclip className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                <p className="text-lg font-medium text-gray-900">Drop files here</p>
+                <p className="text-sm text-gray-500">Release to upload</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {isEmpty && (
           <div className="flex-1 flex items-center justify-center p-8 min-h-0">
@@ -277,8 +341,8 @@ export function VaultChat({ projectId, folderId, fileIds, sessionId, onTitleUpda
                 setInput("");
               }}
               suggestions={[
-                "Summarize the key points from all documents",
-                "What are the main themes in these files?"
+                "Summarize this folder.",
+                "Analyze each file."
               ]}
             />
           </div>

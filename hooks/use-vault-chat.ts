@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { ToolCall } from '@/components/ui/chat-message';
 import { captureChatError } from '@/lib/error-handler';
 import { getCSRFToken } from '@/api';
+import { uploadFiles as apiUploadFiles } from '@/api/files';
+import { ReferencesData } from '@/types/message';
 
 interface Message {
   id: string;
@@ -16,6 +18,8 @@ interface Message {
   feedback?: Feedback[];
   toolCalls?: ToolCall[];
   reasoningSteps?: ReasoningStep[];
+  experimental_attachments?: { name: string; contentType: string; url: string }[];
+  references?: ReferencesData[];
 }
 
 interface ReasoningStep {
@@ -28,6 +32,7 @@ interface ReasoningStep {
 }
 
 interface UseVaultChatProps {
+  agentId: string;
   projectId: string;
   folderId?: string | null;
   fileIds?: string[];
@@ -40,7 +45,8 @@ interface UseVaultChatProps {
 
 interface UseVaultChatReturn {
   messages: Message[];
-  handleSubmit: (value?: string) => void;
+  handleSubmit: (value?: string, references?: string) => void;
+  uploadFiles: (files: File[]) => Promise<void>; 
   isLoading: boolean;
   error: string | null;
   currentDebugMessage: string | null;
@@ -49,9 +55,19 @@ interface UseVaultChatReturn {
   currentToolCalls: Map<string, ToolCall>;
   currentReasoningSteps: ReasoningStep[];
   isMemoryUpdating: boolean;
+  isUploadingFiles: boolean;
+  fileUploads: FileUploadStatus[];
+}
+
+export interface FileUploadStatus {
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
+  progress?: number;
 }
 
 export function useVaultChat({
+  agentId,
   projectId,
   folderId = null,
   fileIds = [],
@@ -77,7 +93,8 @@ export function useVaultChat({
   const [currentToolCalls, setCurrentToolCalls] = useState<Map<string, ToolCall>>(new Map());
   const [currentReasoningSteps, setCurrentReasoningSteps] = useState<ReasoningStep[]>([]);
   const [isMemoryUpdating, setIsMemoryUpdating] = useState(false);
-
+  const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false);
+  const [fileUploads, setFileUploads] = useState<FileUploadStatus[]>([]);
   const { handleTokenExpiration } = useAuth();
 
   useEffect(() => {
@@ -127,6 +144,7 @@ export function useVaultChat({
         console.error('Error loading session details or messages:', error);
         captureChatError(error, {
           action: 'loadExistingSessionDetails',
+          agentId: agentId,
           projectId: projectId,
           sessionId: ssid,
           apiResponse: error,
@@ -152,7 +170,87 @@ export function useVaultChat({
     };
   }, [ssid, projectId]);
 
-  const handleSubmit = useCallback(async (value?: string) => {
+  const uploadFiles = useCallback(async (filesToUpload: File[]) => {
+    if (!filesToUpload || filesToUpload.length === 0) return;
+    
+    // Create session first if it doesn't exist
+    let tempSessionId = internalSessionId;
+    if (!sessionCreated || !tempSessionId) {
+      try {
+        setCurrentChatTitle("New Chat"); 
+        const session = await createChatSession({ agent_id: agentId });
+        tempSessionId = session.session_id;
+        setInternalSessionId(tempSessionId);
+        setSessionCreated(true);
+        isNewConversationRef.current = true; 
+        if (onNewSessionCreated && tempSessionId) {
+          onNewSessionCreated(tempSessionId);
+        }
+      } catch (sessionError) {
+        console.error('Failed to create chat session:', sessionError);
+        captureChatError(sessionError, { 
+          action: 'createChatSession',
+          agentId: agentId,
+          apiResponse: sessionError,
+          component: 'chat'
+        });
+        setError('Failed to create chat session. Please check your connection and try again.');
+        return;
+      }
+    }
+
+    setIsUploadingFiles(true);
+    const initialFileUploadStates: FileUploadStatus[] = filesToUpload.map(file => ({
+      file,
+      status: 'pending',
+    }));
+    setFileUploads(initialFileUploadStates);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file, index) => {
+        setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'uploading' } : fu));
+        try {
+          await apiUploadFiles([file], { session_id: tempSessionId!, is_ephemeral: true });
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'success' } : fu));
+          return { success: true, file };
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${file.name}:`, uploadError);
+          captureChatError(uploadError, { 
+            action: 'uploadFile',
+            agentId: agentId,
+            fileName: file.name, 
+            sessionId: tempSessionId,
+            apiResponse: uploadError,
+            component: 'chat'
+          });
+          const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+          setFileUploads(prev => prev.map((fu, i) => i === index ? { ...fu, status: 'error', error: errorMessage } : fu));
+          return { success: false, file, error: errorMessage };
+        }
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const failedUploads = uploadResults.filter(result => !result.success);
+
+      if (failedUploads.length > 0) {
+        setError(`Failed to upload ${failedUploads.length} file(s). ${failedUploads.map(f => `${f.file.name}: ${f.error}`).join(', ')}`);
+      }
+    } catch (e) {
+      console.error('Error during file upload orchestration:', e);
+      captureChatError(e, { 
+        action: 'fileUploadOrchestration',
+        agentId: agentId,
+        sessionId: tempSessionId,
+        apiResponse: e,
+        component: 'chat'
+      });
+      setError('A general error occurred during file uploads.');
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  }, [agentId, sessionCreated, internalSessionId, onNewSessionCreated]);
+
+  const handleSubmit = useCallback(async (value?: string, references?: string, filesToUpload?: File[]) => {
     if (!value?.trim() || (isLoading && !isInitializing)) return;
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -181,6 +279,7 @@ export function useVaultChat({
         captureChatError(sessionError, {
           action: 'createVaultChatSession',
           projectId: projectId,
+          agentId: agentId,
           apiResponse: sessionError,
           component: 'vault-chat'
         });
@@ -190,11 +289,30 @@ export function useVaultChat({
       }
     }
 
+    const userMessageContent = value ?? "";
+    let attachments: { id: string; name: string; contentType: string; url: string }[] | undefined = undefined;
+    if (filesToUpload && filesToUpload.length > 0) {
+      // Upload files and get their metadata
+      const uploadResponse = await apiUploadFiles(filesToUpload, { session_id: tempSessionId!, is_ephemeral: true });
+      if (Array.isArray(uploadResponse?.documents) && uploadResponse.documents.length > 0) {
+        attachments = uploadResponse.documents.map(doc => ({
+          id: doc.uuid,
+          name: doc.title,
+          contentType: doc.file_type,
+          url: doc.file
+        }));
+      } else {
+        setError('File upload failed or returned no files.');
+        attachments = [];
+      }
+    }
+
     // Add the user message to the UI
     const userMessage: Message = {
       id: uuidv4(),
-      content: value ?? "",
+      content: userMessageContent,
       role: 'user',
+      ...(attachments && { experimental_attachments: attachments })
     };
 
     if (isNewConversationRef.current && messages.length === 0) {
@@ -218,8 +336,9 @@ export function useVaultChat({
         project_id: projectId,
         folder_id: folderId,
         file_ids: fileIds,
-        message: value,
+        message: userMessageContent + references,
         session_id: tempSessionId,
+        agentId: agentId,
         reasoning: reasoning,
       };
 
@@ -362,6 +481,24 @@ export function useVaultChat({
                 setIsAgentResponding(!isAgentResponding);
               } else if (parsedData.event === "MemoryUpdateStarted") {
                 setIsMemoryUpdating(true);
+              } else if (parsedData.event === "References") {
+                // Handle references data
+                if (parsedData.extra_data?.references) {
+                  const referencesData: ReferencesData[] = parsedData.extra_data.references;
+                  
+                  // Update the last assistant message with references
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        references: referencesData,
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
               } else if (parsedData.event) {
                 console.log("Received unhandled event type:", parsedData.event, parsedData);
               }
@@ -373,6 +510,7 @@ export function useVaultChat({
                 sessionId: tempSessionId,
                 dataContent: dataContent,
                 apiResponse: e,
+                agentId: agentId,
                 component: 'vault-chat'
               });
             }
@@ -431,6 +569,7 @@ export function useVaultChat({
           captureChatError(e, {
             action: 'releaseReaderLock',
             projectId: projectId,
+            agentId: agentId,
             sessionId: tempSessionId,
             apiResponse: e,
             component: 'vault-chat'
@@ -443,18 +582,21 @@ export function useVaultChat({
         onMessageComplete();
       }
     }
-  }, [projectId, folderId, fileIds, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
+  }, [agentId, projectId, folderId, fileIds, sessionCreated, internalSessionId, currentDebugMessage, messages, isLoading, isInitializing, currentChatTitle, isAgentResponding, onNewSessionCreated, reasoning, handleTokenExpiration, onTitleUpdate, onMessageComplete]);
 
   return {
     messages,
     handleSubmit,
-    isLoading: isLoading || isInitializing,
+    uploadFiles,
+    isLoading: isLoading || isInitializing || isUploadingFiles,
     error,
     currentDebugMessage,
     currentChatTitle,
     isAgentResponding,
     currentToolCalls,
     currentReasoningSteps,
+    fileUploads,
+    isUploadingFiles,
     isMemoryUpdating,
   };
 }
