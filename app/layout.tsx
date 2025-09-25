@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Opie",
-  description: "Operational Intelligence Engine - Compliance and work automation engine",
+  description: "Operational Intelligence Engine - Compliance and work automation platform",
     generator: 'opie'
 }
 
