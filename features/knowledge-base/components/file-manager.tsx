@@ -20,6 +20,7 @@ import {
   Folder,
   FolderOpen,
   Cloud,
+  Edit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,8 +76,9 @@ import {
   listFiles,
   listFilesWithKbs,
   ingestSelectedFiles,
+  patchFile,
 } from '@/api/files';
-import { listCollections, deleteCollection } from '@/api/collections';
+import { listCollections, deleteCollection, updateCollection } from '@/api/collections';
 import { api } from '@/lib/api-client';
 
 interface ApiResponse {
@@ -162,13 +164,13 @@ const RootDropZone: React.FC<RootDropZoneProps> = ({ onMoveItem, children }) => 
     <div 
       ref={attachRef}
       className={`
-        ${isOver ? 'bg-blue-25 border-2 border-dashed border-blue-300 rounded-lg' : ''}
+        ${isOver ? 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg' : ''}
         transition-all duration-200
       `}
     >
       {children}
       {isOver && (
-        <div className="text-center py-4 text-blue-600 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg mt-2">
+        <div className="text-center py-4 text-primary bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg mt-2">
           Drop here to move to root directory
         </div>
       )}
@@ -210,9 +212,9 @@ const DraggableTableRow: React.FC<DraggableTableRowProps> = ({
     <TableRow
       ref={attachRef}
       className={`
-        ${isDragging ? 'opacity-50 bg-gray-100 border-2 border-dashed border-gray-300' : ''}
-        ${isOver ? 'bg-blue-50 border-2 border-blue-300 shadow-md' : ''}
-        ${item.type === 'folder' && !isDragging && !isOver ? 'hover:bg-gray-50' : ''}
+        ${isDragging ? 'opacity-50 bg-muted border-2 border-dashed border-border' : ''}
+        ${isOver ? 'bg-primary/10 border-2 border-primary/30 shadow-md' : ''}
+        ${item.type === 'folder' && !isDragging && !isOver ? 'hover:bg-muted' : ''}
         transition-all duration-200 ease-in-out
       `}
       style={{ 
@@ -369,6 +371,9 @@ export function FileManager() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [itemsCount, setItemsCount] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string; type: 'file' | 'folder' } | null>(null);
+  const [renameName, setRenameName] = useState('');
 
   // Combined items for display
   const combinedItems = useMemo<FileOrFolder[]>(() => {
@@ -862,6 +867,46 @@ export function FileManager() {
     toast.info('Google Drive integration coming soon!');
   };
 
+  const handleStartRename = (item: FileOrFolder) => {
+    if (item.id === 'go-up') return;
+    setRenameTarget({ id: item.id, name: item.name, type: item.type });
+    setRenameName(item.name);
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenameDialogOpen(false);
+    setRenameTarget(null);
+    setRenameName('');
+  };
+
+  const handleConfirmRename = async () => {
+    if (!renameTarget || !renameName.trim()) return;
+    try {
+      if (renameTarget.type === 'file') {
+        const fileUuid = renameTarget.id.replace('file-', '');
+        await patchFile(fileUuid, { title: renameName.trim() });
+        toast.success('File renamed successfully');
+      } else if (renameTarget.type === 'folder') {
+        const folderUuid = renameTarget.id.replace('folder-', '');
+        await updateCollection(folderUuid, { name: renameName.trim() });
+        toast.success('Folder renamed successfully');
+      }
+      setIsRenameDialogOpen(false);
+      setRenameTarget(null);
+      setRenameName('');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to rename item:', error);
+      toast.error('Failed to rename item');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleConfirmRename();
+    else if (e.key === 'Escape') handleCancelRename();
+  };
+
   // TanStack table setup
   const multiSelectFilter: ColumnDef<FileOrFolder>["filterFn"] = (row, id, value) => {
     if (!Array.isArray(value) || value.length === 0) return true;
@@ -1335,16 +1380,16 @@ export function FileManager() {
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 mb-4 text-sm">
         <span 
-          className={`${!currentCollectionUuid ? 'text-gray-900 font-semibold' : 'text-blue-600 hover:text-blue-800 cursor-pointer font-medium'}`}
+          className={`${!currentCollectionUuid ? 'text-foreground font-semibold' : 'text-primary hover:text-primary/80 cursor-pointer font-medium'}`}
           onClick={!currentCollectionUuid ? undefined : navigateToRoot}
         >
           Root
         </span>
         {breadcrumbs.map((crumb, index) => (
           <React.Fragment key={crumb.uuid || index}>
-            <span className="text-gray-400">/</span>
+            <span className="text-muted-foreground">/</span>
             <span 
-              className={`text-blue-600 hover:text-blue-800 cursor-pointer font-medium ${
+              className={`text-primary hover:text-primary/80 cursor-pointer font-medium ${
                 index === breadcrumbs.length - 1 ? 'font-semibold' : ''
               }`}
               onClick={async () => {
@@ -1465,20 +1510,22 @@ export function FileManager() {
                   <TableCell>
                     <div className="flex items-center">
                       {getItemIcon(item)}
-                      <span 
-                        className={`font-medium ml-2 ${
-                          item.id === 'go-up' 
-                            ? 'text-gray-500 hover:text-gray-700 cursor-pointer italic' 
-                            : item.type === 'folder' 
-                              ? 'text-blue-600 hover:text-blue-800 cursor-pointer'
-                              : item.type === 'file'
-                                ? 'text-gray-900 hover:text-blue-600 cursor-pointer'
-                                : ''
-                        }`}
-                        onClick={() => handleItemClick(item)}
-                      >
-                        {item.name}
-                      </span>
+                      {(
+                        <span 
+                          className={`font-medium ml-2 ${
+                            item.id === 'go-up' 
+                              ? 'text-muted-foreground hover:text-foreground cursor-pointer italic' 
+                              : item.type === 'folder' 
+                                ? 'text-primary hover:text-primary/80 cursor-pointer'
+                                : item.type === 'file'
+                                  ? 'text-foreground hover:text-primary cursor-pointer'
+                                  : ''
+                          }`}
+                          onClick={() => handleItemClick(item)}
+                        >
+                          {item.name}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -1513,6 +1560,12 @@ export function FileManager() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleStartRename(item)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Rename
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handlePreviewFile(item.file!)}
                               >
@@ -1557,6 +1610,12 @@ export function FileManager() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleStartRename(item)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Rename
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
                                 if (item.id === 'go-up') {
@@ -1813,6 +1872,30 @@ export function FileManager() {
         mode="edit"
         collection={editingCollection || undefined}
       />
+      {/* Rename Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={(v) => (v ? setIsRenameDialogOpen(true) : handleCancelRename())}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename {renameTarget?.type === 'folder' ? 'Folder' : 'File'}</DialogTitle>
+            <DialogDescription>
+              Enter a new name for the selected {renameTarget?.type === 'folder' ? 'folder' : 'file'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              placeholder={renameTarget?.name || ''}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCancelRename}>Cancel</Button>
+              <Button onClick={handleConfirmRename} disabled={!renameName.trim()}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </DndProvider>
   );

@@ -91,11 +91,6 @@ const navigationItems: (ChatItem | { type: "divider" })[] = [
   { name: "Documents", icon: FileText, url: "/documents" },
 
   { type: "divider" }, 
-  {
-    name: "Apps",
-    icon: LayoutGrid,
-    url: "/app-integration",
-  },
   { name: "Knowledge Base (admin)", icon: Database, url: "/knowledge-base" },
 ];
 
