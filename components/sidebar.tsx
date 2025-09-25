@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Image from "next/image";
 
 // Import the TeamSwitcher component at the top of the file
 import { TeamSwitcher } from "@/components/team/team-switcher";
@@ -395,8 +396,14 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
             {/* Header with logo */}
             {!isMobile && (
               <div className="flex items-center justify-between">
-              <span className="font-semibold text-xl">Reggie</span>
-            </div>
+                <Image
+                  src="/opie-logo-dark-purple-rgb-teal.svg"
+                  alt="Opie Logo"
+                  width={120}
+                  height={60}
+                  className="h-8 w-auto"
+                />
+              </div>
             )}
             
             {/* Navigation items */}
@@ -618,8 +625,14 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
         <div className="flex flex-col h-full">
           <div className="p-3 flex flex-col items-center gap-3">
             {/* Logo */}
-            <div className="flex items-center justify-between w-full">
-              <span className="font-semibold">R</span>
+            <div className="flex items-center justify-center w-full">
+              <Image
+                src="/opie-logo-mark-dark-purple-rgb-teal.svg"
+                alt="Opie Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8"
+              />
             </div>
 
             {/* Plus button (New Chat) in collapsed view */}
