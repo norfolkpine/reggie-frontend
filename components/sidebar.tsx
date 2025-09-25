@@ -186,6 +186,10 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
   const [docToDelete, setDocToDelete] = useState<Doc | null>(null);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
+  
+  // Image loading states
+  const [mainLogoError, setMainLogoError] = useState(false);
+  const [markLogoError, setMarkLogoError] = useState(false);
 
   // Infinite paginated fetch for documents (only user's own)
   const {
@@ -396,13 +400,18 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
             {/* Header with logo */}
             {!isMobile && (
               <div className="flex items-center justify-between">
-                <Image
-                  src="/opie-logo-dark-purple-rgb-teal.svg"
-                  alt="Opie Logo"
-                  width={120}
-                  height={60}
-                  className="h-8 w-auto"
-                />
+                {mainLogoError ? (
+                  <span className="font-semibold text-xl">Opie</span>
+                ) : (
+                  <Image
+                    src="/opie-logo-dark-purple-rgb-teal.svg"
+                    alt="Opie Logo"
+                    width={120}
+                    height={60}
+                    className="h-8 w-auto"
+                    onError={() => setMainLogoError(true)}
+                  />
+                )}
               </div>
             )}
             
@@ -626,13 +635,18 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
           <div className="p-3 flex flex-col items-center gap-3">
             {/* Logo */}
             <div className="flex items-center justify-center w-full">
-              <Image
-                src="/opie-logo-mark-dark-purple-rgb-teal.svg"
-                alt="Opie Logo"
-                width={32}
-                height={32}
-                className="h-8 w-8"
-              />
+              {markLogoError ? (
+                <span className="font-semibold text-lg">O</span>
+              ) : (
+                <Image
+                  src="/opie-logo-mark-dark-purple-rgb-teal.svg"
+                  alt="Opie Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8"
+                  onError={() => setMarkLogoError(true)}
+                />
+              )}
             </div>
 
             {/* Plus button (New Chat) in collapsed view */}
