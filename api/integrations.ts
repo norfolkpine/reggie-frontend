@@ -62,6 +62,7 @@ interface Connection {
   connectionId: string | undefined;
 }
 
+
 // Fetch providers from Nango API
 export const getNangoProviders = async (): Promise<NangoProvider[]> => {
   const nangoApiUrl = process.env.NEXT_PUBLIC_NANGO_API_URL;
@@ -131,3 +132,4 @@ export const saveNangoConnection = async (connectionData : Connection) => {
   const response = await api.post('/integrations/connectionsave/', connectionData);
   return response;
 };
+

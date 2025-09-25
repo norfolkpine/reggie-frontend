@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ExternalLink } from "lucide-react";
+import { getNangoSessions, saveNangoConnection } from "@/api/integrations";
+import Nango from '@nangohq/frontend';
+import { useToast } from "@/components/ui/use-toast";
 
 // Nango integration interface based on the API documentation
 interface NangoIntegration {
@@ -61,6 +64,11 @@ export default function TestNangoIntegrations() {
   const [convertedIntegrations, setConvertedIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [nangoSessionToken, setNangoSessionToken] = useState<string | null>(null);
+  const [nangoConnect, setNangoConnect] = useState<any>(null);
+  const [nango, setNango] = useState<Nango | null>(null);
+  const { toast } = useToast();
 
   const fetchIntegrations = async () => {
     setLoading(true);
@@ -86,8 +94,270 @@ export default function TestNangoIntegrations() {
     }
   };
 
+  const initializeConnectUI = (integrationKey: string) => {
+    if (nangoConnect) {
+      console.log('[Nango] Using existing Connect UI instance');
+      return nangoConnect;
+    }
+
+    if (!nango || !nangoSessionToken) {
+      console.error('[Nango] Cannot initialize Connect UI: missing nango instance or session token');
+      return null;
+    }
+
+    console.log('[Nango] Initializing new Connect UI...');
+
+    try {
+      if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
+        console.error('[Nango] Missing required environment variables: NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
+        toast({
+          title: "Configuration Error",
+          description: "Nango configuration is missing. Please contact support.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      const connectUI = nango.openConnectUI({
+        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
+        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
+        onEvent: (event) => {
+          console.log('[Nango] Connect UI event:', event);
+          try {
+            if (event.type === 'connect') {
+              const eventData = event.payload || {};
+              console.log('[Nango] Event data structure:', { payload: event.payload });
+
+              const { connectionId, providerConfigKey } = eventData;
+              const actualProvider = (eventData as any).provider ?? providerConfigKey;
+
+              if (!actualProvider || !connectionId) {
+                console.error('[Nango] Missing required connection data:', { actualProvider, connectionId });
+                toast({
+                  title: "Connection Error",
+                  description: "Invalid connection data received. Please try again.",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              console.log(`[Nango] Successfully connected to ${actualProvider} with connection ID: ${connectionId}`);
+
+              // Show success toast
+              toast({
+                title: "Connection Successful",
+                description: `Successfully connected to ${integrationKey}`,
+              });
+
+              // Save the connection to database
+              console.log('[Nango] Saving connection to database...', { provider: actualProvider, connectionId });
+              
+              const handleConnectionSave = async () => {
+                console.log('[Nango] Waiting for webhook processing...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                try {
+                  console.log('[Nango] Attempting to save connection:', {
+                    provider: actualProvider,
+                    connectionId
+                  });
+
+                  try {
+                    const connectionData = {
+                      provider: actualProvider,
+                      connectionId: connectionId || undefined
+                    };
+
+                    const saveResponse = await saveNangoConnection(connectionData);
+
+                    if (saveResponse && typeof saveResponse === 'object') {
+                      const saveData = saveResponse as any;
+                      
+                      if (!saveData.id) {
+                        if (!saveData.error?.includes('duplicate')) {
+                          console.error('[Nango] Failed to save connection:', saveData);
+                        }
+                      } else {
+                        console.log('[Nango] Save request completed:', saveData);
+                        // Refresh the integrations list to show updated connection status
+                        await fetchIntegrations();
+                      }
+                    }
+                  } catch (error) {
+                    console.log('[Nango] Save request failed, but webhook may have saved it:', error);
+                  }
+
+                } catch (error) {
+                  console.error('[Nango] ❌ Error in save/verify process:', error);
+                }
+              };
+
+              handleConnectionSave();
+
+              setNangoConnect(null);
+            } else if (event.type === 'close') {
+              console.log('[Nango] Connect UI closed');
+            }
+          } catch (error) {
+            console.error('[Nango] Error handling event:', error);
+            console.error('[Nango] Event that caused error:', event);
+          }
+        }
+      });
+
+      console.log("connectUI", connectUI);
+      console.log(`[Nango] Setting session token: ${nangoSessionToken}`);
+      console.log(`[Nango] Session token type:`, typeof nangoSessionToken);
+      console.log(`[Nango] Session token length:`, nangoSessionToken?.length);
+      
+      if (!nangoSessionToken || nangoSessionToken === 'undefined' || nangoSessionToken === 'null') {
+        console.error('[Nango] Invalid session token:', nangoSessionToken);
+        toast({
+          title: "Authentication Error",
+          description: "Invalid session token. Please refresh the page and try again.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      connectUI.setSessionToken(nangoSessionToken);
+      setNangoConnect(connectUI);
+      console.log(`[Nango] Connect UI initialized and ready`);
+
+      return connectUI;
+    } catch (error) {
+      console.error('[Nango] Error initializing Connect UI:', error);
+      return null;
+    }
+  };
+
+  const handleConnect = async (integrationKey: string) => {
+    setConnecting(integrationKey);
+    setError(null);
+    
+    try {
+      console.log(`[Nango] Attempting to connect to ${integrationKey}`);
+      console.log(`[Nango] Nango instance:`, nango);
+      console.log(`[Nango] Session token:`, nangoSessionToken);
+      console.log(`[Nango] API URL:`, process.env.NEXT_PUBLIC_NANGO_API_URL);
+      console.log(`[Nango] Base URL:`, process.env.NEXT_PUBLIC_NANGO_BASE_URL);
+      
+      if (!nango || !nangoSessionToken) {
+        console.error('[Nango] Cannot connect: missing nango instance or session token');
+        console.error('[Nango] Nango instance exists:', !!nango);
+        console.error('[Nango] Session token exists:', !!nangoSessionToken);
+        toast({
+          title: "Connection Error",
+          description: "Unable to initialize connection. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const connectUI = initializeConnectUI(integrationKey);
+      if (!connectUI) {
+        console.error('[Nango] Connect UI initialization failed');
+        toast({
+          title: "Connection Error", 
+          description: "Failed to initialize connection UI. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log(`[Nango] Opening Connect UI for ${integrationKey}`);
+      
+      // Use a small delay to ensure the UI is ready
+      setTimeout(() => {
+        try {
+          console.log(`[Nango] About to call connectUI.open(${integrationKey})`);
+          connectUI.open(integrationKey);
+          console.log(`[Nango] connectUI.open() called successfully`);
+        } catch (error) {
+          console.error(`[Nango] Error opening Connect UI for ${integrationKey}:`, error);
+          toast({
+            title: "Connection Error",
+            description: "Failed to open connection dialog. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }, 100);
+      
+    } catch (err) {
+      console.error('Nango connect error:', err);
+      toast({
+        title: "Connection Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setConnecting(null);
+    }
+  };
+
   useEffect(() => {
     fetchIntegrations();
+  }, []);
+
+  // Initialize Nango
+  useEffect(() => {
+    const initNango = async () => {
+      try {
+        console.log('[Nango] Starting initialization...');
+        const response = await getNangoSessions();
+        console.log('[Nango] Raw response from getNangoSessions:', response);
+
+        if (response && typeof response === 'object' && 'data' in response && 'token' in (response as any).data) {
+          const sessionToken = (response as any).data.token;
+          console.log('[Nango] Session token received:', sessionToken);
+          console.log('[Nango] Session token type:', typeof sessionToken);
+          console.log('[Nango] Session token length:', sessionToken?.length);
+          
+          if (!sessionToken || sessionToken === 'undefined' || sessionToken === 'null') {
+            console.error('[Nango] Invalid session token received from backend:', sessionToken);
+            throw new Error('Invalid session token received from backend');
+          }
+          
+          setNangoSessionToken(sessionToken);
+
+          const nangoInstance = new Nango();
+          setNango(nangoInstance);
+          console.log('[Nango] Nango instance created:', nangoInstance);
+
+          console.log('[Nango] Session token stored, Connect UI will be initialized on demand');
+        } else {
+          console.error('[Nango] Failed to get Connect session token. Response structure:', response);
+          console.error('[Nango] Response type:', typeof response);
+          console.error('[Nango] Has data property:', response && typeof response === 'object' && 'data' in response);
+          console.error('[Nango] Has token in data:', response && typeof response === 'object' && 'data' in response && 'token' in (response as any).data);
+          
+          // For development, create a mock session token if the API is not working
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Nango] Development mode: Creating mock session token');
+            const mockToken = 'mock-session-token-' + Date.now();
+            setNangoSessionToken(mockToken);
+            
+            const nangoInstance = new Nango();
+            setNango(nangoInstance);
+            console.log('[Nango] Mock Nango instance created for development');
+          }
+        }
+      } catch (error) {
+        console.error('[Nango] Initialization error:', error);
+        
+        // For development, create a mock session token if the API call fails
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Nango] Development mode: API call failed, creating mock session token');
+          const mockToken = 'mock-session-token-' + Date.now();
+          setNangoSessionToken(mockToken);
+          
+          const nangoInstance = new Nango();
+          setNango(nangoInstance);
+          console.log('[Nango] Mock Nango instance created for development after API error');
+        }
+      }
+    };
+    initNango();
   }, []);
 
   return (
@@ -229,8 +499,20 @@ export default function TestNangoIntegrations() {
                       <span className="text-xs text-muted-foreground">
                         Connected: {integration.is_connected ? "Yes" : "No"}
                       </span>
-                      <Button size="sm" variant="outline">
-                        Connect
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleConnect(integration.key)}
+                        disabled={connecting === integration.key}
+                      >
+                        {connecting === integration.key ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          "Connect"
+                        )}
                       </Button>
                     </div>
                   </div>
