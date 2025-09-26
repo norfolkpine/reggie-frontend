@@ -145,33 +145,6 @@ export function VaultManager() {
     }
   };
 
-  // Files fetching removed from manager
-
-  // Files filtering moved into FilesTab
-
-  // (select all state computed within FileTable)
-
-  // Remove the indeterminate state since Checkbox doesn't support it
-  // const selectAllIndeterminate = useMemo(() => {
-  //   return selectedFiles.length > 0 && selectedFiles.length < filteredFiles.length;
-  // }, [selectedFiles.length, filteredFiles.length]);
-
-  // Pagination moved into FilesTab
-
-  // File upload handled in FilesTab
-
-  // Google Drive action handled in FilesTab
-
-  // File actions handled in FilesTab
-
-  // Bulk and file delete handled in FilesTab
-  
-  // Selection handled in FilesTab
-
-  // Filters handled in FilesTab
-
-  // Pagination handlers moved into FilesTab
-
   // Add a function to handle rename
   const handleRename = async () => {
     if (!project || !project.id) return;
@@ -189,18 +162,6 @@ export function VaultManager() {
       setIsRenaming(false);
     }
   };  
-  
-  // Breadcrumb handlers moved into FilesTab
-
-  // Create folder handled in FilesTab
-
-  // Drag handlers moved into FilesTab
-
-    
-  // File drop handled in FilesTab
-  // File rename handled in FilesTab
-
-
 
   if (!project && !loading) {
     return <ProjectNotFound />;

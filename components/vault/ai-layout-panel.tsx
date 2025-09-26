@@ -7,7 +7,7 @@ import {
   X,
   FolderOpen
 } from "lucide-react";
-import { useAiPanel } from "@/contexts/ai-panel-context";
+import { useGlobalPanel } from "@/contexts/global-panel-context";
 import { VaultChat } from "@/features/vault/components/vault-chat";
 
 interface Message {
@@ -17,12 +17,18 @@ interface Message {
   timestamp: Date;
 }
 
-export function AiLayoutPanel() {
-  const {
-    isOpen,
-    currentContext,
-    closePanel
-  } = useAiPanel();
+interface AiLayoutPanelProps {
+  contextData?: {
+    title: string;
+    files: any[];
+    folderId: number;
+    projectId: string;
+  };
+}
+
+export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
+  const { togglePanel } = useGlobalPanel();
+  const currentContext = contextData;
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +36,9 @@ export function AiLayoutPanel() {
     // Handle scroll events if needed
   };
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    togglePanel("vault-ai-panel");
+  };
 
   return (
     <div className="flex h-full bg-card rounded-xl border border-border shadow-sm">
@@ -45,7 +53,7 @@ export function AiLayoutPanel() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={closePanel}
+            onClick={handleClose}
             title="Close AI Assistant"
           >
             <X className="h-4 w-4" />
@@ -58,24 +66,24 @@ export function AiLayoutPanel() {
             <FolderOpen className="h-4 w-4" />
             <span>Analyzing: </span>
             <span className="font-medium text-foreground truncate">
-              {currentContext.title}
+              {currentContext?.title || "No context"}
             </span>
           </div>
         </div>
 
         {/* Chat Messages Area */}
         <div className="flex-1 relative min-h-0">
-          <div 
+          <div
             ref={chatMessagesRef}
             className="absolute inset-0 overflow-y-auto scroll-smooth px-2"
             style={{ scrollBehavior: 'smooth' }}
             onScroll={handleScroll}
           >
             <VaultChat
-              agentId = {`vault_${currentContext.projectId}` || ""}
-              projectId={currentContext.projectId || ""}
-              folderId={currentContext.folderId?.toString()}
-              fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
+              agentId={`vault_${currentContext?.projectId || ""}`}
+              projectId={currentContext?.projectId || ""}
+              folderId={currentContext?.folderId?.toString()}
+              fileIds={currentContext?.files?.map(file => file.id?.toString()).filter(Boolean) || []}
               sessionId={undefined}
             />
           </div>

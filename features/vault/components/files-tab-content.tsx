@@ -72,12 +72,12 @@ export function FilesTabContent(props: FilesTabContentProps) {
       <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 bg-card rounded-lg border">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <SearchInput
               placeholder="Search files..."
               value={props.searchQuery}
               onChange={props.onSearchChange}
-              className="flex-1 min-w-0"
+              className="flex-1 min-w-0 max-w-md sm:max-w-none"
             />
 
             <div className="flex items-center gap-2 flex-shrink-0">

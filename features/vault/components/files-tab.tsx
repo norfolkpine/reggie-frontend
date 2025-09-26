@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FilesTabContent } from "./files-tab-content";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { useAiPanel } from "@/contexts/ai-panel-context";
+import { usePanel, createPanelConfig } from "@/hooks/use-panel";
 import { isSafeUrl } from "@/lib/utils/url";
 import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, updateVaultFile, moveVaultFiles } from "@/api/vault";
 import { VaultFile } from "../types/vault";
@@ -26,8 +26,8 @@ interface UploadingFile {
 export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { openPanel: openAiPanel, setCurrentContext } = useAiPanel();
 
+  // Initialize state variables first
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -54,15 +54,43 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
   const [isRenamingFile, setIsRenamingFile] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
 
+  // Initialize context state with proper initial values
+  const [currentContext, setCurrentContext] = useState({
+    title: projectName || 'Root Folder',
+    files: vaultFiles,
+    folderId: currentFolderId,
+    projectId: projectId
+  });
+
+  // AI Panel configuration - component will be loaded dynamically
+  const aiPanelConfig = useMemo(() => ({
+    id: "vault-ai-panel",
+    type: "ai" as const,
+    component: (() => null) as any, // Placeholder, will be replaced in usePanel hook
+    size: { default: 30, min: 20, max: 50 },
+    position: "right" as const,
+    resizable: true,
+    persistent: true,
+    priority: 10,
+    props: { contextData: currentContext }
+  }), [currentContext]);
+
+  // Now we can use the AI panel hook
+  const { openPanel: openAiPanel, isOpen: isAiPanelOpen } = usePanel(aiPanelConfig);
+
   useEffect(() => {
     fetchFiles();
+  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
+
+  // Update context when relevant data changes
+  useEffect(() => {
     setCurrentContext({
       title: currentFolderId === 0 ? projectName || 'Root Folder' : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
       files: vaultFiles,
       folderId: currentFolderId,
       projectId: projectId
     });
-  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
+  }, [projectName, vaultFiles, currentFolderId, projectId, folderBreadcrumbs]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -85,7 +113,6 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
       setHasPreviousPage(!!response.previous);
       const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
         if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
-        console.log(file);
         const mimeType = file.type;
         const mimeExtension = mimeType ? mimeType : '';
         const fileExtension = mimeExtension || file.filename || 'unknown';
@@ -317,14 +344,7 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
         activeFilters={activeFilters}
         onFilterChange={handleFilterChange}
         onAskAI={() => {
-          setCurrentContext({
-            title: currentFolderId === 0
-              ? projectName || 'Root Folder'
-              : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
-            files: vaultFiles,
-            folderId: currentFolderId,
-            projectId: projectId
-          });
+          // Context is automatically updated via useEffect above
           openAiPanel();
         }}
         selectedFiles={selectedFiles}
