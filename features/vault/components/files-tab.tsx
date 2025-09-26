@@ -288,20 +288,54 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
     if (validFiles.length !== droppedFiles.length) { toast({ title: "File Upload Failed", description: `${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.` }); }
     const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))]; setFiles(updatedFiles);
     if (!user) { toast({ title: "File Upload Failed", description: "You must be logged in to upload files." }); return; }
+
     const uploadedFiles: any[] = [];
+    const failedFiles: { file: File; error: string }[] = [];
+
     for (const fileObj of updatedFiles) {
       try {
         const result = await uploadFiles({ file: fileObj.file, project_uuid: projectId, uploaded_by: user?.id || 0 });
         uploadedFiles.push(result);
-      } catch (err) { console.error("Error uploading file:", fileObj.file.name, err); }
+      } catch (err: any) {
+        console.error("Error uploading file:", fileObj.file.name, err);
+        failedFiles.push({ file: fileObj.file, error: err?.message || 'Upload failed' });
+        toast({
+          title: "Upload Failed",
+          description: `${fileObj.file.name}: ${err?.message || 'Upload failed'}`,
+          variant: "destructive"
+        });
+      }
     }
-    handleFileUpload(uploadedFiles);
+    handleFileUpload(uploadedFiles, failedFiles);
   }, [files, uploadFiles]);
 
-  const handleFileUpload = useCallback(async (uploadedFiles: any[]) => {
-    if (!uploadedFiles || uploadedFiles.length === 0) return;
+  const handleFileUpload = useCallback(async (uploadedFiles: any[], failedFiles?: { file: File; error: string }[]) => {
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      if (failedFiles && failedFiles.length > 0) {
+        toast({
+          title: "Upload Failed",
+          description: `All ${failedFiles.length} file(s) failed to upload`,
+          variant: "destructive"
+        });
+      }
+      return;
+    }
+
     setIsUploadDialogOpen(false);
-    toast({ title: "Success", description: `${uploadedFiles.length} file(s) uploaded successfully` });
+
+    // Show success toast
+    if (failedFiles && failedFiles.length > 0) {
+      // Partial success - some files succeeded, some failed
+      toast({
+        title: "Upload Partially Successful",
+        description: `${uploadedFiles.length} file(s) uploaded successfully, ${failedFiles.length} file(s) failed`,
+        variant: "default"
+      });
+    } else {
+      // All files succeeded
+      toast({ title: "Success", description: `${uploadedFiles.length} file(s) uploaded successfully` });
+    }
+
     fetchFiles();
   }, []);
 

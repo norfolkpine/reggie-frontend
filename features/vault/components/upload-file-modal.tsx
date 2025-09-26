@@ -14,11 +14,13 @@ import { cn } from "@/lib/utils"
 import { UploadCloud, X, AlertCircle, FileText } from "lucide-react"
 import { uploadFiles } from "@/api/vault"
 import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
 interface UploadFileModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploadComplete: (files: any[]) => void
+  onFilesSelected?: (files: File[]) => void
   supportedTypes: string[]
   projectId: number
   maxFiles?: number
@@ -35,12 +37,14 @@ export function UploadFileModal({
   open,
   onOpenChange,
   onUploadComplete,
+  onFilesSelected,
   supportedTypes,
   projectId,
   maxFiles = 5,
   title = "Upload files",
 }: UploadFileModalProps) {
   const { user } = useAuth()
+  const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
@@ -85,6 +89,15 @@ export function UploadFileModal({
       setError(`You can upload up to ${maxFiles} files.`)
       return
     }
+
+    // If onFilesSelected is provided (for auto-upload), call it and close modal
+    if (onFilesSelected) {
+      onFilesSelected(accepted)
+      onOpenChange(false)
+      return
+    }
+
+    // Otherwise, add files to the list for manual upload
     const newUploadingFiles = accepted.map((file) => ({ file, progress: 0 }))
     setFiles((prev) => [...prev, ...newUploadingFiles])
   }
@@ -99,6 +112,7 @@ export function UploadFileModal({
     setUploading(true)
     setError(null)
     const uploaded: any[] = []
+    const failedFiles: { file: File; error: string }[] = []
 
     for (const [idx, fileObj] of files.entries()) {
       try {
@@ -117,12 +131,18 @@ export function UploadFileModal({
         setFiles((prev) =>
           prev.map((f, i) => (i === idx ? { ...f, progress: 100 } : f))
         )
-      } catch {
+      } catch (err: any) {
         setFiles((prev) =>
           prev.map((f, i) =>
-            i === idx ? { ...f, error: "Failed to upload", progress: 0 } : f
+            i === idx ? { ...f, error: err?.message || "Failed to upload", progress: 0 } : f
           )
         )
+        failedFiles.push({ file: fileObj.file, error: err?.message || "Upload failed" })
+        toast({
+          title: "Upload Failed",
+          description: `${fileObj.file.name}: ${err?.message || 'Upload failed'}`,
+          variant: "destructive"
+        })
       }
     }
 
@@ -130,8 +150,29 @@ export function UploadFileModal({
 
     if (uploaded.length) {
       onUploadComplete(uploaded)
+
+      // Show success toast
+      if (failedFiles.length > 0) {
+        // Partial success
+        toast({
+          title: "Upload Partially Successful",
+          description: `${uploaded.length} file(s) uploaded successfully, ${failedFiles.length} file(s) failed`,
+          variant: "default"
+        })
+      } else {
+        // All files succeeded
+        toast({ title: "Success", description: `${uploaded.length} file(s) uploaded successfully` })
+      }
+
       setTimeout(() => setFiles([]), 1500)
       onOpenChange(false)
+    } else if (failedFiles.length > 0) {
+      // All files failed
+      toast({
+        title: "Upload Failed",
+        description: `All ${failedFiles.length} file(s) failed to upload`,
+        variant: "destructive"
+      })
     }
   }
 

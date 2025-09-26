@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { uploadFiles } from "@/api/vault"
 import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
 interface FileUploadProps {
   onUploadComplete: (files: any[]) => void
@@ -26,6 +27,7 @@ interface UploadingFile {
 
 export function FileUpload({ onUploadComplete, projectId, title }: FileUploadProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
   const [uploading, setUploading] = useState(false)
@@ -87,10 +89,15 @@ export function FileUpload({ onUploadComplete, projectId, title }: FileUploadPro
 
   const uploadFilesHandler = async () => {
     if (files.length === 0) return;
-    
+
     // Check for user authentication
     if (!user) {
       setError("You must be logged in to upload files.");
+      toast({
+        title: "Upload Failed",
+        description: "You must be logged in to upload files.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -105,18 +112,26 @@ export function FileUpload({ onUploadComplete, projectId, title }: FileUploadPro
 
       // Upload all files
       const uploadedFiles = [];
+      const failedFiles: { file: File; error: string }[] = [];
+
       for (const fileObj of files) {
         try {
           // Pass file and project parameters directly to the uploadFiles function
-          const result = await uploadFiles({ 
-            file: fileObj.file, 
+          const result = await uploadFiles({
+            file: fileObj.file,
             project_uuid: projectId,
             uploaded_by: user?.id || 0
           });
           uploadedFiles.push(result);
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error uploading file:", fileObj.file.name, err);
           setError(`Error uploading ${fileObj.file.name}`);
+          failedFiles.push({ file: fileObj.file, error: err?.message || "Upload failed" });
+          toast({
+            title: "Upload Failed",
+            description: `${fileObj.file.name}: ${err?.message || 'Upload failed'}`,
+            variant: "destructive"
+          });
         }
       }
 
@@ -127,13 +142,31 @@ export function FileUpload({ onUploadComplete, projectId, title }: FileUploadPro
 
       // Pass uploaded files to parent component immediately
       onUploadComplete(uploadedFiles);
-      
+
+      // Show success toast
+      if (failedFiles.length > 0) {
+        // Partial success
+        toast({
+          title: "Upload Partially Successful",
+          description: `${uploadedFiles.length} file(s) uploaded successfully, ${failedFiles.length} file(s) failed`,
+          variant: "default"
+        });
+      } else {
+        // All files succeeded
+        toast({ title: "Success", description: `${uploadedFiles.length} file(s) uploaded successfully` });
+      }
+
       // Reset state after successful upload
       setFiles([]);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
       setError("Upload failed. Please try again.");
+      toast({
+        title: "Upload Failed",
+        description: "Upload failed. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setUploading(false);
     }
