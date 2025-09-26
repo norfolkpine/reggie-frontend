@@ -347,6 +347,10 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
           // Context is automatically updated via useEffect above
           openAiPanel();
         }}
+        isDragOver={isDragOver}
+        onFileDragOver={handleFileDragOver}
+        onFileDragLeave={handleFileDragLeave}
+        onFileDrop={handleFileDrop}
         selectedFiles={selectedFiles}
         isDeleting={isDeleting}
         onBulkDelete={handleBulkDelete}
