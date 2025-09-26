@@ -1114,12 +1114,12 @@ export function VaultManager() {
                           filteredFiles.map((file) => (
                             <TableRow
                               key={file.id}
-                              // draggable
-                              // onDragStart={(e) => handleDragStart(e, file.id)}
-                              // onDragEnd={handleDragEnd}
-                              // onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
-                              // onDragLeave={handleDragLeave}
-                              // onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, file.id)}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => file.is_folder && handleDragOver(e, file.id)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => file.is_folder && handleDrop(e, file.id)}
                               className={`
                                 ${draggedFiles.includes(file.id) ? 'opacity-50' : ''}
                                 ${dragOverFolderId === file.id && file.is_folder ? 'bg-primary/10' : ''}
