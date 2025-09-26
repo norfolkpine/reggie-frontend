@@ -33,14 +33,14 @@ export function AiLayoutPanel() {
   if (!isOpen) return null;
 
   return (
-    <div className="flex h-full bg-white rounded-xl border shadow-sm">
+    <div className="flex h-full bg-card rounded-xl border border-border shadow-sm">
       {/* Panel Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-3.5 border-b rounded-tr-xl bg-white">
+        <div className="flex items-center justify-between p-3.5 border-b border-border rounded-t-xl bg-card">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
-            <span className="text-xl text-gray-900">AI Assistant</span>
+            <Sparkles className="h-5 w-5 text-primary" />
+            <span className="text-xl text-card-foreground">AI Assistant</span>
           </div>
           <Button
             variant="ghost"
@@ -53,11 +53,11 @@ export function AiLayoutPanel() {
         </div>
 
         {/* Current Context */}
-        <div className="px-4 py-3 bg-gray-50 border-b">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="px-4 py-3 bg-muted/50 border-b border-border">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FolderOpen className="h-4 w-4" />
             <span>Analyzing: </span>
-            <span className="font-medium text-gray-900 truncate">
+            <span className="font-medium text-foreground truncate">
               {currentContext.title}
             </span>
           </div>
