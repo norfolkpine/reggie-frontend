@@ -26,6 +26,7 @@ import { KnowledgeBaseManager } from "@/features/knowledge-base/components/knowl
 import { FileManager } from "@/features/knowledge-base/components/file-manager";
 import { adminService } from "@/api/admin";
 import { TokenLogs } from "@/features/system/token-logs";
+import { UserTokenSummary } from "@/features/system/user-token-summary";
 
 interface SystemStats {
   totalUsers: number;
@@ -469,6 +470,7 @@ export default function AdminDashboard() {
                 </TabsList>
                 <TabsContent value="total" className="space-y-4">
                   {/* TODO: Add token usage component */}
+                  <UserTokenSummary />
                 </TabsContent>
                 <TabsContent value="log" className="space-y-4">
                   <TokenLogs />

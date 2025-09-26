@@ -42,6 +42,11 @@ const sidebarNavItems = [
     href: '/settings/display',
   },
   {
+    title: 'Usage',
+    icon: <IconDeviceLaptop size={18} />,
+    href: '/settings/usage',
+  },
+  {
     title: 'Billing and plans',
     icon: <IconCreditCard size={18} />,
     href: '/settings/billing',
