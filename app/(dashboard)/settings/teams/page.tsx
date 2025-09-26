@@ -262,21 +262,7 @@ export default function SettingsTeams() {
                         </div>
                       )}
                       
-                      {team.dashboard_url && (
-                        <div className='mt-3'>
-                          <Button
-                            variant='outline'
-                            size='sm'
-                            className='w-full'
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(team.dashboard_url, '_blank')
-                            }}
-                          >
-                            Open Dashboard
-                          </Button>
-                        </div>
-                      )}
+                      
                     </CardContent>
                   </Card>
                 ))
