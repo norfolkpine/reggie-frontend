@@ -6,8 +6,8 @@ export default function AuthLayout({ children }: Props) {
   return (
     <div className='container min-h-screen flex flex-col items-center justify-center bg-primary-foreground px-4 sm:px-0'>
       <div className='mx-auto flex w-full max-w-md flex-col justify-center space-y-2 sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl lg:p-8'>
-        <div className='mb-4 flex items-center justify-start'>
-          <svg 
+        <div className='mb-4 flex items-center justify-center'>
+          <svg
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 761.6768 379.0444" 
             className="h-16 w-auto mr-2"
