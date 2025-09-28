@@ -373,7 +373,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         buffer += chunk;
 
         // Process complete lines from the buffer
-        const lines = buffer.split('\n');
+        const lines = buffer.split('\n\n');
+
         // Keep the last line in the buffer if it's incomplete
         buffer = lines.pop() || '';
 
@@ -382,7 +383,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
           if (!trimmedLine) continue;
 
           if (trimmedLine.startsWith('data: ')) {
-            const dataContent = trimmedLine.slice(6); // Remove 'data: ' prefix
+            // const dataContent = trimmedLine.slice(6);
+            const dataContent = trimmedLine.substring(6); // Remove "data: " prefix
             
             if (dataContent === '[DONE]') {
               return; // End of stream
@@ -441,7 +443,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     });
                 }
                 
-              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
+              } else if (parsedData.event === "RunStart" || parsedData.event === "RunContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
                 
                 // Update reasoning steps if available
