@@ -20,6 +20,7 @@ interface FilesTabContentProps {
   onFilterChange: (filterType: string, checked: boolean) => void;
 
   onAskAI: () => void;
+  isRightSectionOpen?: boolean;
   isDragOver?: boolean;
   onFileDragOver?: (e: React.DragEvent) => void;
   onFileDragLeave?: (e: React.DragEvent) => void;
@@ -53,16 +54,9 @@ interface FilesTabContentProps {
   onDragLeave?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent, targetFolderId: number) => void;
 
-  currentPage: number;
-  totalPages: number;
-  itemsPerPage: number;
   hasNextPage: boolean;
-  hasPreviousPage: boolean;
-  pageNums: number[];
-  onPageChange: (pageNum: number) => void;
-  onPreviousPage: () => void;
-  onNextPage: () => void;
-  onItemsPerPageChange: (value: number) => void;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 
   uploadDialogOpen: boolean;
   setUploadDialogOpen: (open: boolean) => void;
@@ -97,12 +91,20 @@ export function FilesTabContent(props: FilesTabContentProps) {
       <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className={`flex items-stretch gap-3 ${
+            props.isRightSectionOpen
+              ? 'flex-col' // Mobile layout when side panel is open
+              : 'flex-col sm:flex-row sm:items-center' // Default responsive layout
+          }`}>
             <SearchInput
               placeholder="Search files..."
               value={props.searchQuery}
               onChange={props.onSearchChange}
-              className="flex-1 min-w-0 max-w-md sm:max-w-none"
+              className={`flex-1 min-w-0 ${
+                props.isRightSectionOpen
+                  ? 'max-w-none' // Full width when side panel is open
+                  : 'max-w-md sm:max-w-none' // Constrained on mobile, full width on desktop when panel is closed
+              }`}
             />
 
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -154,16 +156,9 @@ export function FilesTabContent(props: FilesTabContentProps) {
         />
 
         <PaginationControls
-          currentPage={props.currentPage}
-          totalPages={props.totalPages}
-          itemsPerPage={props.itemsPerPage}
           hasNextPage={props.hasNextPage}
-          hasPreviousPage={props.hasPreviousPage}
-          pageNums={props.pageNums}
-          onPageChange={props.onPageChange}
-          onPreviousPage={props.onPreviousPage}
-          onNextPage={props.onNextPage}
-          onItemsPerPageChange={props.onItemsPerPageChange}
+          isLoadingMore={props.isLoadingMore}
+          onLoadMore={props.onLoadMore}
         />
 
         <FileUploadDialog

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { ResizableContent } from "@/features/vault/components/resizable-content";
 import Sidebar from "@/components/sidebar";
 import { PageHeader } from "@/components/ui/page-header";
 import { HeaderProvider, useHeader } from "@/contexts/header-context";
@@ -9,11 +9,13 @@ import { SidebarProvider, useSidebar } from "@/contexts/sidebar-context";
 import { MobileNavProvider } from "@/contexts/mobile-nav-context";
 import { MobileHeader, MobileSidebarDrawer } from "@/components/sidebar/index";
 import { useResponsiveStore } from "@/stores/useResponsiveStore";
+import { RightSectionProvider, useRightSection } from "@/hooks/use-right-section";
 import { cn } from "@/lib/utils";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { customHeader, headerActions, headerCustomContent } = useHeader();
   const { getActiveOrClosingPanels } = useGlobalPanel();
+  const { rightSection, showRightSection, hideRightSection } = useRightSection();
   const { isMobile } = useResponsiveStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -22,6 +24,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const activeOrClosingPanels = getActiveOrClosingPanels();
   const hasActivePanel = activeOrClosingPanels.some(p => !p.isClosing);
   const activePanel = activeOrClosingPanels.find(p => !p.isClosing)?.config || null;
+
+  // Update right section based on active panels
+  useEffect(() => {
+    if (hasActivePanel && activePanel) {
+      const PanelComponent = activePanel.component;
+      const panelElement = <PanelComponent {...activePanel.props} />;
+      showRightSection(activePanel.id, panelElement);
+    } else {
+      hideRightSection();
+    }
+  }, [hasActivePanel, activePanel, showRightSection, hideRightSection]);
 
   // Detect scroll position to change header styling
   useEffect(() => {
@@ -64,90 +77,25 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // Generic panel rendering based on active and closing panels
-  const renderActivePanel = () => {
-    if (activeOrClosingPanels.length === 0) return null;
-
-    // Render all panels (active and closing) in priority order
-    return (
-      <>
-        {activeOrClosingPanels.map(({ config, isClosing }, index) => {
-          const PanelComponent = config.component;
-          if (!PanelComponent) return null;
-
-          // Get transition classes based on panel position and state
-          const getTransitionClasses = (position: string, isClosing: boolean) => {
-            if (isClosing) {
-              // Exit animations
-              switch (position) {
-                case "right":
-                  return "animate-out slide-out-to-right-full duration-300";
-                case "left":
-                  return "animate-out slide-out-to-left-full duration-300";
-                case "bottom":
-                  return "animate-out slide-out-to-bottom-full duration-300";
-                default:
-                  return "animate-out slide-out-to-right-full duration-300";
-              }
-            } else {
-              // Enter animations
-              switch (position) {
-                case "right":
-                  return "animate-in slide-in-from-right-full duration-300";
-                case "left":
-                  return "animate-in slide-in-from-left-full duration-300";
-                case "bottom":
-                  return "animate-in slide-in-from-bottom-full duration-300";
-                default:
-                  return "animate-in slide-in-from-right-full duration-300";
-              }
-            }
-          };
-
-          const transitionClasses = getTransitionClasses(config.position, isClosing);
-
-          return (
-            <React.Fragment key={config.id}>
-              <PanelResizeHandle className={`w-0.5 bg-transparent hover:bg-gray-200 transition-colors ${
-                config.position === "left" ? "order-first" : ""
-              }`} />
-              <Panel
-                defaultSize={config.size.default}
-                minSize={config.size.min}
-                maxSize={config.size.max}
-                className={transitionClasses}
-              >
-                <PanelComponent {...config.props} />
-              </Panel>
-            </React.Fragment>
-          );
-        })}
-      </>
-    );
-  };
-
-  // Main panel configuration based on active panel
-  const mainPanelSize = hasActivePanel ? (100 - (activePanel?.size.default || 30)) : 100;
-  const mainPanelMinSize = hasActivePanel ? (100 - (activePanel?.size.max || 50)) : 100;
+  // Main content configuration
   const backgroundClass = customHeader ? "bg-white" : "bg-background";
 
   return (
-    <PanelGroup direction="horizontal" className="h-full gap-1">
-      <Panel
-        defaultSize={mainPanelSize}
-        minSize={mainPanelMinSize}
-        className={cn(
+    <ResizableContent
+      showRightSection={!!rightSection}
+      leftSectionContent={
+        <div className={cn(
           backgroundClass,
-          "border shadow-sm flex flex-col overflow-hidden rounded-xl transition-[flex-basis] duration-300 ease-in-out"
-        )}
-      >
-        {renderHeader()}
-        <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
-          {children}
+          "h-full border shadow-sm flex flex-col overflow-hidden rounded-xl"
+        )}>
+          {renderHeader()}
+          <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
+            {children}
+          </div>
         </div>
-      </Panel>
-      {renderActivePanel()}
-    </PanelGroup>
+      }
+      rightSectionContent={rightSection?.component}
+    />
   );
 }
 
@@ -210,12 +158,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <GlobalPanelProvider>
-      <SidebarProvider>
-        <MobileNavProvider>
-          <SidebarLayout>{children}</SidebarLayout>
-        </MobileNavProvider>
-      </SidebarProvider>
-    </GlobalPanelProvider>
+    <RightSectionProvider>
+      <GlobalPanelProvider>
+        <SidebarProvider>
+          <MobileNavProvider>
+            <SidebarLayout>{children}</SidebarLayout>
+          </MobileNavProvider>
+        </SidebarProvider>
+      </GlobalPanelProvider>
+    </RightSectionProvider>
   );
 }

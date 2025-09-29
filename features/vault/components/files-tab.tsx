@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FilesTabContent } from "./files-tab-content";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { usePanel, createPanelConfig } from "@/hooks/use-panel";
+import { useRightSection } from "@/hooks/use-right-section";
+import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
 import { isSafeUrl } from "@/lib/utils/url";
 import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, updateVaultFile, moveVaultFiles } from "@/api/vault";
 import { VaultFile } from "../types/vault";
@@ -28,17 +29,16 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
   const { user } = useAuth();
 
   // Initialize state variables first
-  const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showAllFiles, setShowAllFiles] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [filesCount, setFilesCount] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(20); // For infinite scroll
   const [hasNextPage, setHasNextPage] = useState(false);
-  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [allFiles, setAllFiles] = useState<VaultFile[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState(0);
   const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{ id: number; name: string }[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -57,40 +57,31 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
   // Initialize context state with proper initial values
   const [currentContext, setCurrentContext] = useState({
     title: projectName || 'Root Folder',
-    files: vaultFiles,
+    files: allFiles,
     folderId: currentFolderId,
     projectId: projectId
   });
 
-  // AI Panel configuration - component will be loaded dynamically
-  const aiPanelConfig = useMemo(() => ({
-    id: "vault-ai-panel",
-    type: "ai" as const,
-    component: (() => null) as any, // Placeholder, will be replaced in usePanel hook
-    size: { default: 30, min: 20, max: 50 },
-    position: "right" as const,
-    resizable: true,
-    persistent: true,
-    priority: 10,
-    props: { contextData: currentContext }
-  }), [currentContext]);
-
-  // Now we can use the AI panel hook
-  const { openPanel: openAiPanel, isOpen: isAiPanelOpen } = usePanel(aiPanelConfig);
+  // AI Panel configuration using right section hook
+  const { showRightSection, hideRightSection, rightSection } = useRightSection();
 
   useEffect(() => {
-    fetchFiles();
+    if (currentPage === 1) {
+      fetchFiles();
+    } else {
+      fetchFiles(true);
+    }
   }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
   // Update context when relevant data changes
   useEffect(() => {
     setCurrentContext({
       title: currentFolderId === 0 ? projectName || 'Root Folder' : folderBreadcrumbs[folderBreadcrumbs.length - 1]?.name || 'Current Folder',
-      files: vaultFiles,
+      files: allFiles,
       folderId: currentFolderId,
       projectId: projectId
     });
-  }, [projectName, vaultFiles, currentFolderId, projectId, folderBreadcrumbs]);
+  }, [projectName, allFiles, currentFolderId, projectId, folderBreadcrumbs]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -99,51 +90,57 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
     return () => clearTimeout(delay);
   }, [searchQuery]);
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (isLoadingMoreFiles = false) => {
     try {
+      setIsLoadingMore(isLoadingMoreFiles);
       const response = await getVaultFilesByProject(
         projectId,
-        currentPage,
+        isLoadingMoreFiles ? currentPage : 1,
         itemsPerPage,
         searchQuery,
         currentFolderId
       );
-      setFilesCount(response.count);
+
+      if (isLoadingMoreFiles) {
+        // Add new files to existing collection
+        const newFiles: VaultFile[] = response.results.map((file: VaultFile) => {
+          if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
+          const mimeType = file.type;
+          const mimeExtension = mimeType ? mimeType : '';
+          const fileExtension = mimeExtension || file.filename || 'unknown';
+          return { ...file, file_type: fileExtension } as VaultFile;
+        });
+        setAllFiles(prev => [...prev, ...newFiles]);
+      } else {
+        // Replace all files
+        const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
+          if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
+          const mimeType = file.type;
+          const mimeExtension = mimeType ? mimeType : '';
+          const fileExtension = mimeExtension || file.filename || 'unknown';
+          return { ...file, file_type: fileExtension } as VaultFile;
+        });
+        setAllFiles(filesWithType);
+      }
+
       setHasNextPage(!!response.next);
-      setHasPreviousPage(!!response.previous);
-      const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
-        if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
-        const mimeType = file.type;
-        const mimeExtension = mimeType ? mimeType : '';
-        const fileExtension = mimeExtension || file.filename || 'unknown';
-        return { ...file, file_type: fileExtension } as VaultFile;
-      });
-      setVaultFiles(filesWithType);
     } catch (error) {
       console.error('Error fetching vault files:', error);
       toast({ title: "Error", description: "Failed to load vault files", variant: "destructive" });
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
   const filteredFiles = useMemo(() => {
-    return vaultFiles.filter(file => {
+    return allFiles.filter(file => {
       const fileType = file.file_type || '';
       const matchesType = showAllFiles || (activeFilters.length === 0) || activeFilters.some((filter: string) => fileType.includes(filter));
       const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
       return matchesType && matchesSearch;
     });
-  }, [vaultFiles, showAllFiles, activeFilters, searchQuery]);
+  }, [allFiles, showAllFiles, activeFilters, searchQuery]);
 
-  const paginationData = useMemo(() => {
-    const totalPages = Math.max(1, Math.ceil(filesCount / itemsPerPage));
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-    if (currentPage <= 3) endPage = Math.min(5, totalPages);
-    else if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 4);
-    const pageNums = [] as number[];
-    for (let i = startPage; i <= endPage; i++) pageNums.push(i);
-    return { totalPages, startPage, endPage, pageNums };
-  }, [filesCount, itemsPerPage, currentPage]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -175,10 +172,17 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
     }
   }, []);
 
-  const handlePageChange = useCallback((pageNum: number) => setCurrentPage(pageNum), []);
-  const handlePreviousPage = useCallback(() => setCurrentPage(prev => Math.max(prev - 1, 1)), []);
-  const handleNextPage = useCallback(() => setCurrentPage(prev => Math.min(prev + 1, paginationData.totalPages)), [paginationData.totalPages]);
-  const handleItemsPerPageChange = useCallback((value: number) => { setItemsPerPage(value); setCurrentPage(1); }, []);
+  const handleNextPage = useCallback(() => {
+    if (hasNextPage && !isLoadingMore) {
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [hasNextPage, isLoadingMore]);
+
+  const loadMoreFiles = useCallback(() => {
+    if (hasNextPage && !isLoadingMore) {
+      fetchFiles(true);
+    }
+  }, [hasNextPage, isLoadingMore, fetchFiles]);
 
   const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) setSelectedFiles(filteredFiles.map(file => file.id)); else setSelectedFiles([]);
@@ -260,7 +264,7 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
   const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: number) => {
     e.preventDefault(); e.stopPropagation(); setDragOverFolderId(null); setIsDragging(false);
     const draggedFileIds = draggedFiles.length > 0 ? draggedFiles : JSON.parse(e.dataTransfer.getData('text/plain'));
-    const draggedItems = vaultFiles.filter(f => draggedFileIds.includes(f.id));
+    const draggedItems = allFiles.filter(f => draggedFileIds.includes(f.id));
     for (const item of draggedItems) {
       if (item.is_folder && item.id === targetFolderId) {
         toast({ title: "Invalid operation", description: "Cannot move a folder into itself", variant: "destructive" });
@@ -275,7 +279,7 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
       toast({ title: "Error", description: "Failed to move files. Please try again.", variant: "destructive" });
     }
     setDraggedFiles([]);
-  }, [draggedFiles, vaultFiles]);
+  }, [draggedFiles, allFiles]);
 
   const handleFileDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); }, []);
   const handleFileDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }, []);
@@ -379,8 +383,11 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
         onFilterChange={handleFilterChange}
         onAskAI={() => {
           // Context is automatically updated via useEffect above
-          openAiPanel();
+          console.log("Opening AI panel");
+          const aiPanelComponent = <AiLayoutPanel contextData={currentContext} />;
+          showRightSection("vault-ai-panel", aiPanelComponent);
         }}
+        isRightSectionOpen={rightSection !== null}
         isDragOver={isDragOver}
         onFileDragOver={handleFileDragOver}
         onFileDragLeave={handleFileDragLeave}
@@ -409,16 +416,9 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        currentPage={currentPage}
-        totalPages={paginationData.totalPages}
-        itemsPerPage={itemsPerPage}
         hasNextPage={hasNextPage}
-        hasPreviousPage={hasPreviousPage}
-        pageNums={paginationData.pageNums}
-        onPageChange={handlePageChange}
-        onPreviousPage={handlePreviousPage}
-        onNextPage={handleNextPage}
-        onItemsPerPageChange={handleItemsPerPageChange}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMoreFiles}
         uploadDialogOpen={isUploadDialogOpen}
         setUploadDialogOpen={setIsUploadDialogOpen}
         projectId={projectId}

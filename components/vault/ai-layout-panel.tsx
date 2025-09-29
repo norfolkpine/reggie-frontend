@@ -7,7 +7,7 @@ import {
   X,
   FolderOpen
 } from "lucide-react";
-import { useGlobalPanel } from "@/contexts/global-panel-context";
+import { useRightSection } from "@/hooks/use-right-section";
 import { VaultChat } from "@/features/vault/components/vault-chat";
 
 interface Message {
@@ -27,7 +27,7 @@ interface AiLayoutPanelProps {
 }
 
 export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
-  const { togglePanel } = useGlobalPanel();
+  const { hideRightSection } = useRightSection();
   const currentContext = contextData;
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
@@ -37,7 +37,7 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
   };
 
   const handleClose = () => {
-    togglePanel("vault-ai-panel");
+    hideRightSection();
   };
 
   return (
@@ -85,6 +85,7 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
               folderId={currentContext?.folderId?.toString()}
               fileIds={currentContext?.files?.map(file => file.id?.toString()).filter(Boolean) || []}
               sessionId={undefined}
+              contextData={currentContext}
             />
           </div>
         </div>
