@@ -82,23 +82,23 @@ export function VaultManager() {
       // Set project name with edit button as custom content
       setHeaderCustomContent(
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-gray-600">
-            <span 
-              className="hover:text-gray-900 cursor-pointer"
+          <div className="flex items-center gap-2 clr-greyscale-600">
+            <span
+              className="hover:clr-greyscale-900 cursor-pointer"
               onClick={() => router.push("/vault")}
             >
               Vault
             </span>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{project.name}</span>
+            <span className="clr-greyscale-400">/</span>
+            <span className="clr-greyscale-900 fw-medium">{project.name}</span>
           </div>
           <button
             type="button"
-            className="p-1 rounded hover:bg-gray-200 focus:outline-none"
+            className="p-1 rounded hover:bg-greyscale-100 focus:outline-none"
             title="Edit project name"
             onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
           >
-            <Edit className="h-4 w-4 text-muted-foreground" />
+            <Edit className="h-4 w-4 clr-greyscale-600" />
           </button>
         </div>
       );
