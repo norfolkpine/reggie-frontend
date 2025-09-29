@@ -24,7 +24,7 @@ export default function ExploreAgents() {
   const [error, setError] = useState<string | null>(null)
   const {toast} = useToast()
   const router = useRouter()
-  const { setHeaderActions } = useHeader()
+  const { setHeaderActions, setHeaderCustomContent } = useHeader()
 
   // Memoized header actions
   const headerActions = useMemo(() => [
@@ -41,9 +41,14 @@ export default function ExploreAgents() {
   useEffect(() => {
     setHeaderActions(headerActions);
 
+    setHeaderCustomContent(<h1 className="text-xl font-medium">Agents</h1>);
+
     // Cleanup when component unmounts
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, headerActions]);
+    return () => {
+      setHeaderActions([]);
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderActions, headerActions, setHeaderCustomContent]);
 
   const fetchAgents = useCallback(async () => {
     try {

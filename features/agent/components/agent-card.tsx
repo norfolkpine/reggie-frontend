@@ -76,7 +76,7 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
 
   return (
     <Card
-      className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50 h-full w-full aspect-[4/5] cursor-pointer"
+      className="overflow-hidden border-2 hover:border-primary/50 transition-colors h-full w-full aspect-[4/5] cursor-pointer"
       onClick={handleStartChat}
     >
       <CardHeader className="p-4 pb-2">
