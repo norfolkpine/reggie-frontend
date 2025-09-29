@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
@@ -37,7 +37,41 @@ export function VaultManager() {
   
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
   const [instructions, setInstructions] = useState("");
-  // File rename handled inside FilesTab
+  const [requestedNavigation, setRequestedNavigation] = useState<number | null>(null);
+  const [breadcrumbData, setBreadcrumbData] = useState<{
+    currentFolderId: number;
+    breadcrumbs: { id: number; name: string }[];
+  }>({ currentFolderId: 0, breadcrumbs: [] });
+
+  const filesTabRef = useRef<{
+    getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
+    navigateToFolder: (folderId: number) => void;
+  }>(null);
+
+  // Update breadcrumb data from FilesTab
+  const updateBreadcrumbData = useCallback(() => {
+    const data = filesTabRef.current?.getBreadcrumbData() || { currentFolderId: 0, breadcrumbs: [] };
+    setBreadcrumbData(data);
+  }, []); // Empty dependency array to avoid infinite loops
+
+  // Ref to store updateBreadcrumbData function to avoid stale closures
+  const updateBreadcrumbDataRef = useRef<() => void>(() => {});
+
+  // Keep the ref updated
+  useEffect(() => {
+    updateBreadcrumbDataRef.current = updateBreadcrumbData;
+  }, [updateBreadcrumbData]);
+
+  // Function to navigate to a folder (called from breadcrumb clicks)
+  const navigateToFolder = useCallback((folderId: number) => {
+    setRequestedNavigation(folderId);
+    // Reset navigation request and update breadcrumb data after FilesTab processes it
+    setTimeout(() => {
+      setRequestedNavigation(null);
+      updateBreadcrumbDataRef.current();
+    }, 100);
+  }, []); // No dependencies to avoid infinite loops
+
   // Set header actions and custom content
   useEffect(() => {
     if (loading) {
@@ -79,27 +113,52 @@ export function VaultManager() {
         // }
       ]);
 
-      // Set project name with edit button as custom content
+      // Set merged breadcrumb navigation as custom content
       setHeaderCustomContent(
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 clr-greyscale-600">
-            <span
-              className="hover:clr-greyscale-900 cursor-pointer"
-              onClick={() => router.push("/vault")}
-            >
-              Vault
-            </span>
-            <span className="clr-greyscale-400">/</span>
-            <span className="clr-greyscale-900 fw-medium">{project.name}</span>
-          </div>
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-greyscale-100 focus:outline-none"
-            title="Edit project name"
-            onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+        <div className="flex items-center gap-2 text-sm">
+          {/* Vault link */}
+          <span
+            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground"
+            onClick={() => router.push("/vault")}
           >
-            <Edit className="h-4 w-4 clr-greyscale-600" />
-          </button>
+            Vault
+          </span>
+          <span className="text-muted-foreground dark:text-muted-foreground/60">/</span>
+
+          {/* Project name with edit button - clickable to navigate to project root */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigateToFolder(0)}
+              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+            >
+              {project.name}
+            </button>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-muted focus:outline-none dark:hover:bg-muted/50"
+              title="Edit project name"
+              onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
+            >
+              <Edit className="h-3 w-3 text-muted-foreground dark:text-muted-foreground/80" />
+            </button>
+          </div>
+
+          {/* Folder breadcrumbs */}
+          {breadcrumbData.breadcrumbs.length > 0 && (
+            <>
+              {breadcrumbData.breadcrumbs.map((folder, index) => (
+                <div key={folder.id} className="flex items-center">
+                  <span className="text-muted-foreground dark:text-muted-foreground/60 mx-1">/</span>
+                  <button
+                    onClick={() => navigateToFolder(folder.id)}
+                    className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                  >
+                    {folder.name}
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       );
     }
@@ -109,8 +168,19 @@ export function VaultManager() {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, project, loading, router]);
+  }, [setHeaderActions, setHeaderCustomContent, project, loading, router, breadcrumbData]);
 
+
+  // Initialize breadcrumb data when component mounts
+  useEffect(() => {
+    // Small delay to ensure FilesTab ref is set
+    const timer = setTimeout(() => {
+      if (filesTabRef.current) {
+        updateBreadcrumbDataRef.current();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []); // No dependencies to avoid infinite loops
 
   useEffect(() => {
     fetchProject();
@@ -191,9 +261,14 @@ export function VaultManager() {
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
             <FilesTab
+              ref={(ref) => {
+                filesTabRef.current = ref;
+              }}
               projectId={projectId || ''}
               projectName={project?.name}
               teamId={(project?.team as any)?.id}
+              requestedNavigation={requestedNavigation}
+              onBreadcrumbChange={() => updateBreadcrumbDataRef.current()}
             />
 
             <ActivityTabContent />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { FilesTabContent } from "./files-tab-content";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -16,6 +16,8 @@ interface FilesTabProps {
   projectId: string;
   projectName?: string;
   teamId?: number;
+  requestedNavigation?: number | null;
+  onBreadcrumbChange?: () => void;
 }
 
 interface UploadingFile {
@@ -24,9 +26,18 @@ interface UploadingFile {
   error?: string;
 }
 
-export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
+export const FilesTab = React.forwardRef<{
+  getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
+  navigateToFolder: (folderId: number) => void;
+}, FilesTabProps>(({ projectId, projectName, teamId, requestedNavigation, onBreadcrumbChange }, ref) => {
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Ref to store the latest breadcrumb state for immediate access
+  const breadcrumbRef = useRef<{ currentFolderId: number; breadcrumbs: { id: number; name: string }[] }>({
+    currentFolderId: 0,
+    breadcrumbs: []
+  });
 
   // Initialize state variables first
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,6 +84,11 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
     }
   }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
+  // Initialize breadcrumb ref on mount
+  useEffect(() => {
+    breadcrumbRef.current = { currentFolderId, breadcrumbs: folderBreadcrumbs };
+  }, []); // Only run once on mount
+
   // Update context when relevant data changes
   useEffect(() => {
     setCurrentContext({
@@ -82,6 +98,7 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
       projectId: projectId
     });
   }, [projectName, allFiles, currentFolderId, projectId, folderBreadcrumbs]);
+
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -211,17 +228,45 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
 
   const handleFolderClick = (folder: VaultFile) => {
     if (!folder.is_folder) return;
+    const newBreadcrumbs = [...folderBreadcrumbs, { id: folder.id, name: folder.original_filename || 'New Folder' }];
     setCurrentFolderId(folder.id);
-    setFolderBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.original_filename || 'New Folder' }]);
+    setFolderBreadcrumbs(newBreadcrumbs);
+    // Update ref
+    breadcrumbRef.current = { currentFolderId: folder.id, breadcrumbs: newBreadcrumbs };
+    onBreadcrumbChange?.();
   };
 
-  const handleBreadcrumbClick = (folderId: number) => {
-    if (folderId === 0) { setCurrentFolderId(0); setFolderBreadcrumbs([]); }
-    else {
+  const handleBreadcrumbClick = useCallback((folderId: number) => {
+    let newBreadcrumbs: { id: number; name: string }[] = [];
+    if (folderId === 0) {
+      setCurrentFolderId(0);
+      setFolderBreadcrumbs([]);
+      newBreadcrumbs = [];
+    } else {
       const folderIndex = folderBreadcrumbs.findIndex(f => f.id === folderId);
-      if (folderIndex !== -1) { setCurrentFolderId(folderId); setFolderBreadcrumbs(folderBreadcrumbs.slice(0, folderIndex + 1)); }
+      if (folderIndex !== -1) {
+        newBreadcrumbs = folderBreadcrumbs.slice(0, folderIndex + 1);
+        setCurrentFolderId(folderId);
+        setFolderBreadcrumbs(newBreadcrumbs);
+      }
     }
-  };
+    // Update ref
+    breadcrumbRef.current = { currentFolderId: folderId, breadcrumbs: newBreadcrumbs };
+    onBreadcrumbChange?.();
+  }, [folderBreadcrumbs, onBreadcrumbChange]);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getBreadcrumbData: () => breadcrumbRef.current,
+    navigateToFolder: handleBreadcrumbClick,
+  }), [handleBreadcrumbClick]);
+
+  // Handle navigation requests from parent (breadcrumb clicks)
+  useEffect(() => {
+    if (requestedNavigation !== null && requestedNavigation !== undefined) {
+      handleBreadcrumbClick(requestedNavigation);
+    }
+  }, [requestedNavigation, handleBreadcrumbClick]);
 
   const handleCreateFolder = async (name: string) => {
     try {
@@ -398,9 +443,6 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
         onCreateFolder={() => setCreateFolderOpen(true)}
         onUploadFile={() => setIsUploadDialogOpen(true)}
         onGoogleDriveClick={() => toast({ title: "Google Drive Integration", description: "Google Drive integration coming soon!", duration: 3000 })}
-        currentFolderId={currentFolderId}
-        breadcrumbs={folderBreadcrumbs}
-        onBreadcrumbClick={handleBreadcrumbClick}
         files={filteredFiles}
         draggedFiles={draggedFiles}
         dragOverFolderId={dragOverFolderId}
@@ -445,6 +487,6 @@ export function FilesTab({ projectId, projectName, teamId }: FilesTabProps) {
       />
     </>
   );
-}
+});
 
-
+FilesTab.displayName = 'FilesTab';

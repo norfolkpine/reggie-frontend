@@ -6,7 +6,6 @@ import { FileFilters } from "./file-filters";
 import { AskAIButton } from "./ask-ai-button";
 import { BulkActions } from "./bulk-actions";
 import { FolderActions } from "./folder-actions";
-import { BreadcrumbNavigation } from "./breadcrumb-navigation";
 import { FileTable } from "./file-table";
 import { PaginationControls } from "./pagination-controls";
 import { FileUploadDialog } from "./file-upload-dialog";
@@ -33,10 +32,6 @@ interface FilesTabContentProps {
   onCreateFolder: () => void;
   onUploadFile: () => void;
   onGoogleDriveClick: () => void;
-
-  currentFolderId: number;
-  breadcrumbs: { id: number; name: string }[];
-  onBreadcrumbClick: (folderId: number) => void;
 
   files: VaultFile[];
   draggedFiles: number[];
@@ -129,12 +124,6 @@ export function FilesTabContent(props: FilesTabContentProps) {
             </div>
           </div>
         </div>
-
-        <BreadcrumbNavigation
-          currentFolderId={props.currentFolderId}
-          breadcrumbs={props.breadcrumbs}
-          onBreadcrumbClick={props.onBreadcrumbClick}
-        />
 
         <FileTable
           files={props.files}
