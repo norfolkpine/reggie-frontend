@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getUserTokenSummary } from "@/api/token";
 // TanStack Table
 import {
   useReactTable,
@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/pagination";
 import {
   ChevronDown,
-  ChevronUp,
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -57,37 +56,35 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-type TokenUsageRow = {
+type UserTokenUsageRow = {
   id: string | number;
   user_email: string;
   team_name?: string | null;
-  model_provider?: string | null;
-  model_name?: string | null;
-  input_tokens?: number | null;
-  output_tokens?: number | null;
+  quota_tokens?: number | null;
+  rollover_tokens?: number | null;
   total_tokens: number;
   created_at: string;
+  updated_at: string;
 };
 
-interface TokenLogsApiResponse {
+interface TokenSummaryApiResponse {
   count: number;
   next: string | null;
   previous: string | null;
-  results: TokenUsageRow[];
+  results: UserTokenUsageRow[];
 }
 
-export function TokenLogs() {
+export function UserTokenSummary() {
   const { toast } = useToast();
   const [searchValue, setSearchValue] = useState("");
   const debouncedSearchValue = useDebounce(searchValue, 500);
-  const [tokenData, setTokenData] = useState<TokenUsageRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tokenData, setTokenData] = useState<UserTokenUsageRow[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [ordering, setOrdering] = useState<string>("-created_at");
-  const [isLoading, setIsLoading] = useState(true);
 
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -100,13 +97,15 @@ export function TokenLogs() {
     });
   }, []);
 
-  const columns = useMemo<ColumnDef<TokenUsageRow>[]>(
+  const calculateRemainingTokens = useCallback((row: UserTokenUsageRow) => {
+    const quota = row.quota_tokens || 0;
+    const rollover = row.rollover_tokens || 0;
+    const totalUsed = row.total_tokens || 0;
+    return quota + rollover - totalUsed;
+  }, []);
+
+  const columns = useMemo<ColumnDef<UserTokenUsageRow>[]>(
     () => [
-      {
-        accessorKey: "created_at",
-        header: "Date",
-        cell: ({ row }) => formatDate(row.original.created_at)
-      },
       {
         accessorKey: "user_email",
         header: "User"
@@ -117,51 +116,49 @@ export function TokenLogs() {
         cell: ({ row }) => row.original.team_name || '—'
       },
       {
-        accessorKey: "model_provider",
-        header: "Provider",
-        cell: ({ row }) => row.original.model_provider || '—'
+        accessorKey: "quota_tokens",
+        header: "Quota",
+        cell: ({ row }) => row.original.quota_tokens?.toLocaleString() || '—'
       },
       {
-        accessorKey: "model_name",
-        header: "Model",
-        cell: ({ row }) => row.original.model_name || '—'
-      },
-      {
-        accessorKey: "input_tokens",
-        header: "Prompt",
-        cell: ({ row }) => (row.original.input_tokens || 0).toLocaleString()
-      },
-      {
-        accessorKey: "output_tokens",
-        header: "Completion",
-        cell: ({ row }) => (row.original.output_tokens || 0).toLocaleString()
+        accessorKey: "rollover_tokens",
+        header: "Rollover",
+        cell: ({ row }) => row.original.rollover_tokens?.toLocaleString() || '—'
       },
       {
         accessorKey: "total_tokens",
-        header: "Total",
+        header: "Total Used",
         cell: ({ row }) => row.original.total_tokens.toLocaleString()
       },
+      {
+        id: "remain_tokens",
+        header: "Remaining",
+        cell: ({ row }) => {
+          const remaining = calculateRemainingTokens(row.original);
+          return remaining.toLocaleString();
+        }
+      },
+      {
+        accessorKey: "updated_at",
+        header: "Last Updated",
+        cell: ({ row }) => formatDate(row.original.updated_at)
+      },
     ],
-    [formatDate]
+    [formatDate, calculateRemainingTokens]
   );
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, itemsPerPage, debouncedSearchValue, ordering]);
+  }, [currentPage, itemsPerPage, debouncedSearchValue]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, string> = {
-        page: String(currentPage),
-        page_size: String(itemsPerPage),
-      };
-
-      if (ordering) params.ordering = ordering;
-      if (debouncedSearchValue) params.search = debouncedSearchValue;
-
-      const query = new URLSearchParams(params).toString();
-      const response = await api.get(`/reggie/api/v1/usage/tokens/?${query}`) as TokenLogsApiResponse;
+      const response = await getUserTokenSummary(
+        currentPage,
+        itemsPerPage,
+        debouncedSearchValue
+      ) as TokenSummaryApiResponse;
 
       if (response && response.results) {
         setTokenData(response.results);
@@ -173,10 +170,10 @@ export function TokenLogs() {
         setHasNextPage(false);
       }
     } catch (error) {
-      console.error('Failed to fetch token logs:', error);
+      console.error('Failed to fetch token summary:', error);
       toast({
         title: "Error",
-        description: "Failed to load token usage logs",
+        description: "Failed to load token usage data",
         variant: "destructive"
       });
       setTokenData([]);
@@ -187,27 +184,7 @@ export function TokenLogs() {
     }
   };
 
-  const onSort = useCallback((field: string) => {
-    setCurrentPage(1);
-    setOrdering((prev) => {
-      if (prev === field) return `-${field}`;
-      if (prev === `-${field}`) return field;
-      return `-${field}`;
-    });
-  }, []);
-
-  const SortButton = useCallback(({ field, label }: { field: string; label: string }) => {
-    const isAsc = ordering === field;
-    const isDesc = ordering === `-${field}`;
-    return (
-      <Button variant="ghost" size="sm" className="-ml-2 px-2" onClick={() => onSort(field)} title={`Sort by ${label}`}>
-        <span className="mr-1">{label}</span>
-        {isAsc ? <ChevronUp className="h-4 w-4" /> : isDesc ? <ChevronDown className="h-4 w-4" /> : null}
-      </Button>
-    );
-  }, [ordering, onSort]);
-
-  const table = useReactTable<TokenUsageRow>({
+  const table = useReactTable<UserTokenUsageRow>({
     data: tokenData,
     columns,
     state: { columnFilters },
@@ -222,7 +199,7 @@ export function TokenLogs() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Token Usage Logs</h2>
+        <h2 className="text-2xl font-bold">User Token Usage Summary</h2>
         <Button
           variant="outline"
           size="sm"
@@ -236,15 +213,18 @@ export function TokenLogs() {
 
       {/* Search */}
       <div className="flex items-center gap-2 w-full max-w-md">
-        <Input
-          type="text"
-          placeholder="Search users or teams..."
-          value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-            table.getColumn('user_email')?.setFilterValue(e.target.value);
-          }}
-        />
+        <div className="relative">
+          <Input
+            type="text"
+            placeholder="Search users or teams..."
+            value={searchValue}
+            onChange={(e) => {
+              setSearchValue(e.target.value);
+              table.getColumn('user_email')?.setFilterValue(e.target.value);
+            }}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       <div className="border rounded-md overflow-hidden">
@@ -253,12 +233,11 @@ export function TokenLogs() {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Team</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Prompt</TableHead>
-              <TableHead>Completion</TableHead>
+              <TableHead>Quota</TableHead>
+              <TableHead>Rollover</TableHead>
               <TableHead>Total Used</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Remaining</TableHead>
+              <TableHead>Last Updated</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -277,37 +256,44 @@ export function TokenLogs() {
                   className="text-center py-8 text-muted-foreground"
                 >
                   {(table.getColumn('user_email')?.getFilterValue() as string)
-                    ? "No token usage logs match your search"
-                    : "No token usage logs found"}
+                    ? "No users match your search"
+                    : "No token usage data found"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((row) => {
-                const prompt = row.input_tokens ?? 0;
-                const completion = row.output_tokens ?? 0;
-                const total = row.total_tokens ?? prompt + completion;
-
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.user_email}</TableCell>
-                    <TableCell>{row.team_name || '—'}</TableCell>
-                    <TableCell>{row.model_provider || '—'}</TableCell>
-                    <TableCell>{row.model_name || '—'}</TableCell>
-                    <TableCell className="text-center tabular-nums">
-                      {prompt.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-center tabular-nums">
-                      {completion.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-center tabular-nums font-medium">
-                      {total.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(row.created_at)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              filteredData.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium">{row.user_email}</TableCell>
+                  <TableCell>{row.team_name || '—'}</TableCell>
+                  <TableCell className="text-center">
+                    {row.quota_tokens?.toLocaleString() || '—'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {row.rollover_tokens?.toLocaleString() || '—'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className="font-semibold">
+                      {row.total_tokens.toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span
+                      className={`font-semibold ${
+                        calculateRemainingTokens(row) < 1000
+                          ? 'text-red-600'
+                          : calculateRemainingTokens(row) < 5000
+                          ? 'text-yellow-600'
+                          : 'text-green-600'
+                      }`}
+                    >
+                      {calculateRemainingTokens(row).toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDate(row.updated_at)}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -317,7 +303,7 @@ export function TokenLogs() {
       {totalItems > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Total {totalItems.toLocaleString()} logs
+            Total {totalItems} users
           </div>
           <Pagination>
             <PaginationContent>

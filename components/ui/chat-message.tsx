@@ -278,7 +278,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 <div className={cn(chatBubbleVariants({ isUser, animation }))}>
                   <MarkdownRenderer>{part.text}</MarkdownRenderer>
                   {actions ? (
-                    <div className="absolute -bottom-8 left-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
+                    <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
                       {actions}
                     </div>
                   ) : null}
@@ -315,7 +315,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           <div className={cn(chatBubbleVariants({ isUser, animation }))}>
             <MarkdownRenderer>{content}</MarkdownRenderer>
             {actions ? (
-              <div className="absolute -bottom-8 left-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
+              <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
                 {actions}
               </div>
             ) : null}
