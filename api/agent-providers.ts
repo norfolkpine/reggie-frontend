@@ -22,6 +22,11 @@ export const getModelProviders = async (page: number = 1) => {
   return response as PaginatedModelProviderList;
 };
 
+export const getAllModelProviders = async () => {
+  const response = await api.get('/reggie/api/v1/model-providers/listmodels/', { });
+  return response;
+};
+
 export const getModelProvider = async (provider: string) => {
   const response = await api.get(`/reggie/api/v1/model-providers/${provider}/`);
   return response.data as ModelProvider;

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Info, Server } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getModelProviders, ModelProvider } from "@/api/agent-providers";
+import { getModelProviders,getAllModelProviders, ModelProvider } from "@/api/agent-providers";
 import { useAgent } from "../context/agent-context";
 
 interface AgentEngineProps {
@@ -25,8 +25,8 @@ export default function AgentEngine({  }: AgentEngineProps) {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await getModelProviders();
-        setModelProviders(response.results);
+        const response = await getAllModelProviders() as ModelProvider[];
+        setModelProviders(response);
       } catch (err) {
         console.error("Failed to fetch model providers:", err);
         setError("Failed to load model providers");

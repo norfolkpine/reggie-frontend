@@ -51,12 +51,15 @@ type TokenUsageRow = {
   id: string | number;
   user_email: string;
   team_name?: string | null;
+  agent_name?: string | null;
+  chat_name?: string | null;
   model_provider?: string | null;
   model_name?: string | null;
   input_tokens?: number | null;
   output_tokens?: number | null;
   total_tokens: number;
   created_at: string;
+  cost: number;
 };
 
 type UserTokenUsage = {
@@ -120,9 +123,24 @@ export function UserTokenUsage() {
         cell: ({ row }) => row.original.model_name || '—'
       },
       {
+        accessorKey: "agent_name",
+        header: "Model",
+        cell: ({ row }) => row.original.agent_name || '—'
+      },
+      {
+        accessorKey: "chat_name",
+        header: "Model",
+        cell: ({ row }) => row.original.chat_name || '—'
+      },
+      {
         accessorKey: "total_tokens",
         header: "Total",
         cell: ({ row }) => row.original.total_tokens.toLocaleString()
+      },
+      {
+        accessorKey: "cost",
+        header: "Total",
+        cell: ({ row }) => row.original.cost.toLocaleString()
       },
     ],
     [formatDate]
@@ -240,7 +258,10 @@ export function UserTokenUsage() {
               <TableHead>Date</TableHead>
               <TableHead>Provider</TableHead>
               <TableHead>Model</TableHead>
+              <TableHead>Agent Name</TableHead>
+              <TableHead>Chat Title</TableHead>
               <TableHead>Total Used</TableHead>
+              <TableHead>Cost</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -276,8 +297,13 @@ export function UserTokenUsage() {
                     </TableCell>
                     <TableCell>{row.model_provider || '—'}</TableCell>
                     <TableCell>{row.model_name || '—'}</TableCell>
+                    <TableCell>{row.agent_name || '—'}</TableCell>
+                    <TableCell>{row.chat_name || '—'}</TableCell>
                     <TableCell>
                       {total.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {`$ ${row.cost}` || '-'}
                     </TableCell>
                   </TableRow>
                 );
