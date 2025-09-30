@@ -84,10 +84,10 @@ export const ProjectCard = memo(function ProjectCard({ project, onSelect, onProj
       className={`overflow-hidden flex flex-col h-full w-full aspect-[4/5] ${project.starred ? "border-yellow-300" : ""} hover:shadow-md transition-all cursor-pointer`}
       onClick={handleCardClick}
     >
-      <CardHeader className={`p-4 pb-2 flex-1 ${project.color || 'bg-muted'}`}>
+      <CardHeader className={`p-4 pb-2 flex-1 bg-muted`}>
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-white">
+            <div className="p-2 rounded-full bg-background">
               {project.icon && <project.icon className="h-5 w-5" />}
             </div>
             <CardTitle className="text-lg line-clamp-2">{project.name}</CardTitle>
@@ -120,7 +120,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onSelect, onProj
       <CardContent className="p-4 pt-0">
         <div className="flex flex-wrap gap-2 mt-2">
           {project.tags?.map((tag, index) => (
-            <Badge key={index} variant="outline" className="bg-white">
+            <Badge key={index} variant="outline" className="bg-background">
               {tag}
             </Badge>
           ))}
