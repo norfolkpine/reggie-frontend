@@ -77,9 +77,10 @@ import {
   listFilesWithKbs,
   ingestSelectedFiles,
   patchFile,
+  getFiles,
+  moveFilesToCollection,
 } from '@/api/files';
-import { listCollections, deleteCollection, updateCollection } from '@/api/collections';
-import { api } from '@/lib/api-client';
+import { listCollections, deleteCollection, updateCollection, moveCollection } from '@/api/collections';
 
 interface ApiResponse {
   uuid: string;
@@ -340,14 +341,16 @@ export function FileManager() {
   };
   
   // TanStack column filters
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
+    { id: 'type', value: 'all' }
+  ]);
   
   // Debounced search state
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearchValue = useDebounce(searchValue, 500); // 500ms delay
 
   const statusOptions = ['ready', 'processing', 'error'];
-  const typeOptions = ['pdf', 'docx', 'csv', 'xlsx', 'txt', 'jpeg', 'png'];
+  const typeOptions = ['all', 'folders', 'files'];
   const collectionOptions = useMemo(
     () => {
       if (!currentLocation) return [];
@@ -467,14 +470,44 @@ export function FileManager() {
     return goUpItem ? [goUpItem, ...sortedItems] : sortedItems;
   }, [currentLocation, currentCollectionUuid]);
 
+  // Extract current filter values from columnFilters
+  const currentFilters = useMemo(() => {
+    const statusFilters = columnFilters.find(f => f.id === 'status')?.value as string[] | undefined;
+    const collectionFilters = columnFilters.find(f => f.id === 'collection')?.value as string[] | undefined;
+    const typeFilter = columnFilters.find(f => f.id === 'type')?.value as string | undefined;
+
+    // Convert type filter value to API format
+    let typeValue: string | undefined;
+    if (typeFilter) {
+      switch (typeFilter) {
+        case 'folders':
+          typeValue = 'folder';
+          break;
+        case 'files':
+          typeValue = 'file';
+          break;
+        case 'all':
+        default:
+          typeValue = undefined; // "all" means no type filter
+          break;
+      }
+    }
+
+    return {
+      status: statusFilters && statusFilters.length > 0 ? statusFilters.join(',') : undefined,
+      collection: collectionFilters && collectionFilters.length > 0 ? collectionFilters.join(',') : undefined,
+      type: typeValue,
+    };
+  }, [columnFilters]);
+
   useEffect(() => {
     fetchData();
-  }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue]);
+  }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue, currentFilters]);
 
   // Rebuild breadcrumbs when navigation path changes
   useEffect(() => {
     console.log('useEffect triggered:', { navigationPathLength: navigationPath.length, currentCollectionUuid });
-    
+
     // Don't run breadcrumb logic if we're at root level
     if (!currentCollectionUuid) {
       if (breadcrumbs.length > 0) {
@@ -483,7 +516,7 @@ export function FileManager() {
       }
       return;
     }
-    
+
     if (navigationPath.length > 0 && currentCollectionUuid) {
       console.log('Calling rebuildBreadcrumbsFromPath');
       rebuildBreadcrumbsFromPath();
@@ -497,45 +530,47 @@ export function FileManager() {
 
 
   const fetchData = async () => {
-    console.log('fetchData called with:', { 
-      currentCollectionUuid, 
-      currentPage, 
-      itemsPerPage, 
+    console.log('fetchData called with:', {
+      currentCollectionUuid,
+      currentPage,
+      itemsPerPage,
       debouncedSearchValue,
       searchValue,
-      navigationPath: navigationPath.length 
+      navigationPath: navigationPath.length,
+      columnFilters
     });
-    
+
     // Add stack trace to see where fetchData is being called from
     console.trace('fetchData call stack');
     setIsLoading(true);
     try {
       // Use debounced search value to prevent rapid API calls
       const searchFilter = debouncedSearchValue;
-      
-      // Build query parameters for the file manager endpoint
-      const params: Record<string, string> = {
-        file_manager: 'true',
-        page: currentPage.toString(),
-        page_size: itemsPerPage.toString(),
-      };
 
-      // Add collection UUID if we're inside a collection
-      if (currentCollectionUuid) {
-        params.collection_uuid = currentCollectionUuid;
-      }
+      console.log('Current filters:', currentFilters);
 
-      // Add search if provided
-      if (searchFilter) {
-        params.search = searchFilter;
-      }
-
-      console.log('Fetching data with params:', params);
-
-      // Use the new file manager endpoint with deduplication
-      const requestKey = `fetchData-${JSON.stringify(params)}`;
-      const response = await deduplicatedRequest(requestKey, () => 
-        api.get(`/reggie/api/v1/files/?${new URLSearchParams(params)}`)
+      // Use the file manager endpoint with deduplication
+      const requestKey = `fetchData-${JSON.stringify({
+        currentCollectionUuid,
+        currentPage,
+        itemsPerPage,
+        searchFilter,
+        ...currentFilters
+      })}`;
+      const response = await deduplicatedRequest(requestKey, () =>
+        getFiles({
+          file_manager: true,
+          page: currentPage,
+          page_size: itemsPerPage,
+          collection_uuid: currentCollectionUuid || undefined,
+          search: searchFilter,
+          // Apply filters from currentFilters
+          status: currentFilters.status,
+          type: currentFilters.type,
+          collection: currentFilters.collection,
+          sort: 'created_at',
+          sort_order: 'desc'
+        })
       );
       
       if (response && typeof response === 'object' && 'results' in response) {
@@ -1202,21 +1237,16 @@ export function FileManager() {
       if (draggedItem.type === 'file' && draggedItem.file) {
         // Move file to new collection
         const targetCollectionUuid = targetFolder?.folder?.uuid || null;
-        
-        await api.post('/reggie/api/v1/files/move-to-collection/', {
-          file_ids: [draggedItem.file.uuid],
-          target_collection_uuid: targetCollectionUuid
-        });
+
+        await moveFilesToCollection([draggedItem.file.uuid], targetCollectionUuid);
 
         toast.success(`File "${draggedItem.name}" moved successfully`);
         fetchData(); // Refresh the list
-      } else if (draggedItem.type === 'folder' && draggedItem.folder) {
+      } else if (draggedItem.type === 'folder' && draggedItem.folder && draggedItem.folder.uuid) {
         // Move collection to new parent
         const targetParentUuid = targetFolder?.folder?.uuid || null;
-        
-        await api.patch(`/reggie/api/v1/collections/${draggedItem.folder.uuid}/`, {
-          parent_uuid_write: targetParentUuid
-        });
+
+        await moveCollection(draggedItem.folder.uuid, targetParentUuid);
 
         toast.success(`Folder "${draggedItem.name}" moved successfully`);
         fetchData(); // Refresh the list
@@ -1273,11 +1303,10 @@ export function FileManager() {
             value={searchValue}
             onChange={(e) => {
               setSearchValue(e.target.value);
-              // Update table filter for immediate UI feedback
-              table.getColumn('name')?.setFilterValue(e.target.value);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                // Trigger immediate search on Enter key
                 fetchData();
               }
             }}
@@ -1295,24 +1324,23 @@ export function FileManager() {
               {/* Type filter */}
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Type</p>
-                <DropdownMenuCheckboxItem
-                  checked={true}
-                  onCheckedChange={() => {}}
-                >
-                  All
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={true}
-                  onCheckedChange={() => {}}
-                >
-                  Folders
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={true}
-                  onCheckedChange={() => {}}
-                >
-                  Files
-                </DropdownMenuCheckboxItem>
+                {typeOptions.map((type) => {
+                  const currentType = table.getColumn('type')?.getFilterValue() as string | undefined;
+                  const checked = currentType === type;
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={type}
+                      checked={checked}
+                      onCheckedChange={(chk) => {
+                        const col = table.getColumn('type');
+                        // For single selection: set the value if checked, clear if unchecked
+                        col?.setFilterValue(chk ? type : undefined);
+                      }}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
               </div>
               <DropdownMenuSeparator />
               {/* Status filter */}
@@ -1366,8 +1394,7 @@ export function FileManager() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  table.getColumn('status')?.setFilterValue(undefined);
-                  table.getColumn('collection')?.setFilterValue(undefined);
+                  setColumnFilters([]);
                 }}
               >
                 Clear All Filters

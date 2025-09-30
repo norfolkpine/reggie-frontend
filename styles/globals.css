@@ -288,3 +288,16 @@ body {
   @apply opacity-100;
 }
 
+/* Ensure responsive button text behavior */
+@media (max-width: 639px) {
+  .button-text {
+    display: none !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .button-text {
+    display: inline !important;
+  }
+}
+

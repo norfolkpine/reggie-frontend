@@ -15,8 +15,6 @@ import { sendUserFeedback } from "@/features/chats/api/user-feedback";
 import { UserFeedbackType } from "@/api/chat-sessions";
 import { useToast } from "@/components/ui/use-toast";
 import { Paperclip } from "lucide-react";
-import { useAiPanel } from "@/contexts/ai-panel-context";
-
 interface VaultChatProps {
   projectId: string;
   agentId: string;
@@ -26,9 +24,15 @@ interface VaultChatProps {
   onTitleUpdate?: (title: string | null) => void;
   onNewSessionCreated?: (newSessionId: string) => void;
   onMessageComplete?: () => void;
+  contextData?: {
+    title: string;
+    files: any[];
+    folderId: number;
+    projectId: string;
+  };
 }
 
-export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete }: VaultChatProps) {
+export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, onTitleUpdate, onNewSessionCreated, onMessageComplete, contextData }: VaultChatProps) {
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -39,9 +43,7 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
   const [files, setFiles] = useState<File[]>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  const {
-  currentContext,
-  } = useAiPanel();
+  const currentContext = contextData;
 
   const {
     messages,

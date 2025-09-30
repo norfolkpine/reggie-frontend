@@ -7,7 +7,7 @@ import {
   X,
   FolderOpen
 } from "lucide-react";
-import { useAiPanel } from "@/contexts/ai-panel-context";
+import { useRightSection } from "@/hooks/use-right-section";
 import { VaultChat } from "@/features/vault/components/vault-chat";
 
 interface Message {
@@ -17,12 +17,18 @@ interface Message {
   timestamp: Date;
 }
 
-export function AiLayoutPanel() {
-  const {
-    isOpen,
-    currentContext,
-    closePanel
-  } = useAiPanel();
+interface AiLayoutPanelProps {
+  contextData?: {
+    title: string;
+    files: any[];
+    folderId: number;
+    projectId: string;
+  };
+}
+
+export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
+  const { hideRightSection } = useRightSection();
+  const currentContext = contextData;
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -30,22 +36,24 @@ export function AiLayoutPanel() {
     // Handle scroll events if needed
   };
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    hideRightSection();
+  };
 
   return (
-    <div className="flex h-full bg-white rounded-xl border shadow-sm">
+    <div className="flex h-full bg-card rounded-xl border border-border shadow-sm">
       {/* Panel Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-3.5 border-b rounded-tr-xl bg-white">
+        <div className="flex items-center justify-between p-3.5 border-b border-border rounded-t-xl bg-card">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
-            <span className="text-xl text-gray-900">AI Assistant</span>
+            <Sparkles className="h-5 w-5 text-primary" />
+            <span className="text-xl text-card-foreground">AI Assistant</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            onClick={closePanel}
+            onClick={handleClose}
             title="Close AI Assistant"
           >
             <X className="h-4 w-4" />
@@ -53,30 +61,31 @@ export function AiLayoutPanel() {
         </div>
 
         {/* Current Context */}
-        <div className="px-4 py-3 bg-gray-50 border-b">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="px-4 py-3 bg-muted/50 border-b border-border">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FolderOpen className="h-4 w-4" />
             <span>Analyzing: </span>
-            <span className="font-medium text-gray-900 truncate">
-              {currentContext.title}
+            <span className="font-medium text-foreground truncate">
+              {currentContext?.title || "No context"}
             </span>
           </div>
         </div>
 
         {/* Chat Messages Area */}
         <div className="flex-1 relative min-h-0">
-          <div 
+          <div
             ref={chatMessagesRef}
             className="absolute inset-0 overflow-y-auto scroll-smooth px-2"
             style={{ scrollBehavior: 'smooth' }}
             onScroll={handleScroll}
           >
             <VaultChat
-              agentId = {`vault_${currentContext.projectId}` || ""}
-              projectId={currentContext.projectId || ""}
-              folderId={currentContext.folderId?.toString()}
-              fileIds={currentContext.files?.map(file => file.id?.toString()).filter(Boolean)}
+              agentId={`vault_${currentContext?.projectId || ""}`}
+              projectId={currentContext?.projectId || ""}
+              folderId={currentContext?.folderId?.toString()}
+              fileIds={currentContext?.files?.map(file => file.id?.toString()).filter(Boolean) || []}
               sessionId={undefined}
+              contextData={currentContext}
             />
           </div>
         </div>

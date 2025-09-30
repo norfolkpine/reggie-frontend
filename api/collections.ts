@@ -82,3 +82,12 @@ export async function deleteCollection(uuid: string): Promise<void> {
 export async function updateCollection(uuid: string, data: Partial<CreateFolderRequest>): Promise<Collection> {
   return api.patch(`/reggie/api/v1/collections/${uuid}/`, data) as Promise<Collection>;
 }
+
+/**
+ * Move a collection to a new parent collection
+ */
+export async function moveCollection(uuid: string, parentUuid: string | null): Promise<Collection> {
+  return api.patch(`/reggie/api/v1/collections/${uuid}/`, {
+    parent_uuid_write: parentUuid
+  }) as Promise<Collection>;
+}
