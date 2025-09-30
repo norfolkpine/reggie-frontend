@@ -17,11 +17,52 @@ interface FileIngest {
   knowledgebase_ids: string[];
 }
 
-export const getFiles = async (page: number = 1,page_size: number,
-  search: string) => {
-  const response = await api.get(ENDPOINT, {
-    params: { page: page.toString(), page_size: page_size.toString(), search: search },
-  });
+export const getFiles = async (params: {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  file_manager?: boolean;
+  collection_uuid?: string;
+  type?: string;
+  sort?: string;
+  sort_order?: 'asc' | 'desc';
+  status?: string;
+  collection?: string;
+}) => {
+  const queryParams: Record<string, string> = {};
+
+  if (params.page !== undefined) {
+    queryParams.page = params.page.toString();
+  }
+  if (params.page_size !== undefined) {
+    queryParams.page_size = params.page_size.toString();
+  }
+  if (params.search) {
+    queryParams.search = params.search;
+  }
+  if (params.file_manager !== undefined) {
+    queryParams.file_manager = params.file_manager.toString();
+  }
+  if (params.collection_uuid) {
+    queryParams.collection_uuid = params.collection_uuid;
+  }
+  if (params.type) {
+    queryParams.type = params.type;
+  }
+  if (params.sort) {
+    queryParams.sort = params.sort;
+  }
+  if (params.sort_order) {
+    queryParams.sort_order = params.sort_order;
+  }
+  if (params.status) {
+    queryParams.status = params.status;
+  }
+  if (params.collection) {
+    queryParams.collection = params.collection;
+  }
+
+  const response = await api.get(ENDPOINT, { params: queryParams });
   return response as PaginatedFileList;
 };
 
@@ -204,28 +245,40 @@ export const bulkUploadFiles = async (data: BulkFileUploadRequest) => {
 
 export const uploadFilesWithFormData = async (files: globalThis.File[], options?: { title?: string; description?: string; team?: number }) => {
   const formData = new FormData();
-  
+
   files.forEach((file, index) => {
     formData.append(`files`, file);
   });
-  
+
   if (options?.title) {
     formData.append('title', options.title);
   }
-  
+
   if (options?.description) {
     formData.append('description', options.description);
   }
-  
+
   if (options?.team) {
     formData.append('team', options.team.toString());
   }
-  
+
   const response = await api.post('/reggie/api/v1/files/bulk-upload/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  
+
   return response as any;
+};
+
+
+/**
+ * Move files to a target collection
+ */
+export const moveFilesToCollection = async (fileIds: string[], targetCollectionUuid: string | null) => {
+  const response = await api.post(ENDPOINT + 'move-to-collection/', {
+    file_ids: fileIds,
+    target_collection_uuid: targetCollectionUuid
+  });
+  return response;
 }; 
