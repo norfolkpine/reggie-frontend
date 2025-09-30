@@ -21,6 +21,9 @@ import {
   FolderOpen,
   Cloud,
   Edit,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,8 +71,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
+  getSortedRowModel,
   type ColumnDef,
   type ColumnFiltersState,
+  type SortingState,
+  type ColumnSort,
 } from '@tanstack/react-table';
 import {
   deleteFile,
@@ -344,6 +350,11 @@ export function FileManager() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
     { id: 'type', value: 'all' }
   ]);
+
+  // TanStack sorting state
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'created_at', desc: true }
+  ]);
   
   // Debounced search state
   const [searchValue, setSearchValue] = useState('');
@@ -502,7 +513,7 @@ export function FileManager() {
 
   useEffect(() => {
     fetchData();
-  }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue, currentFilters]);
+  }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue, currentFilters, sorting]);
 
   // Rebuild breadcrumbs when navigation path changes
   useEffect(() => {
@@ -568,8 +579,9 @@ export function FileManager() {
           status: currentFilters.status,
           type: currentFilters.type,
           collection: currentFilters.collection,
-          sort: 'created_at',
-          sort_order: 'desc'
+          // Apply sorting from table state
+          sort: sorting.length > 0 ? sorting[0].id : 'created_at',
+          sort_order: sorting.length > 0 && sorting[0].desc ? 'desc' : 'asc'
         })
       );
       
@@ -959,33 +971,40 @@ export function FileManager() {
         enableHiding: false,
       },
       // Name column
-      { 
+      {
         accessorKey: 'name',
-        header: 'Name'
+        header: 'Name',
+        enableSorting: true,
       },
       // File Size column
       {
         id: "file_size",
         header: "File Size",
-        accessorFn: (row) => row.file_size,
+        accessorFn: (row) => row.file_size || 0,
+        enableSorting: true,
+        sortingFn: 'basic',
       },
       // Type column
       {
         id: "type",
         header: 'Type',
         accessorFn: (row) => row.type === 'folder' ? (row.folder?.collection_type || 'Folder') : (row.file_type || 'Unknown'),
+        enableSorting: true,
       },
       // Upload Date column
       {
         id: "created_at",
         header: "Created Date",
         accessorFn: (row) => row.created_at,
+        enableSorting: true,
+        sortingFn: 'datetime',
       },
       // Status column
-      { 
-        accessorKey: 'status', 
+      {
+        accessorKey: 'status',
         header: 'Status',
-        filterFn: multiSelectFilter 
+        filterFn: multiSelectFilter,
+        enableSorting: true,
       },
       // Actions column
       {
@@ -1001,13 +1020,17 @@ export function FileManager() {
   const table = useReactTable<FileOrFolder>({
     data: combinedItems,
     columns,
-    state: { columnFilters },
+    state: {
+      columnFilters,
+      sorting
+    },
     onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
-  const filteredItems = table.getRowModel().rows.map((r) => r.original);
 
   const formatFileSize = useCallback((bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -1204,11 +1227,11 @@ export function FileManager() {
   // Memoized event handlers for table interactions
   const handleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
-      setSelectedItems(filteredItems.map((item) => item.id));
+      setSelectedItems(table.getRowModel().rows.map((row) => row.original.id));
     } else {
       setSelectedItems([]);
     }
-  }, [filteredItems]);
+  }, [table]);
 
   const handleSelectItem = useCallback((itemId: string, checked: boolean) => {
     if (checked) {
@@ -1480,37 +1503,58 @@ export function FileManager() {
         <div className="border rounded-md overflow-hidden">
           <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={
-                    selectedItems.length === filteredItems.length &&
-                    filteredItems.length > 0
-                  }
-                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                />
-              </TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>File Size</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Created Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className={header.id === 'select' ? 'w-12' : ''}>
+                    {header.isPlaceholder ? null : (
+                      <div
+                        className={
+                          header.column.getCanSort()
+                            ? 'cursor-pointer select-none flex items-center gap-2 hover:text-primary'
+                            : ''
+                        }
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {header.column.columnDef.header as string}
+                        {header.column.getCanSort() && (
+                          header.column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-4 w-4" />
+                          ) : header.column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-4 w-4" />
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 opacity-50" />
+                          )
+                        )}
+                      </div>
+                    )}
+                    {header.id === 'select' && (
+                      <Checkbox
+                        checked={
+                          selectedItems.length === table.getRowModel().rows.length &&
+                          table.getRowModel().rows.length > 0
+                        }
+                        onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                      />
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-8">
+                <TableCell colSpan={table.getVisibleFlatColumns().length} className="text-center py-8">
                   <div className="flex justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredItems.length === 0 ? (
+            ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={table.getVisibleFlatColumns().length}
                   className="text-center py-8 text-muted-foreground"
                 >
                   {(table.getColumn('name')?.getFilterValue() as string)
@@ -1519,10 +1563,10 @@ export function FileManager() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredItems.map((item) => (
-                <DraggableTableRow 
-                  key={item.id}
-                  item={item}
+              table.getRowModel().rows.map((row) => (
+                <DraggableTableRow
+                  key={row.original.id}
+                  item={row.original}
                   onMoveItem={handleMoveItem}
                   selectedItems={selectedItems}
                   handleSelectItem={handleSelectItem}
@@ -1530,48 +1574,48 @@ export function FileManager() {
                 >
                   <TableCell>
                     <Checkbox
-                      checked={selectedItems.includes(item.id)}
-                      onCheckedChange={(checked) => handleSelectItem(item.id, checked === true)}
+                      checked={selectedItems.includes(row.original.id)}
+                      onCheckedChange={(checked) => handleSelectItem(row.original.id, checked === true)}
                     />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      {getItemIcon(item)}
+                      {getItemIcon(row.original)}
                       {(
-                        <span 
+                        <span
                           className={`font-medium ml-2 ${
-                            item.id === 'go-up' 
-                              ? 'text-muted-foreground hover:text-foreground cursor-pointer italic' 
-                              : item.type === 'folder' 
+                            row.original.id === 'go-up'
+                              ? 'text-muted-foreground hover:text-foreground cursor-pointer italic'
+                              : row.original.type === 'folder'
                                 ? 'text-primary hover:text-primary/80 cursor-pointer'
-                                : item.type === 'file'
+                                : row.original.type === 'file'
                                   ? 'text-foreground hover:text-primary cursor-pointer'
                                   : ''
                           }`}
-                          onClick={() => handleItemClick(item)}
+                          onClick={() => handleItemClick(row.original)}
                         >
-                          {item.name}
+                          {row.original.name}
                         </span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {item.file_size ? formatFileSize(item.file_size) : '--'}
+                    {row.original.file_size ? formatFileSize(row.original.file_size) : '--'}
                   </TableCell>
                   <TableCell className="text-xs uppercase text-muted-foreground">
-                    {item.type === 'folder' ? (item.folder?.collection_type || 'Folder') : (item.file_type || 'Unknown')}
+                    {row.original.type === 'folder' ? (row.original.folder?.collection_type || 'Folder') : (row.original.file_type || 'Unknown')}
                   </TableCell>
-                  <TableCell>{formatDate(item.created_at)}</TableCell>
-                  <TableCell>{getStatusBadge(item.status)}</TableCell>
+                  <TableCell>{formatDate(row.original.created_at)}</TableCell>
+                  <TableCell>{getStatusBadge(row.original.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
-                      {item.type === 'file' && item.file && (
+                      {row.original.type === 'file' && row.original.file && (
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 text-xs"
-                            onClick={() => handleOpenLinkModal(item.file!.uuid)}
+                            onClick={() => handleOpenLinkModal(row.original.file!.uuid)}
                           >
                             <Link className="h-3 w-3 mr-1" />
                             Link
@@ -1588,21 +1632,21 @@ export function FileManager() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleStartRename(item)}
+                                onClick={() => handleStartRename(row.original)}
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Rename
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handlePreviewFile(item.file!)}
+                                onClick={() => handlePreviewFile(row.original.file!)}
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 Preview
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <a
-                                  href={item.file!.file}
-                                  download={item.file!.title}
+                                  href={row.original.file!.file}
+                                  download={row.original.file!.title}
                                   className="flex items-center"
                                 >
                                   <Download className="h-4 w-4 mr-2" />
@@ -1610,13 +1654,13 @@ export function FileManager() {
                                 </a>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleOpenLinkModal(item.file!.uuid)}
+                                onClick={() => handleOpenLinkModal(row.original.file!.uuid)}
                               >
                                 <Link className="h-4 w-4 mr-2" />
                                 Link to KB
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleDeleteFile(item.file!.uuid)}
+                                onClick={() => handleDeleteFile(row.original.file!.uuid)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
@@ -1625,7 +1669,7 @@ export function FileManager() {
                           </DropdownMenu>
                         </>
                       )}
-                      {item.type === 'folder' && item.folder && item.id !== 'go-up' && (
+                      {row.original.type === 'folder' && row.original.folder && row.original.id !== 'go-up' && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -1638,19 +1682,19 @@ export function FileManager() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => handleStartRename(item)}
+                              onClick={() => handleStartRename(row.original)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Rename
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                if (item.id === 'go-up') {
+                                if (row.original.id === 'go-up') {
                                   // Go up to parent directory
                                   navigateToRoot();
-                                } else if (item.folder?.uuid) {
+                                } else if (row.original.folder?.uuid) {
                                   // Navigate into folder
-                                  navigateToCollection(item.folder.uuid);
+                                  navigateToCollection(row.original.folder.uuid);
                                 }
                               }}
                             >
@@ -1659,7 +1703,7 @@ export function FileManager() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                setEditingCollection(item.folder!);
+                                setEditingCollection(row.original.folder!);
                                 setIsEditCollectionOpen(true);
                               }}
                             >
@@ -1667,15 +1711,15 @@ export function FileManager() {
                               Manage
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleOpenLinkModal(item.folder!.uuid)}
+                              onClick={() => handleOpenLinkModal(row.original.folder!.uuid)}
                             >
                               <Link className="h-4 w-4 mr-2" />
                               Link to KB
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                if (item.folder?.uuid) {
-                                  handleDeleteFolder(item.folder.uuid);
+                                if (row.original.folder?.uuid) {
+                                  handleDeleteFolder(row.original.folder.uuid);
                                 }
                               }}
                             >
