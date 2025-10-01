@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getTokenUsagebyUser } from "@/api/token";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge";
@@ -26,10 +25,11 @@ import {
 import {
   ChevronDown,
   ChevronUp,
+  EyeIcon,
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { DateRangePicker } from "@openfun/cunningham-react";
+import { ChatPreviewDialog } from "./chat-preview-dialog";
 
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -59,6 +59,8 @@ type TokenUsageRow = {
   output_tokens?: number | null;
   total_tokens: number;
   created_at: string;
+  user_msg: string;
+  assistant_msg: string;
   cost: number;
 };
 
@@ -93,6 +95,9 @@ export function UserTokenUsage() {
 	const [reaminToken, setRemain] = useState(0);
 	const [totalToken, setTotal] = useState(0);
   const [tokenUsageData, setTokenUsage] = useState<UserTokenUsage>();
+  const [isOpenPreview, setOpenPreview] = useState(false);
+  const [userMsg, setUserMsg] = useState("");
+  const [assistantMsg, setAssistantMsg] = useState("");
 
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -142,6 +147,18 @@ export function UserTokenUsage() {
         header: "Total",
         cell: ({ row }) => row.original.cost.toLocaleString()
       },
+      {
+        accessorKey: "user_msg",
+        header: "User Message",
+      },
+      {
+        accessorKey: "assistant_msg",
+        header: "Assistant Message",
+      },
+      {
+        accessorKey: "actions",
+        header: "Action",
+      },
     ],
     [formatDate]
   );
@@ -156,8 +173,6 @@ export function UserTokenUsage() {
 
       const response = await getTokenUsagebyUser() as TokenLogsApiResponse;
 			const usageData = await getTokenSummarybyUser() as UserTokenUsage;
-
-			console.log("usageData", usageData);
 
       if (response && response.results) {
         setTokenData(response.results);
@@ -197,21 +212,14 @@ export function UserTokenUsage() {
 
   const filteredData = table.getRowModel().rows.map((r) => r.original);
 
+  const handlePreview = (row : TokenUsageRow) => {
+    setOpenPreview(true);
+    setUserMsg(row.user_msg);
+    setAssistantMsg(row.assistant_msg);
+  }
+
   return (
     <div className="space-y-4 w-full">
-      {/* <div className="flex items-center justify-between">
-        <div><></></div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchData}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div> */}
-
       <div className="flex items-center gap-2 w-full max-w-md">
 				<></>
       </div>
@@ -259,9 +267,10 @@ export function UserTokenUsage() {
               <TableHead>Provider</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>Agent Name</TableHead>
-              <TableHead>Chat Title</TableHead>
+              <TableHead>Chat Name</TableHead>
               <TableHead>Total Used</TableHead>
               <TableHead>Cost</TableHead>
+              <TableHead>Preview Chat</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -289,7 +298,6 @@ export function UserTokenUsage() {
                 const prompt = row.input_tokens ?? 0;
                 const completion = row.output_tokens ?? 0;
                 const total = row.total_tokens ?? prompt + completion;
-
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="whitespace-nowrap">
@@ -305,6 +313,9 @@ export function UserTokenUsage() {
                     <TableCell>
                       {`$ ${row.cost}` || '-'}
                     </TableCell>
+                    <TableCell>
+                      <Button size={"sm"} onClick={() => {handlePreview(row)}}><EyeIcon /></Button>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -312,6 +323,12 @@ export function UserTokenUsage() {
           </TableBody>
         </Table>
       </div>
+      <ChatPreviewDialog
+        open={isOpenPreview}
+        onOpenChange={setOpenPreview}
+        user_message={userMsg}
+        assistant_message={assistantMsg}
+      />
     </div>
   );
 }
