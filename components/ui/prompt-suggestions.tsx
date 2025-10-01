@@ -42,10 +42,13 @@ export function PromptSuggestions({
             key={suggestion}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
+            transition={{ 
+              duration: 0.5, 
+              delay: 0.3 + index * 0.1,
+              x: { duration: 0.2, ease: "easeOut" }
+            }}
             whileHover={{ 
-              x: 4,
-              transition: { duration: 0.2 }
+              x: 4
             }}
             whileTap={{ scale: 0.98 }}
             onClick={() => append({ role: "user", content: suggestion })}
