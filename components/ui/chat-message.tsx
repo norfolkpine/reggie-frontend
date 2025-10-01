@@ -15,6 +15,9 @@ import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { AgentThinking } from "@/components/ui/agent-thinking"
 import { ReferencesData } from "@/types/message"
+import { Badge } from "@/components/ui/badge"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { ExternalLink, FileText, Calendar, HardDrive, FileImage, FileSpreadsheet, FileCode, FileIcon } from "lucide-react"
 
 const chatBubbleVariants = cva(
   "group/message relative break-words rounded-lg p-4 text-sm",
@@ -385,45 +388,13 @@ const ReferencesDisplay = ({ references }: { references: ReferencesData[] }) => 
           >
             <div className="p-3 space-y-3">
               {references.map((refGroup, groupIndex) => (
-                <div key={groupIndex} className="space-y-2">
+                <div key={groupIndex} className="space-y-3">
                   <div className="text-xs font-medium text-muted-foreground">
                     Query: "{refGroup.query}"
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {refGroup.references.map((ref, refIndex) => (
-                      <div
-                        key={refIndex}
-                        className="rounded-md border bg-background p-3 text-sm"
-                      >
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">
-                              {ref.meta_data.file_name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Page {ref.meta_data.page_label}
-                            </span>
-                          </div>
-                          <a
-                            href={ref.meta_data.file_path}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                          >
-                            View File
-                          </a>
-                        </div>
-                        <div className="text-xs text-muted-foreground mb-2">
-                          <div>File Type: {ref.meta_data.file_type}</div>
-                          <div>Size: {(ref.meta_data.file_size / 1024).toFixed(1)} KB</div>
-                          <div>Modified: {new Date(ref.meta_data.last_modified_date).toLocaleDateString()}</div>
-                        </div>
-                        <blockquote className="border-l-4 border-blue-200 pl-4 py-2 my-2 bg-blue-50/50 rounded-r-md">
-                          <div className="text-sm text-foreground whitespace-pre-wrap italic">
-                            "{ref.content}"
-                          </div>
-                        </blockquote>
-                      </div>
+                      <FileReferenceBadge key={refIndex} reference={ref} />
                     ))}
                   </div>
                 </div>
@@ -433,6 +404,126 @@ const ReferencesDisplay = ({ references }: { references: ReferencesData[] }) => 
         </CollapsibleContent>
       </Collapsible>
     </div>
+  )
+}
+
+const FileReferenceBadge = ({ reference }: { reference: any }) => {
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1048576).toFixed(1)} MB`
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  const getFileIcon = (fileType: string) => {
+    const type = fileType?.toLowerCase()
+    
+    // Images
+    if (type?.includes('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(type || '')) {
+      return <FileImage className="h-4 w-4 text-yellow-600" />
+    }
+    
+    // PDFs
+    if (type?.includes('pdf') || type === 'application/pdf') {
+      return <FileText className="h-4 w-4 text-red-600" />
+    }
+    
+    // Word documents
+    if (type?.includes('doc') || type?.includes('word') || type?.includes('application/msword') || type?.includes('application/vnd.openxmlformats-officedocument.wordprocessingml')) {
+      return <FileText className="h-4 w-4 text-blue-600" />
+    }
+    
+    // Spreadsheets
+    if (type?.includes('xls') || type?.includes('excel') || type?.includes('csv') || type?.includes('application/vnd.ms-excel') || type?.includes('application/vnd.openxmlformats-officedocument.spreadsheetml')) {
+      return <FileSpreadsheet className="h-4 w-4 text-green-600" />
+    }
+    
+    // Code files
+    if (type?.includes('javascript') || type?.includes('typescript') || type?.includes('python') || type?.includes('java') || type?.includes('cpp') || type?.includes('c') || type?.includes('html') || type?.includes('css') || type?.includes('json') || type?.includes('xml') || ['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css', 'json', 'xml'].includes(type || '')) {
+      return <FileCode className="h-4 w-4 text-purple-600" />
+    }
+    
+    // Text files
+    if (type?.includes('text/') || type?.includes('txt') || type?.includes('md') || type?.includes('markdown')) {
+      return <FileText className="h-4 w-4 text-gray-600" />
+    }
+    
+    // Default file icon
+    return <FileIcon className="h-4 w-4 text-gray-500" />
+  }
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <Badge 
+          variant="outline" 
+          className="cursor-pointer hover:bg-muted/80 transition-colors flex items-center gap-1.5 px-3 py-1.5"
+        >
+          {getFileIcon(reference.meta_data.file_type)}
+          <span className="font-medium truncate max-w-[200px]">
+            {reference.meta_data.file_name}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            P{reference.meta_data.page_label}
+          </span>
+        </Badge>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80" side="top">
+        <div className="space-y-3">
+          {/* File Header */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium text-sm truncate">
+                  {reference.meta_data.file_name}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Page {reference.meta_data.page_label}
+                </p>
+              </div>
+            </div>
+            <a
+              href={reference.meta_data.file_path}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+
+          {/* File Metadata */}
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <HardDrive className="h-3 w-3" />
+              <span>{reference.meta_data.file_type} • {formatFileSize(reference.meta_data.file_size)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              <span>Modified {formatDate(reference.meta_data.last_modified_date)}</span>
+            </div>
+          </div>
+
+          {/* Extracted Content */}
+          <div className="space-y-2">
+            <h5 className="text-xs font-medium text-foreground">Extracted Content:</h5>
+            <div className="bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
+              <p className="text-xs text-foreground whitespace-pre-wrap italic">
+                "{reference.content}"
+              </p>
+            </div>
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   )
 }
 
