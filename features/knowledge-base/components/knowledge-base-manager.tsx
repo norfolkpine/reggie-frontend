@@ -85,12 +85,12 @@ function KnowledgeBaseCard({ kb, onView, onEdit, onDelete }: KnowledgeBaseCardPr
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow flex flex-col h-full">
       <CardHeader>
-        <CardTitle>{kb.name}</CardTitle>
-        <CardDescription>{kb.description || ""}</CardDescription>
+        <CardTitle className="line-clamp-2">{kb.name}</CardTitle>
+        <CardDescription className="line-clamp-2">{kb.description || ""}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         <div className="flex items-center text-sm text-muted-foreground">
           <FileText className="h-4 w-4 mr-1" />
           <span>Type: {kb.knowledge_type}</span>
@@ -100,7 +100,7 @@ function KnowledgeBaseCard({ kb, onView, onEdit, onDelete }: KnowledgeBaseCardPr
           <span>Updated {formatDate(kb.updated_at)}</span>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between mt-auto">
         <Button variant="outline" size="sm" onClick={() => onView(kb.id.toString())}>
           <Info className="h-4 w-4 mr-2" />
           View Details

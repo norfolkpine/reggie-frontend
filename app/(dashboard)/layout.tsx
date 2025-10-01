@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { ResizableContent } from "@/features/vault/components/resizable-content";
 import Sidebar from "@/components/sidebar";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,6 +18,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { getActiveOrClosingPanels } = useGlobalPanel();
   const { rightSection, showRightSection, hideRightSection } = useRightSection();
   const { isMobile } = useResponsiveStore();
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -25,16 +27,20 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const hasActivePanel = activeOrClosingPanels.some(p => !p.isClosing);
   const activePanel = activeOrClosingPanels.find(p => !p.isClosing)?.config || null;
 
-  // Update right section based on active panels
+  // Update right section based on active panels and route
   useEffect(() => {
+    // Check if we're on a vault route
+    const isVaultRoute = pathname?.startsWith('/vault');
+
     if (hasActivePanel && activePanel) {
       const PanelComponent = activePanel.component;
       const panelElement = <PanelComponent {...activePanel.props} />;
       showRightSection(activePanel.id, panelElement);
-    } else {
+    } else if (!isVaultRoute) {
+      // Close right section when navigating away from vault routes
       hideRightSection();
     }
-  }, [hasActivePanel, activePanel, showRightSection, hideRightSection]);
+  }, [hasActivePanel, activePanel, showRightSection, hideRightSection, pathname]);
 
   // Detect scroll position to change header styling
   useEffect(() => {

@@ -60,9 +60,9 @@ export function FileTable({
         return (
           <Badge
             variant="outline"
-            className="bg-gray-50 text-gray-700 border-gray-200"
+            className="bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800"
           >
-            <div className="h-3 w-3 mr-1 rounded-full bg-yellow-400" />
+            <div className="h-3 w-3 mr-1 rounded-full bg-amber-400 dark:bg-amber-500" />
             {status}
           </Badge>
         );
@@ -70,9 +70,9 @@ export function FileTable({
         return (
           <Badge
             variant="outline"
-            className="bg-green-50 text-green-700 border-green-200"
+            className="bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800"
           >
-            <div className="h-3 w-3 mr-1 rounded-full bg-green-400" />
+            <div className="h-3 w-3 mr-1 rounded-full bg-green-400 dark:bg-green-500" />
             {status}
           </Badge>
         );
@@ -80,9 +80,9 @@ export function FileTable({
         return (
           <Badge
             variant="outline"
-            className="bg-blue-50 text-blue-700 border-blue-200"
+            className="bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800"
           >
-            <div className="h-3 w-3 mr-1 rounded-full bg-blue-400" />
+            <div className="h-3 w-3 mr-1 rounded-full bg-blue-400 dark:bg-blue-500" />
             {status}
           </Badge>
         );
@@ -90,9 +90,9 @@ export function FileTable({
         return (
           <Badge
             variant="outline"
-            className="bg-red-50 text-red-700 border-red-200"
+            className="bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800"
           >
-            <div className="h-3 w-3 mr-1 rounded-full bg-red-400" />
+            <div className="h-3 w-3 mr-1 rounded-full bg-red-400 dark:bg-red-500" />
             Error
           </Badge>
         );
@@ -100,9 +100,9 @@ export function FileTable({
         return (
           <Badge
             variant="outline"
-            className="bg-red-50 text-red-700 border-red-200"
+            className="bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800"
           >
-            <div className="h-3 w-3 mr-1 rounded-full bg-red-400" />
+            <div className="h-3 w-3 mr-1 rounded-full bg-red-400 dark:bg-red-500" />
             Error
           </Badge>
         );
