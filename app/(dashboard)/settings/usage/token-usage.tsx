@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getTokenUsagebyUser } from "@/api/token";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +29,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { DateRangePicker } from "@openfun/cunningham-react";
 import { ChatPreviewDialog } from "./chat-preview-dialog";
 
 const useDebounce = (value: string, delay: number) => {
