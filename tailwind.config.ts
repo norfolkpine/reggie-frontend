@@ -19,7 +19,17 @@ const config = {
   		}
   	},
   	extend: {
-  			colors: {
+		fontFamily: {
+			'sans': ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+			'serif': ['Ancizar Serif', 'serif'],
+			'display': ['Funnel Display', 'var(--font-red-hat-display)', 'Red Hat Display', 'system-ui', 'sans-serif'],
+			'heading': ['var(--font-raleway)', 'Raleway', 'system-ui', 'sans-serif'],
+			'comfortaa': ['Comfortaa', 'system-ui', 'sans-serif'],
+			'inter': ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+			'raleway': ['var(--font-raleway)', 'Raleway', 'system-ui', 'sans-serif'],
+			'red-hat': ['var(--font-red-hat-display)', 'Red Hat Display', 'system-ui', 'sans-serif'],
+		},
+  		colors: {
   				border: 'hsl(var(--border))',
   				input: 'hsl(var(--input))',
   				ring: 'hsl(var(--ring))',
@@ -63,10 +73,22 @@ const config = {
   					border: 'hsl(var(--sidebar-border))',
   					ring: 'hsl(var(--sidebar-ring))'
   				},
-  				'sidebar-background': 'hsl(var(--sidebar-background))',
-  				'sidebar-foreground': 'hsl(var(--sidebar-foreground))',
-  				'sidebar-accent': 'hsl(var(--sidebar-accent))',
-  				'sidebar-border': 'hsl(var(--sidebar-border))',
+				'sidebar-background': 'hsl(var(--sidebar-background))',
+				'sidebar-foreground': 'hsl(var(--sidebar-foreground))',
+				'sidebar-accent': 'hsl(var(--sidebar-accent))',
+				'sidebar-border': 'hsl(var(--sidebar-border))',
+				// Opie brand colors
+				'opie': {
+					'purple': '#4f2c8f',
+					'teal': '#20B2AA',
+					'purple-light': '#4f2c8f15',
+					'purple-medium': '#4f2c8f20',
+					'purple-dark': '#4f2c8f60',
+					'purple-text': '#4f2c8f80',
+					'teal-light': '#20B2AA05',
+					'teal-medium': '#20B2AA08',
+					'teal-dark': '#20B2AA15',
+				},
   			chart: {
   				'1': '221, 83%, 53%',
   				'2': '142, 71%, 45%',

@@ -1,13 +1,29 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Raleway, Red_Hat_Display } from "next/font/google"
 import "../styles/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
 import { ThemeProvider } from "@/components/theme-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap"
+})
+
+const raleway = Raleway({ 
+  subsets: ["latin"],
+  variable: "--font-raleway",
+  display: "swap"
+})
+
+const redHatDisplay = Red_Hat_Display({ 
+  subsets: ["latin"],
+  variable: "--font-red-hat-display",
+  display: "swap"
+})
 
 export const metadata: Metadata = {
   title: "Opie",
@@ -31,7 +47,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Ancizar+Serif:ital,wght@0,300..900;1,300..900&family=Comfortaa:wght@300..700&family=Funnel+Display:wght@300..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Raleway:ital,wght@0,100..900;1,100..900&family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
+      </head>
+      <body className={`${inter.variable} ${raleway.variable} ${redHatDisplay.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
