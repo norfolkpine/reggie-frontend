@@ -336,7 +336,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
                 handleSubmit(message.content);
                 setInput("");
               }}
-              suggestions={["What is a sophisticated investor?", "What is AML/KYC?"]}
+              suggestions={["What are the requirements for a wholesale investor?", "What is AML/KYC?", "List all agents and capabilities"]}
             />
           </div>
         )}

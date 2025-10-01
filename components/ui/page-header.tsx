@@ -45,7 +45,7 @@ export function PageHeader({
 
   return (
     <div
-      className={`p-4 flex items-center justify-between w-full ${className} border-b border-border`}
+      className={`py-2 px-3 flex items-center justify-between w-full ${className} border-b border-border`}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
       <>
@@ -53,7 +53,7 @@ export function PageHeader({
               variant="ghost"
               size="icon"
               className="rounded-full"
-              title={isExpanded ? "Minimize sidebar" : "Expand sidebar"}
+              title={isExpanded ? "i" : "Expand sidebar"}
               onClick={toggleSidebar}
             >
               {isExpanded ? (
