@@ -373,7 +373,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
         buffer += chunk;
 
         // Process complete lines from the buffer
-        const lines = buffer.split('\n\n');
+        const lines = buffer.split('\n');
 
         // Keep the last line in the buffer if it's incomplete
         buffer = lines.pop() || '';
@@ -387,6 +387,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
             const dataContent = trimmedLine.substring(6); // Remove "data: " prefix
             
             if (dataContent === '[DONE]') {
+              setIsAgentResponding(false);
               return; // End of stream
             }
 
@@ -443,7 +444,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     });
                 }
                 
-              } else if (parsedData.event === "RunStart" || parsedData.event === "RunContent") {
+              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
                 
                 // Update reasoning steps if available
@@ -452,8 +453,8 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                   reasoningSteps.push(parsedData.extra_data.reasoning_steps);
                 }
                 
-                // Create assistant message only when we start receiving content
-                if (!assistantMessageCreated && tokenPart.trim()) {
+                // Create assistant message when we start receiving content (even if empty initially)
+                if (!assistantMessageCreated) {
                   setMessages(prev => [...prev, { 
                     id: assistantMessageId, 
                     content: tokenPart, 
@@ -480,7 +481,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                   });
                 }
                 
-                setIsAgentResponding(!isAgentResponding);
+                setIsAgentResponding(true);
               } else if (parsedData.event === "MemoryUpdateStarted") {
                 setIsMemoryUpdating(true);
               } else if (parsedData.event === "References") {
