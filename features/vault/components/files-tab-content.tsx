@@ -1,13 +1,13 @@
 "use client";
 
+import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import SearchInput from "@/components/ui/search-input";
 import { FileFilters } from "./file-filters";
-import { AskAIButton } from "./ask-ai-button";
 import { BulkActions } from "./bulk-actions";
 import { FolderActions } from "./folder-actions";
 import { FileTable } from "./file-table";
-import { PaginationControls } from "./pagination-controls";
+import { Loader } from "lucide-react";
 import { FileUploadDialog } from "./file-upload-dialog";
 import { VaultFile } from "../types/vault";
 
@@ -18,7 +18,6 @@ interface FilesTabContentProps {
   activeFilters: string[];
   onFilterChange: (filterType: string, checked: boolean) => void;
 
-  onAskAI: () => void;
   isRightSectionOpen?: boolean;
   isDragOver?: boolean;
   onFileDragOver?: (e: React.DragEvent) => void;
@@ -51,7 +50,7 @@ interface FilesTabContentProps {
 
   hasNextPage: boolean;
   isLoadingMore?: boolean;
-  onLoadMore?: () => void;
+  loadMoreRef?: React.RefObject<HTMLDivElement | null>;
 
   uploadDialogOpen: boolean;
   setUploadDialogOpen: (open: boolean) => void;
@@ -110,7 +109,6 @@ export function FilesTabContent(props: FilesTabContentProps) {
                 onSearchChange={props.onSearchChange}
                 onFilterChange={props.onFilterChange}
               />
-              <AskAIButton onClick={props.onAskAI} />
               <BulkActions
                 selectedFilesCount={props.selectedFiles.length}
                 isDeleting={props.isDeleting}
@@ -144,11 +142,19 @@ export function FilesTabContent(props: FilesTabContentProps) {
           onDrop={props.onDrop}
         />
 
-        <PaginationControls
-          hasNextPage={props.hasNextPage}
-          isLoadingMore={props.isLoadingMore}
-          onLoadMore={props.onLoadMore}
-        />
+        {/* Infinite scroll trigger */}
+        {props.hasNextPage && props.loadMoreRef && (
+          <div ref={props.loadMoreRef} className="flex justify-center py-4">
+            {props.isLoadingMore ? (
+              <div className="flex items-center space-x-2">
+                <Loader className="h-4 w-4 animate-spin" />
+                <span>Loading more files...</span>
+              </div>
+            ) : (
+              <div className="h-4" />
+            )}
+          </div>
+        )}
 
         <FileUploadDialog
           open={props.uploadDialogOpen}

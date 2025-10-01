@@ -59,6 +59,10 @@ export const FilesTab = React.forwardRef<{
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null);
   const [files, setFiles] = useState<UploadingFile[]>([]);
 
+  // Infinite scroll refs
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -107,12 +111,44 @@ export const FilesTab = React.forwardRef<{
     return () => clearTimeout(delay);
   }, [searchQuery]);
 
+  // Set up intersection observer for infinite scrolling
+  useEffect(() => {
+    if (!searchQuery) {
+      // Don't use infinite scroll when searching
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0].isIntersecting &&
+            hasNextPage &&
+            !isLoadingMore &&
+            currentPage > 0
+          ) {
+            setCurrentPage((prevPage) => prevPage + 1);
+          }
+        },
+        { threshold: 0.5 }
+      );
+
+      observerRef.current = observer;
+
+      if (loadMoreRef.current) {
+        observer.observe(loadMoreRef.current);
+      }
+
+      return () => {
+        if (observerRef.current) {
+          observerRef.current.disconnect();
+        }
+      };
+    }
+  }, [hasNextPage, isLoadingMore, searchQuery, currentPage]);
+
   const fetchFiles = async (isLoadingMoreFiles = false) => {
     try {
       setIsLoadingMore(isLoadingMoreFiles);
       const response = await getVaultFilesByProject(
         projectId,
-        isLoadingMoreFiles ? currentPage : 1,
+        currentPage,
         itemsPerPage,
         searchQuery,
         currentFolderId
@@ -194,12 +230,6 @@ export const FilesTab = React.forwardRef<{
       setCurrentPage(prev => prev + 1);
     }
   }, [hasNextPage, isLoadingMore]);
-
-  const loadMoreFiles = useCallback(() => {
-    if (hasNextPage && !isLoadingMore) {
-      fetchFiles(true);
-    }
-  }, [hasNextPage, isLoadingMore, fetchFiles]);
 
   const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) setSelectedFiles(filteredFiles.map(file => file.id)); else setSelectedFiles([]);
@@ -426,12 +456,6 @@ export const FilesTab = React.forwardRef<{
         showAllFiles={showAllFiles}
         activeFilters={activeFilters}
         onFilterChange={handleFilterChange}
-        onAskAI={() => {
-          // Context is automatically updated via useEffect above
-          console.log("Opening AI panel");
-          const aiPanelComponent = <AiLayoutPanel contextData={currentContext} />;
-          showRightSection("vault-ai-panel", aiPanelComponent);
-        }}
         isRightSectionOpen={rightSection !== null}
         isDragOver={isDragOver}
         onFileDragOver={handleFileDragOver}
@@ -460,7 +484,7 @@ export const FilesTab = React.forwardRef<{
         onDrop={handleDrop}
         hasNextPage={hasNextPage}
         isLoadingMore={isLoadingMore}
-        onLoadMore={loadMoreFiles}
+        loadMoreRef={loadMoreRef}
         uploadDialogOpen={isUploadDialogOpen}
         setUploadDialogOpen={setIsUploadDialogOpen}
         projectId={projectId}

@@ -6,8 +6,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
 import { Project } from "@/types/api";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Settings, Edit } from "lucide-react";
+import { Loader2, Settings, Edit, Sparkles } from "lucide-react";
 import { useHeader } from "@/contexts/header-context";
+import { useRightSection } from "@/hooks/use-right-section";
 // Files tab manages AI panel context itself
 import { InstructionsDialog } from "./instructions-dialog";
 import { RenameDialog } from "./rename-dialog";
@@ -15,12 +16,15 @@ import { FilesTab } from "./files-tab";
 import { ActivityTabContent } from "./activity-tab-content";
 import { SettingsTabContent } from "./settings-tab-content";
 import { ProjectNotFound } from "./project-not-found";
+import { AskAIButton } from "./ask-ai-button";
+import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
 
 export function VaultManager() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
+  const { showRightSection, rightSection } = useRightSection();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
@@ -72,6 +76,21 @@ export function VaultManager() {
     }, 100);
   }, []); // No dependencies to avoid infinite loops
 
+  // Ask AI handler
+  const handleAskAI = useCallback(() => {
+    if (!project) return;
+    
+    const currentContext = {
+      title: breadcrumbData.currentFolderId === 0 ? project.name || 'Root Folder' : breadcrumbData.breadcrumbs[breadcrumbData.breadcrumbs.length - 1]?.name || 'Current Folder',
+      files: [], // Files will be populated by the AI panel
+      folderId: breadcrumbData.currentFolderId,
+      projectId: projectId
+    };
+    
+    const aiPanelComponent = <AiLayoutPanel contextData={currentContext} />;
+    showRightSection("vault-ai-panel", aiPanelComponent);
+  }, [project, breadcrumbData, projectId, showRightSection]);
+
   // Set header actions and custom content
   useEffect(() => {
     if (loading) {
@@ -96,6 +115,13 @@ export function VaultManager() {
       // Set the back button and project name with edit functionality
       setHeaderActions([
         {
+          label: "Ask AI",
+          onClick: handleAskAI,
+          variant: "outline",
+          size: "sm",
+          icon: <Sparkles className="h-4 w-4" />
+        },
+        {
           label: "",
           onClick: () => {
             setShowInstructionsDialog(true);
@@ -115,7 +141,7 @@ export function VaultManager() {
 
       // Set merged breadcrumb navigation as custom content
       setHeaderCustomContent(
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-lg font-medium">
           {/* Vault link */}
           <span
             className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground"
