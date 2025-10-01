@@ -3,25 +3,18 @@
 import { useEffect, useState } from "react";
 import { createAgent, getAgent, updateAgent } from "@/api/agents";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ChevronRight, Save, Server, Database } from "lucide-react";
-import AgentEngine from "./components/agent-engine";
-import AgentResources from "./components/agent-resources";
-import { cn } from "@/lib/utils";
+import { Database } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { Agent, AgentCreate } from "@/types/api";
+import { AgentCreate } from "@/types/api";
 import { teamStorage } from "@/lib/utils/team-storage";
-import { useAuth } from "@/contexts/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentProvider, useAgent } from "./context/agent-context";
-import { AgentDetails } from "./components/agent-details";
 import { getKnowledgeBases } from "@/api/knowledge-bases"
 import { KnowledgeBase } from "@/types/api"
-import { getModelProviders,getAllModelProviders, ModelProvider } from "@/api/agent-providers";
+import { getAllModelProviders, ModelProvider } from "@/api/agent-providers";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -39,56 +32,29 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-
-const tabs = [
-  { id: "details", label: "Details" },
-  // { id: "prompts", label: "Prompts" },
-  { id: "engine", label: "AI engine" },
-  { id: "resources", label: "Knowledge Base" },
-  // { id: "limits", label: "Limits" },
-];
-
 const formSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  model: z.string(),
-  knowledgeBaseId: z.string(),
-  searchKnowledge: z.boolean()
+  name: z.string().min(1, "Name is required"),
+  description: z.string().default(""),
+  model: z.string().min(1, "Model is required"),
+  knowledgeBaseId: z.string().nullable().default(null),
+  searchKnowledge: z.boolean().default(false)
 });
 
 function AgentCreationContent() {
-  const [activeTab, setActiveTab] = useState("details");
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { agentData, setAgentData, isSubmitting, setIsSubmitting, isFetchingData, setIsFetchingData } = useAgent();
+  const { setAgentData, setIsSubmitting, setIsFetchingData } = useAgent();
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
-  const form = useForm< z.infer < typeof formSchema >> ({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      model: "",
+      knowledgeBaseId: null,
+      searchKnowledge: false
+    }
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
-  const [isLoadingKnowledgeBases, setIsLoadingKnowledgeBases] = useState(false)
-  const [searchKnowledge, setSearchKnowledge] = useState(false)
-  const [knowledgeBaseId, setKnowledgeBaseId] = useState<string | null>(null)
-
-  const getTabIndex = (tabId: string) => {
-    return tabs.findIndex((tab) => tab.id === tabId);
-  };
-
-  const handleNext = () => {
-    const currentIndex = getTabIndex(activeTab);
-    if (currentIndex < tabs.length - 1) {
-      setActiveTab(tabs[currentIndex + 1].id);
-    }
-  };
-
-  const handlePrevious = () => {
-    const currentIndex = getTabIndex(activeTab);
-    if (currentIndex > 0) {
-      setActiveTab(tabs[currentIndex - 1].id);
-    }
-  };
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,45 +62,30 @@ function AgentCreationContent() {
 
   useEffect(() => {
     const fetchModelProviders = async () => {
-      setIsLoading(true);
-      setError(null);
       try {
         const response = await getAllModelProviders() as ModelProvider[];
         setModelProviders(response);
       } catch (err) {
         console.error("Failed to fetch model providers:", err);
-        setError("Failed to load model providers");
-      } finally {
-        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Failed to load model providers",
+          variant: "destructive"
+        });
       }
     };
     const fetchKnowledgeBases = async () => {
-      setIsLoadingKnowledgeBases(true)
       try {
-        const response = await getKnowledgeBases()
-        console.log(response.results)
+        const response: { results: KnowledgeBase[] } = await getKnowledgeBases()
         setKnowledgeBases(response.results)
       } catch (error) {
         console.error("Failed to fetch knowledge bases:", error)
-      } finally {
-        setIsLoadingKnowledgeBases(false)
       }
     }
     fetchModelProviders();
     fetchKnowledgeBases();
   }, []);
 
-  const handleKnowledgeBaseChange = (value: string) => {
-    if (value === "none") {
-      setKnowledgeBaseId(null)
-      return
-    }
-
-    setKnowledgeBaseId(value)
-    if (value) {
-      setSearchKnowledge(true)
-    }
-  }
 
   useEffect(() => {
     setAgentData({})
@@ -155,6 +106,11 @@ function AgentCreationContent() {
             searchKnowledge: agent.search_knowledge || false,
             citeKnowledge: false,
           });
+          form.setValue("name", agent.name);
+          form.setValue("description", agent.description);
+          form.setValue("model", agent.model.toString());
+          form.setValue("knowledgeBaseId", agent.knowledge_base || null);
+          form.setValue("searchKnowledge", agent.search_knowledge || false);
         } catch (error) {
           console.error('Error fetching agent data:', error);
         } finally {
@@ -177,7 +133,7 @@ function AgentCreationContent() {
         description: agentData.description || "",
         model: Number(agentData.model) || 1,
         team: teamStorage.getActiveTeam()?.id || null,
-        knowledge_base: agentData.knowledgeBaseId || undefined,
+        knowledge_base: agentData.knowledgeBaseId === "none" || !agentData.knowledgeBaseId ? undefined : agentData.knowledgeBaseId,
         search_knowledge: agentData.searchKnowledge || false,
       };
 
@@ -212,12 +168,10 @@ function AgentCreationContent() {
     }
   };
 
-  const handleCancel = async () => {
-    await form.reset();
+  const handleCancel = () => {
+    form.reset();
     router.push(`/agent`);
   }
-
-  const isLastTab = getTabIndex(activeTab) === tabs.length - 1;
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -249,7 +203,11 @@ function AgentCreationContent() {
                 <FormItem>
                   <FormLabel>Agent's description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe what tasks or functions this agent can perform" {...field} />
+                    <Textarea
+                      placeholder="Describe what tasks or functions this agent can perform"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   {/* <FormDescription>
                     Short description of what this agent does.
@@ -264,7 +222,7 @@ function AgentCreationContent() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>AI engine</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select the AI model" />
@@ -288,14 +246,29 @@ function AgentCreationContent() {
               name="knowledgeBaseId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Knowledge Base</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Knowledge Base (Optional)</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value === "none" ? null : value);
+                      if (value && value !== "none") {
+                        form.setValue("searchKnowledge", true);
+                      } else {
+                        form.setValue("searchKnowledge", false);
+                      }
+                    }}
+                    value={field.value ?? "none"}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a Knowledge Base" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="none">
+                        <div className="flex items-center">
+                          <span>No Knowledge Base</span>
+                        </div>
+                      </SelectItem>
                       {knowledgeBases.map((kb) => (
                         <SelectItem key={kb.knowledgebase_id} value={kb.knowledgebase_id}>
                           <div className="flex items-center">
@@ -312,7 +285,7 @@ function AgentCreationContent() {
             />
             <div className="mt-8 flex justify-between">
               <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
-              <Button type="submit" onClick={handleSave}>Create Agent</Button>
+              <Button type="submit" onClick={handleSave}>{agentId ? "Update Agent" : "Create Agent"}</Button>
             </div>
           </form>
         </Form>
