@@ -47,9 +47,13 @@ export function VaultManager() {
     breadcrumbs: { id: number; name: string }[];
   }>({ currentFolderId: 0, breadcrumbs: [] });
 
+  // Drag and drop state for file uploads
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const filesTabRef = useRef<{
     getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
     navigateToFolder: (folderId: number) => void;
+    handleFilesDrop: (files: File[]) => Promise<void>;
   }>(null);
 
   // Update breadcrumb data from FilesTab
@@ -75,6 +79,37 @@ export function VaultManager() {
       updateBreadcrumbDataRef.current();
     }, 100);
   }, []); // No dependencies to avoid infinite loops
+
+  // Drag and drop handlers for file uploads (only active when on files tab)
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, [activeTab]);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set isDragOver to false if we're leaving the container entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, [activeTab]);
+
+  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 0) return;
+
+    // Call the FilesTab's handleFilesDrop method
+    await filesTabRef.current?.handleFilesDrop(droppedFiles);
+  }, [activeTab]);
 
   // Memoize AI panel context to prevent unnecessary re-renders
   const aiPanelContext = React.useMemo(() => ({
@@ -271,7 +306,21 @@ export function VaultManager() {
     <div className="flex-1 flex flex-col h-full relative">
       {/* Header removed - now handled by layout */}
 
-      <div className="flex-1 overflow-auto p-4 mt-4">
+      <div 
+        className="flex-1 overflow-auto p-4 mt-1 relative"
+        onDragOver={handleFileDragOver}
+        onDragLeave={handleFileDragLeave}
+        onDrop={handleFileDrop}
+      >
+        {/* Drag overlay - only show when files tab is active */}
+        {isDragOver && activeTab === 'files' && (
+          <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
+            <div className="text-center">
+              <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
+              <p className="text-muted-foreground mt-2">Supported formats: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG, JPEG</p>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
