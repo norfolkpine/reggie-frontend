@@ -403,7 +403,7 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                     alt="Opie Logo"
                     width={120}
                     height={60}
-                    className="h-8 w-auto"
+                    className="h-10 w-auto"
                     onError={() => setMainLogoError(true)}
                   />
                 )}
@@ -638,7 +638,7 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                   alt="Opie Logo"
                   width={32}
                   height={32}
-                  className="h-8 w-8"
+                  className="h-10 w-auto"
                   onError={() => setMarkLogoError(true)}
                 />
               )}
