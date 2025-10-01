@@ -21,7 +21,7 @@ export function PromptSuggestions({
         className="text-center"
       >
         <div className="flex items-center justify-center gap-3 mb-2">
-          <Sparkles className="w-5 h-5 text-opie-purple flex-shrink-0" />
+          
           <h2 className="text-3xl font-heading font-bold bg-gradient-to-r from-opie-purple to-opie-teal bg-clip-text text-transparent">
             {label} 🚀
           </h2>

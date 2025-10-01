@@ -117,7 +117,7 @@ export function ResizableContent({
   return (
     <div ref={containerRef} className="h-full bg-background relative overflow-hidden">
       {/* Left Section - Scrollable */}
-      <div className="absolute top-0 left-0 h-full border-r border-border" style={{ width: `${leftWidth}%` }}>
+      <div className="absolute top-0 left-0 h-full" style={{ width: `calc(${leftWidth}% - 2.5px)` }}>
         {leftSectionContent || (
           <div className="h-full flex flex-col">
             <div className="p-4 border-b border-border bg-card flex-shrink-0">
@@ -151,19 +151,17 @@ export function ResizableContent({
         )}
       </div>
 
-      {/* Resize Handle */}
+      {/* Resize Handle - 5px gap */}
       <div
-        className="absolute top-0 h-full w-1 bg-border hover:bg-primary/50 cursor-col-resize flex items-center justify-center group transition-colors z-10"
-        style={{ left: `${leftWidth}%` }}
+        className="absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-colors z-10 hover:bg-gray-100 dark:hover:bg-gray-800"
+        style={{ left: `calc(${leftWidth}% - 2.5px)` }}
         onMouseDown={handleMouseDown}
       >
-        <div className="w-3 h-8 bg-border group-hover:bg-primary/50 rounded-sm flex items-center justify-center transition-colors">
-          <GripVertical className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
-        </div>
+        <GripVertical className="w-3 h-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" style={{ strokeWidth: 0.5 }} />
       </div>
 
       {/* Right Section - Fixed/Pinned */}
-      <div className="absolute top-0 right-0 h-full bg-muted/30" style={{ width: `${100 - leftWidth}%` }}>
+      <div className="absolute top-0 right-0 h-full bg-muted/30" style={{ width: `calc(${100 - leftWidth}% - 2.5px)` }}>
         {rightSectionContent || (
           <div className="h-full flex flex-col">
             <div className="p-4 border-b border-border bg-card flex-shrink-0">
