@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createAgent, getAgent, updateAgent } from "@/api/agents";
+import { createInstruction } from "@/api/instructions";
 import { Button } from "@/components/ui/button";
 import { Database } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -9,6 +10,7 @@ import { AgentCreate } from "@/types/api";
 import { teamStorage } from "@/lib/utils/team-storage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentProvider, useAgent } from "./context/agent-context";
+import { useHeader } from "@/contexts/header-context";
 import { getKnowledgeBases } from "@/api/knowledge-bases"
 import { KnowledgeBase } from "@/types/api"
 import { getAllModelProviders, ModelProvider } from "@/api/agent-providers";
@@ -35,6 +37,7 @@ import { z } from "zod"
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().default(""),
+  systemMessage: z.string().default(""),
   model: z.string().min(1, "Model is required"),
   knowledgeBaseId: z.string().nullable().default(null),
   searchKnowledge: z.boolean().default(false)
@@ -43,12 +46,14 @@ const formSchema = z.object({
 function AgentCreationContent() {
   const { toast } = useToast();
   const { setAgentData, setIsSubmitting, setIsFetchingData } = useAgent();
+  const { setHeaderCustomContent } = useHeader();
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
+      systemMessage: "",
       model: "",
       knowledgeBaseId: null,
       searchKnowledge: false
@@ -59,6 +64,20 @@ function AgentCreationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const agentId = searchParams.get('id') ?? '';
+
+  // Set header content
+  useEffect(() => {
+    setHeaderCustomContent(
+      <h1 className="text-xl font-medium">
+        {agentId ? "Edit Agent" : "Create Agent"}
+      </h1>
+    );
+
+    // Cleanup when component unmounts
+    return () => {
+      setHeaderCustomContent(null);
+    };
+  }, [agentId, setHeaderCustomContent]);
 
   useEffect(() => {
     const fetchModelProviders = async () => {
@@ -98,7 +117,6 @@ function AgentCreationContent() {
             name: agent.name,
             description: agent.description,
             systemMessage: agent.instructions?.instruction,
-            systemTemplateId: agent.instructions?.id.toString(),
             expectedTemplateId: agent.expected_output?.id.toString(),
             expectedOutput: agent.expected_output?.expected_output,
             model: agent.model.toString(),
@@ -108,6 +126,7 @@ function AgentCreationContent() {
           });
           form.setValue("name", agent.name);
           form.setValue("description", agent.description);
+          form.setValue("systemMessage", agent.instructions?.instruction || "");
           form.setValue("model", agent.model.toString());
           form.setValue("knowledgeBaseId", agent.knowledge_base || null);
           form.setValue("searchKnowledge", agent.search_knowledge || false);
@@ -128,6 +147,21 @@ function AgentCreationContent() {
       if (agentData.knowledgeBaseId) {
         agentData.searchKnowledge = true;
       }
+
+      // Handle instruction creation
+      let instructionId: number | undefined;
+      if (agentData.systemMessage && agentData.systemMessage.trim()) {
+        const instruction = await createInstruction({
+          instruction: agentData.systemMessage,
+          category: "SYSTEM",
+          is_enabled: true,
+          is_global: false,
+          user: 1, // This should be the current user ID
+          agent: 0, // Will be set by the backend
+        });
+        instructionId = instruction.id;
+      }
+
       const agentPayload: Partial<AgentCreate> = {
         name: agentData.name || "",
         description: agentData.description || "",
@@ -135,6 +169,8 @@ function AgentCreationContent() {
         team: teamStorage.getActiveTeam()?.id || null,
         knowledge_base: agentData.knowledgeBaseId === "none" || !agentData.knowledgeBaseId ? undefined : agentData.knowledgeBaseId,
         search_knowledge: agentData.searchKnowledge || false,
+        instructions_id: instructionId,
+        custom_instruction: agentData.systemMessage || "",
       };
 
       if (agentId) {
@@ -175,13 +211,9 @@ function AgentCreationContent() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-medium">{agentId ? "Edit Agent" : "Create Agent"}</h1>
-      </div>
-
       <div className="flex-1 overflow-auto p-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -211,6 +243,27 @@ function AgentCreationContent() {
                   </FormControl>
                   {/* <FormDescription>
                     Short description of what this agent does.
+                  </FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="systemMessage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>System Instructions</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter custom instructions for your agent. This defines how the agent should behave and respond to users."
+                      {...field}
+                      value={field.value || ""}
+                      rows={6}
+                    />
+                  </FormControl>
+                  {/* <FormDescription>
+                    Define how your agent should behave and respond to users. Be specific about the agent's role, tone, and capabilities.
                   </FormDescription> */}
                   <FormMessage />
                 </FormItem>
