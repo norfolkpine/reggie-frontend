@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
@@ -76,20 +76,23 @@ export function VaultManager() {
     }, 100);
   }, []); // No dependencies to avoid infinite loops
 
+  // Memoize AI panel context to prevent unnecessary re-renders
+  const aiPanelContext = React.useMemo(() => ({
+    title: breadcrumbData.currentFolderId === 0 
+      ? project?.name || 'Root Folder' 
+      : breadcrumbData.breadcrumbs[breadcrumbData.breadcrumbs.length - 1]?.name || 'Current Folder',
+    files: [], // Files will be populated by the AI panel
+    folderId: breadcrumbData.currentFolderId,
+    projectId: projectId
+  }), [breadcrumbData.currentFolderId, breadcrumbData.breadcrumbs, project?.name, projectId]);
+
   // Ask AI handler
   const handleAskAI = useCallback(() => {
     if (!project) return;
     
-    const currentContext = {
-      title: breadcrumbData.currentFolderId === 0 ? project.name || 'Root Folder' : breadcrumbData.breadcrumbs[breadcrumbData.breadcrumbs.length - 1]?.name || 'Current Folder',
-      files: [], // Files will be populated by the AI panel
-      folderId: breadcrumbData.currentFolderId,
-      projectId: projectId
-    };
-    
-    const aiPanelComponent = <AiLayoutPanel contextData={currentContext} />;
+    const aiPanelComponent = <AiLayoutPanel contextData={aiPanelContext} />;
     showRightSection("vault-ai-panel", aiPanelComponent);
-  }, [project, breadcrumbData, projectId, showRightSection]);
+  }, [project, aiPanelContext, showRightSection]);
 
   // Set header actions and custom content
   useEffect(() => {

@@ -1,11 +1,8 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect, ReactNode } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { useState, useRef, useCallback, useEffect, ReactNode, memo, useMemo } from "react"
 import { GripVertical } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ResizableContentProps {
   showRightSection?: boolean
@@ -13,7 +10,44 @@ interface ResizableContentProps {
   leftSectionContent?: ReactNode
 }
 
-export function ResizableContent({
+// Memoized left section to prevent re-renders
+const LeftSection = memo(({ children, width }: { children: ReactNode; width: number }) => {
+  return (
+    <div 
+      className="absolute top-0 left-0 h-full transition-all duration-200 ease-in-out" 
+      style={{ width: `calc(${width}% - 2.5px)` }}
+    >
+      {children}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if width changes significantly (more than 0.1%) or children change
+  return Math.abs(prevProps.width - nextProps.width) < 0.1 && prevProps.children === nextProps.children;
+});
+LeftSection.displayName = 'LeftSection';
+
+// Memoized right section to prevent re-renders
+const RightSection = memo(({ children, width, show }: { children: ReactNode; width: number; show: boolean }) => {
+  return (
+    <div 
+      className={cn(
+        "absolute top-0 right-0 h-full bg-muted/30 transition-all duration-200 ease-in-out",
+        !show && "opacity-0 pointer-events-none"
+      )}
+      style={{ width: `calc(${width}% - 2.5px)` }}
+    >
+      {children}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if width changes significantly or show state changes
+  return Math.abs(prevProps.width - nextProps.width) < 0.1 && 
+         prevProps.show === nextProps.show && 
+         prevProps.children === nextProps.children;
+});
+RightSection.displayName = 'RightSection';
+
+export const ResizableContent = memo(function ResizableContent({
   showRightSection = true,
   rightSectionContent,
   leftSectionContent
@@ -59,85 +93,52 @@ export function ResizableContent({
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
 
-  // Generate dummy items for left section
-  const leftItems = Array.from({ length: 50 }, (_, i) => ({
-    id: i + 1,
-    title: `Scrollable Item ${i + 1}`,
-    description: `This is a description for item ${i + 1}. It contains some dummy content to demonstrate scrolling functionality.`,
-    status: ["Active", "Pending", "Completed"][i % 3],
-    date: new Date(2024, 0, i + 1).toLocaleDateString(),
-  }))
+  // Adjust left width when right section visibility changes
+  useEffect(() => {
+    if (!showRightSection) {
+      setLeftWidth(100);
+    } else {
+      setLeftWidth(50);
+    }
+  }, [showRightSection]);
 
-  // Generate dummy items for right section
-  const rightItems = Array.from({ length: 8 }, (_, i) => ({
-    id: i + 1,
-    title: `Fixed Item ${i + 1}`,
-    value: Math.floor(Math.random() * 1000),
-    type: ["Info", "Warning", "Success"][i % 3],
-  }))
+  // Calculate right width
+  const rightWidth = useMemo(() => 100 - leftWidth, [leftWidth]);
 
-  if (!showRightSection) {
-    return (
-      <div className="h-full bg-background">
-        {leftSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Scrollable Section</h1>
-              <p className="text-muted-foreground">This section contains scrollable content</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {leftItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <Badge
-                        variant={
-                          item.status === "Active" ? "default" : item.status === "Pending" ? "secondary" : "outline"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-2">{item.description}</p>
-                    <p className="text-sm text-muted-foreground">Date: {item.date}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
+  // Single layout for all scenarios - no conditional rendering to reduce re-renders
   return (
     <div ref={containerRef} className="h-full bg-background relative overflow-hidden">
-      {/* Left Section - Scrollable */}
-      <div className="absolute top-0 left-0 h-full" style={{ width: `calc(${leftWidth}% - 2.5px)` }}>
-        {leftSectionContent || (
-          <></>
-        )}
-      </div>
+      {/* Left Section - Always rendered */}
+      <LeftSection width={showRightSection ? leftWidth : 100}>
+        {leftSectionContent}
+      </LeftSection>
 
-      {/* Resize Handle - 5px gap */}
-      <div
-        className="absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-colors z-10"
-        style={{ left: `calc(${leftWidth}% - 2.5px)` }}
-        onMouseDown={handleMouseDown}
-      >
-        <GripVertical className="w-3 h-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" style={{ strokeWidth: 0.5 }} />
-      </div>
+      {/* Resize Handle - Only visible when right section is shown */}
+      {showRightSection && (
+        <div
+          className={cn(
+            "absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-all duration-200 z-10",
+            isDragging ? "bg-primary/10" : "hover:bg-primary/5"
+          )}
+          style={{ left: `calc(${leftWidth}% - 2.5px)` }}
+          onMouseDown={handleMouseDown}
+        >
+          <GripVertical 
+            className={cn(
+              "w-3 h-3 transition-colors",
+              isDragging 
+                ? "text-primary" 
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            )}
+            style={{ strokeWidth: 0.5 }} 
+          />
+        </div>
+      )}
 
-      {/* Right Section - Fixed/Pinned */}
-      <div className="absolute top-0 right-0 h-full bg-muted/30" style={{ width: `calc(${100 - leftWidth}% - 2.5px)` }}>
-        {rightSectionContent || (
-          <></>
-        )}
-      </div>
+      {/* Right Section - Always rendered but hidden with CSS */}
+      <RightSection width={rightWidth} show={showRightSection}>
+        {rightSectionContent}
+      </RightSection>
     </div>
   )
-}
+});
