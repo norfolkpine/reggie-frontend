@@ -119,41 +119,13 @@ export function ResizableContent({
       {/* Left Section - Scrollable */}
       <div className="absolute top-0 left-0 h-full" style={{ width: `calc(${leftWidth}% - 2.5px)` }}>
         {leftSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Scrollable Section</h1>
-              <p className="text-muted-foreground">This section contains scrollable content</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {leftItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <Badge
-                        variant={
-                          item.status === "Active" ? "default" : item.status === "Pending" ? "secondary" : "outline"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-2">{item.description}</p>
-                    <p className="text-sm text-muted-foreground">Date: {item.date}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+          <></>
         )}
       </div>
 
       {/* Resize Handle - 5px gap */}
       <div
-        className="absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-colors z-10 hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-colors z-10"
         style={{ left: `calc(${leftWidth}% - 2.5px)` }}
         onMouseDown={handleMouseDown}
       >
@@ -163,44 +135,7 @@ export function ResizableContent({
       {/* Right Section - Fixed/Pinned */}
       <div className="absolute top-0 right-0 h-full bg-muted/30" style={{ width: `calc(${100 - leftWidth}% - 2.5px)` }}>
         {rightSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Fixed Section</h1>
-              <p className="text-muted-foreground">This section is pinned and never scrolls</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {rightItems.map((item, index) => (
-                  <div key={item.id}>
-                    <Card className="hover:shadow-sm transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-foreground">{item.title}</h3>
-                            <p className="text-2xl font-bold text-primary mt-1">{item.value}</p>
-                          </div>
-                          <Badge
-                            variant={item.type === "Info" ? "default" : item.type === "Warning" ? "secondary" : "outline"}
-                          >
-                            {item.type}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    {index < rightItems.length - 1 && <Separator className="my-2" />}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 space-y-2 sticky bottom-0 bg-muted/30 pt-4">
-                <Button className="w-full">Primary Action</Button>
-                <Button variant="outline" className="w-full bg-transparent">
-                  Secondary Action
-                </Button>
-              </div>
-            </div>
-          </div>
+          <></>
         )}
       </div>
     </div>
