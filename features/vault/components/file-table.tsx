@@ -145,27 +145,30 @@ export function FileTable({
   const selectAllChecked = selectedFiles.length > 0 && selectedFiles.length === files.length;
 
   return (
-    <Card className="mt-4">
-      {/* Header */}
-      <div className="grid grid-cols-12 py-2 px-4 bg-muted/50 text-sm font-medium text-muted-foreground">
-        <div className="col-span-1">
-          <Checkbox
-            checked={selectAllChecked}
-            onCheckedChange={onSelectAll}
-            aria-label="Select all files"
-          />
-        </div>
-        <div className="col-span-3">Name</div>
-        <div className="col-span-2">Type</div>
-        <div className="col-span-2">Size</div>
-        <div className="col-span-2">Last Modified</div>
-        <div className="col-span-1">Status</div>
-        <div className="col-span-1">Actions</div>
-      </div>
-      <Separator />
+    <Card className="mt-4 overflow-hidden">
+      {/* Horizontal scroll wrapper */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          {/* Header */}
+          <div className="grid grid-cols-12 py-2 px-4 bg-muted/50 text-sm font-medium text-muted-foreground">
+            <div className="col-span-1">
+              <Checkbox
+                checked={selectAllChecked}
+                onCheckedChange={onSelectAll}
+                aria-label="Select all files"
+              />
+            </div>
+            <div className="col-span-3">Name</div>
+            <div className="col-span-2">Type</div>
+            <div className="col-span-2">Size</div>
+            <div className="col-span-2">Last Modified</div>
+            <div className="col-span-1">Status</div>
+            <div className="col-span-1">Actions</div>
+          </div>
+          <Separator />
 
-      {/* Files List */}
-      <div className="max-h-[600px] overflow-y-auto">
+          {/* Files List */}
+          <div className="max-h-[600px] overflow-y-auto">
         {files.length > 0 ? (
           files.map((file, index) => (
             <div
@@ -276,6 +279,8 @@ export function FileTable({
             No files found.
           </div>
         )}
+          </div>
+        </div>
       </div>
     </Card>
   );
