@@ -17,7 +17,9 @@ const LeftSection = memo(({ children, width }: { children: ReactNode; width: num
       className="absolute top-0 left-0 h-full transition-all duration-200 ease-in-out" 
       style={{ width: `calc(${width}% - 2.5px)` }}
     >
-      {children}
+      <div className="h-full overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -36,7 +38,9 @@ const RightSection = memo(({ children, width, show }: { children: ReactNode; wid
       )}
       style={{ width: `calc(${width}% - 2.5px)` }}
     >
-      {children}
+      <div className="h-full overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {

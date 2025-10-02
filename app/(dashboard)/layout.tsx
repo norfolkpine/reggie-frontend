@@ -47,10 +47,10 @@ const MainContentWrapper = React.memo(({
     }
 
     return (
-      <div className={`transition-all duration-200 ${
-        isScrolled
-          ? 'sticky top-0 z-50 rounded-none shadow-md bg-background'
-          : 'rounded-t-xl'
+      <div className={`sticky top-0 z-50 transition-all duration-200 ${
+        isScrolled 
+          ? 'shadow-md backdrop-blur-md bg-background/80' 
+          : 'bg-background'
       }`}>
         <PageHeader
           actions={headerActions || []}
@@ -63,11 +63,14 @@ const MainContentWrapper = React.memo(({
   return (
     <div className={cn(
       backgroundClass,
-      "h-full border shadow-sm flex flex-col overflow-hidden rounded-xl"
+      "h-full border shadow-sm  overflow-hidden mx-2 transition-all duration-300 ease-in-out",
+      isScrolled ? "mt-0 rounded-none" : "mt-2 rounded-xl"
     )}>
-      {renderHeader()}
-      <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
-        {children}
+      <div className="h-full overflow-auto" ref={scrollContainerRef}>
+        {renderHeader()}
+        <div className="px-2">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -188,7 +191,7 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
       {desktopSidebar}
 
       {/* Main Content Area */}
-      <main className="bg-background relative flex w-full flex-1 flex-col p-2">
+      <main className="bg-background relative flex w-full flex-1 flex-col">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>
