@@ -179,48 +179,67 @@ export function VaultManager() {
 
       // Set merged breadcrumb navigation as custom content
       setHeaderCustomContent(
-        <div className="flex items-center gap-2 text-lg font-medium">
+        <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base lg:text-lg font-medium overflow-x-auto max-w-full scrollbar-thin">
           {/* Vault link */}
           <span
-            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground"
+            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
             onClick={() => router.push("/vault")}
           >
             Vault
           </span>
-          <span className="text-muted-foreground dark:text-muted-foreground/60">/</span>
+          <span className="text-muted-foreground dark:text-muted-foreground/60 flex-shrink-0">/</span>
 
           {/* Project name with edit button - clickable to navigate to project root */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             <button
               onClick={() => navigateToFolder(0)}
-              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+              title={project.name}
             >
               {project.name}
             </button>
             <button
               type="button"
-              className="p-1 rounded hover:bg-muted focus:outline-none dark:hover:bg-muted/50"
+              className="p-0.5 sm:p-1 rounded hover:bg-muted focus:outline-none dark:hover:bg-muted/50 flex-shrink-0"
               title="Edit project name"
               onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
             >
-              <Edit className="h-3 w-3 text-muted-foreground dark:text-muted-foreground/80" />
+              <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground dark:text-muted-foreground/80" />
             </button>
           </div>
 
           {/* Folder breadcrumbs */}
           {breadcrumbData.breadcrumbs.length > 0 && (
             <>
-              {breadcrumbData.breadcrumbs.map((folder, index) => (
-                <div key={folder.id} className="flex items-center">
-                  <span className="text-muted-foreground dark:text-muted-foreground/60 mx-1">/</span>
-                  <button
-                    onClick={() => navigateToFolder(folder.id)}
-                    className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                  >
-                    {folder.name}
-                  </button>
+              {/* Show ellipsis if more than 2 breadcrumbs on small screens */}
+              {breadcrumbData.breadcrumbs.length > 2 && (
+                <div className="flex items-center sm:hidden flex-shrink-0">
+                  <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5">/</span>
+                  <span className="text-muted-foreground dark:text-muted-foreground/60">...</span>
                 </div>
-              ))}
+              )}
+              
+              {breadcrumbData.breadcrumbs.map((folder, index) => {
+                // On small screens, only show the last breadcrumb if there are more than 2
+                const isLastBreadcrumb = index === breadcrumbData.breadcrumbs.length - 1;
+                const shouldShowOnMobile = breadcrumbData.breadcrumbs.length <= 2 || isLastBreadcrumb;
+                
+                return (
+                  <div 
+                    key={folder.id} 
+                    className={`flex items-center flex-shrink-0 min-w-0 ${!shouldShowOnMobile ? 'hidden sm:flex' : 'flex'}`}
+                  >
+                    <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5 sm:mx-1 flex-shrink-0">/</span>
+                    <button
+                      onClick={() => navigateToFolder(folder.id)}
+                      className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+                      title={folder.name}
+                    >
+                      {folder.name}
+                    </button>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>
