@@ -34,7 +34,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useHeader } from "@/contexts/header-context";
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().default(""),
@@ -47,9 +46,8 @@ const formSchema = z.object({
 function AgentCreationContent() {
   const { toast } = useToast();
   const { setAgentData, setIsSubmitting, setIsFetchingData } = useAgent();
-  const { setHeaderCustomContent } = useHeader();
+  const { setHeaderCustomContent, setHeaderActions } = useHeader();
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
-  const { setHeaderActions, setHeaderCustomContent } = useHeader()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -215,14 +213,6 @@ function AgentCreationContent() {
 
 
 
-  useEffect(() => {
-
-    setHeaderCustomContent(<h1 className="text-xl font-medium">{agentId ? "Edit Agent" : "Create Agent"}</h1>);
-
-    return () => {
-      setHeaderCustomContent(null);
-    };
-  }, [setHeaderCustomContent, agentId]);
 
   return (
     <div className="flex-1 flex flex-col h-full">
