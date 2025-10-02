@@ -38,7 +38,7 @@ export function MobileHeader({
         </div>
 
         {actions.length > 0 && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
             {actions.map((action, index) => (
               <Button
                 key={index}
@@ -46,12 +46,16 @@ export function MobileHeader({
                 size={action.size || "sm"}
                 onClick={action.onClick}
               >
-                {action.icon && action.label ? (
-                  <span className="mr-2">{action.icon}</span>
-                ) : action.icon && !action.label ? (
-                  <span>{action.icon}</span>
-                ) : null}
-                {action.label}
+                {action.icon && (
+  <span className={action.label ? "md:mx-2" : ""}>
+    {action.icon}
+  </span>
+)}
+{action.label && (
+  <span className={action.icon ? "hidden md:inline" : ""}>
+    {action.label}
+  </span>
+)}
               </Button>
             ))}
           </div>
