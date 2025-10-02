@@ -41,7 +41,7 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
   };
 
   return (
-    <div className="flex bg-card rounded-xl border border-border shadow-sm mr-2 my-2" style={{ height: 'calc(100% - 1rem)' }}>
+    <div className="flex bg-card rounded-xl border border-border shadow-sm mx-2 my-2" style={{ height: 'calc(100% - 1rem)' }}>
       {/* Panel Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}

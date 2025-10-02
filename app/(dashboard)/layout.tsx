@@ -146,6 +146,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       showRightSection={!!rightSection}
       leftSectionContent={leftSectionContent}
       rightSectionContent={rightSectionContent}
+      mobileMode="drawer"
+      onMobileClose={hideRightSection}
     />
   );
 }
