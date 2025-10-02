@@ -38,6 +38,20 @@ export async function getVaultFilesByProject(
   const response = await api.get(url);
   return response as VaultFilesResponse;
 }
+export async function getAllVaultFiles(
+  page: number = 1,
+  pageSize: number = 10,
+  search: string = '',
+): Promise<VaultFilesResponse> {
+  let url = `/reggie/api/v1/vault-files/&page=${page}&page_size=${pageSize}`;
+  
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  
+  const response = await api.get(url);
+  return response as VaultFilesResponse;
+}
 
 export async function uploadFiles({
   file,

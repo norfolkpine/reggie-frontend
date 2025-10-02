@@ -27,6 +27,8 @@ import { FileManager } from "@/features/knowledge-base/components/file-manager";
 import { adminService } from "@/api/admin";
 import { TokenLogs } from "@/features/system/token-logs";
 import { UserTokenSummary } from "@/features/system/user-token-summary";
+import { ProjectsManager } from "@/features/vault/components/projects-manager";
+import { VaultManager } from "@/features/vault/components/vault-file-manager";
 
 interface SystemStats {
   totalUsers: number;
@@ -326,7 +328,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
           <TabsTrigger value="token-usage">Token Usage</TabsTrigger>
-          <TabsTrigger value="system-logs">System Logs</TabsTrigger>
+          {/* <TabsTrigger value="vault-files">Vault Files</TabsTrigger> */}
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
@@ -480,20 +482,31 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="system-logs" className="space-y-4">
+        {/* <TabsContent value="vault-files" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
-                System Logs
+                Vault File Management
               </CardTitle>
-              <CardDescription>Audit system logs and activities</CardDescription>
+              <CardDescription>Manage vault files and activities</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* TODO: Add system logs component */}
+              <Tabs defaultValue="files" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="files">Files</TabsTrigger>
+                  <TabsTrigger value="projects">Projects</TabsTrigger>
+                </TabsList>
+                <TabsContent value="files" className="space-y-4">
+                  <VaultManager />
+                </TabsContent>
+                <TabsContent value="projects" className="space-y-4">
+                  <ProjectsManager />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
 
         <TabsContent value="system" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
