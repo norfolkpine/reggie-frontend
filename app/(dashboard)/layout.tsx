@@ -13,6 +13,70 @@ import { useResponsiveStore } from "@/stores/useResponsiveStore";
 import { RightSectionProvider, useRightSection } from "@/hooks/use-right-section";
 import { cn } from "@/lib/utils";
 
+// Memoize the main content wrapper to prevent re-renders when only right section changes
+const MainContentWrapper = React.memo(({ 
+  children, 
+  customHeader, 
+  headerActions, 
+  headerCustomContent,
+  isMobile,
+  isScrolled,
+  scrollContainerRef,
+  backgroundClass
+}: { 
+  children: React.ReactNode;
+  customHeader: React.ReactNode;
+  headerActions: any[];
+  headerCustomContent: React.ReactNode;
+  isMobile: boolean;
+  isScrolled: boolean;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  backgroundClass: string;
+}) => {
+  // Render header based on mobile/custom conditions
+  const renderHeader = () => {
+    if (customHeader) return customHeader;
+
+    if (isMobile) {
+      return (
+        <MobileHeader
+          actions={headerActions || []}
+          customContent={headerCustomContent}
+        />
+      );
+    }
+
+    return (
+      <div className={`sticky top-0 z-50 transition-all duration-200 ${
+        isScrolled 
+          ? 'shadow-md backdrop-blur-md bg-background/80' 
+          : 'bg-background'
+      }`}>
+        <PageHeader
+          actions={headerActions || []}
+          customContent={headerCustomContent}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className={cn(
+      backgroundClass,
+      "h-full border shadow-sm  overflow-hidden mx-2 transition-all duration-300 ease-in-out",
+      isScrolled ? "mt-0 rounded-none" : "mt-2 rounded-xl"
+    )}>
+      <div className="h-full overflow-auto" ref={scrollContainerRef}>
+        {renderHeader()}
+        <div className="px-2">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+});
+MainContentWrapper.displayName = 'MainContentWrapper';
+
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { customHeader, headerActions, headerCustomContent } = useHeader();
   const { getActiveOrClosingPanels } = useGlobalPanel();
@@ -56,51 +120,34 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Render header based on mobile/custom conditions
-  const renderHeader = () => {
-    if (customHeader) return customHeader;
-
-    if (isMobile) {
-      return (
-        <MobileHeader
-          actions={headerActions || []}
-          customContent={headerCustomContent}
-        />
-      );
-    }
-
-    return (
-      <div className={`transition-all duration-200 ${
-        isScrolled
-          ? 'sticky top-0 z-50 rounded-none shadow-md bg-background'
-          : 'rounded-t-xl'
-      }`}>
-        <PageHeader
-          actions={headerActions || []}
-          customContent={headerCustomContent}
-        />
-      </div>
-    );
-  };
-
   // Main content configuration
   const backgroundClass = customHeader ? "bg-white" : "bg-background";
+
+  // Memoize left section content to prevent re-renders when only right section changes
+  const leftSectionContent = React.useMemo(() => (
+    <MainContentWrapper
+      customHeader={customHeader}
+      headerActions={headerActions || []}
+      headerCustomContent={headerCustomContent}
+      isMobile={isMobile}
+      isScrolled={isScrolled}
+      scrollContainerRef={scrollContainerRef}
+      backgroundClass={backgroundClass}
+    >
+      {children}
+    </MainContentWrapper>
+  ), [customHeader, headerActions, headerCustomContent, isMobile, isScrolled, backgroundClass, children]);
+
+  // Memoize right section content
+  const rightSectionContent = React.useMemo(() => rightSection?.component, [rightSection?.component]);
 
   return (
     <ResizableContent
       showRightSection={!!rightSection}
-      leftSectionContent={
-        <div className={cn(
-          backgroundClass,
-          "h-full border shadow-sm flex flex-col overflow-hidden rounded-xl"
-        )}>
-          {renderHeader()}
-          <div className="flex-1 overflow-auto px-1" ref={scrollContainerRef}>
-            {children}
-          </div>
-        </div>
-      }
-      rightSectionContent={rightSection?.component}
+      leftSectionContent={leftSectionContent}
+      rightSectionContent={rightSectionContent}
+      mobileMode="drawer"
+      onMobileClose={hideRightSection}
     />
   );
 }
@@ -146,7 +193,7 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
       {desktopSidebar}
 
       {/* Main Content Area */}
-      <main className="bg-background relative flex w-full flex-1 flex-col p-2">
+      <main className="bg-background relative flex w-full flex-1 flex-col">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>

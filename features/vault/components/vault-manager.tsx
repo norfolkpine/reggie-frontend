@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
@@ -47,9 +47,13 @@ export function VaultManager() {
     breadcrumbs: { id: number; name: string }[];
   }>({ currentFolderId: 0, breadcrumbs: [] });
 
+  // Drag and drop state for file uploads
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const filesTabRef = useRef<{
     getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
     navigateToFolder: (folderId: number) => void;
+    handleFilesDrop: (files: File[]) => Promise<void>;
   }>(null);
 
   // Update breadcrumb data from FilesTab
@@ -76,20 +80,54 @@ export function VaultManager() {
     }, 100);
   }, []); // No dependencies to avoid infinite loops
 
+  // Drag and drop handlers for file uploads (only active when on files tab)
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, [activeTab]);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set isDragOver to false if we're leaving the container entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, [activeTab]);
+
+  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
+    if (activeTab !== 'files') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 0) return;
+
+    // Call the FilesTab's handleFilesDrop method
+    await filesTabRef.current?.handleFilesDrop(droppedFiles);
+  }, [activeTab]);
+
+  // Memoize AI panel context to prevent unnecessary re-renders
+  const aiPanelContext = React.useMemo(() => ({
+    title: breadcrumbData.currentFolderId === 0 
+      ? project?.name || 'Root Folder' 
+      : breadcrumbData.breadcrumbs[breadcrumbData.breadcrumbs.length - 1]?.name || 'Current Folder',
+    files: [], // Files will be populated by the AI panel
+    folderId: breadcrumbData.currentFolderId,
+    projectId: projectId
+  }), [breadcrumbData.currentFolderId, breadcrumbData.breadcrumbs, project?.name, projectId]);
+
   // Ask AI handler
   const handleAskAI = useCallback(() => {
     if (!project) return;
     
-    const currentContext = {
-      title: breadcrumbData.currentFolderId === 0 ? project.name || 'Root Folder' : breadcrumbData.breadcrumbs[breadcrumbData.breadcrumbs.length - 1]?.name || 'Current Folder',
-      files: [], // Files will be populated by the AI panel
-      folderId: breadcrumbData.currentFolderId,
-      projectId: projectId
-    };
-    
-    const aiPanelComponent = <AiLayoutPanel contextData={currentContext} />;
+    const aiPanelComponent = <AiLayoutPanel contextData={aiPanelContext} />;
     showRightSection("vault-ai-panel", aiPanelComponent);
-  }, [project, breadcrumbData, projectId, showRightSection]);
+  }, [project, aiPanelContext, showRightSection]);
 
   // Set header actions and custom content
   useEffect(() => {
@@ -141,48 +179,67 @@ export function VaultManager() {
 
       // Set merged breadcrumb navigation as custom content
       setHeaderCustomContent(
-        <div className="flex items-center gap-2 text-lg font-medium">
+        <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base lg:text-lg font-medium overflow-x-auto max-w-full scrollbar-thin">
           {/* Vault link */}
           <span
-            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground"
+            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
             onClick={() => router.push("/vault")}
           >
             Vault
           </span>
-          <span className="text-muted-foreground dark:text-muted-foreground/60">/</span>
+          <span className="text-muted-foreground dark:text-muted-foreground/60 flex-shrink-0">/</span>
 
           {/* Project name with edit button - clickable to navigate to project root */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             <button
               onClick={() => navigateToFolder(0)}
-              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+              title={project.name}
             >
               {project.name}
             </button>
             <button
               type="button"
-              className="p-1 rounded hover:bg-muted focus:outline-none dark:hover:bg-muted/50"
+              className="p-0.5 sm:p-1 rounded hover:bg-muted focus:outline-none dark:hover:bg-muted/50 flex-shrink-0"
               title="Edit project name"
               onClick={() => { setRenameOpen(true); setNewName(project.name || ""); }}
             >
-              <Edit className="h-3 w-3 text-muted-foreground dark:text-muted-foreground/80" />
+              <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground dark:text-muted-foreground/80" />
             </button>
           </div>
 
           {/* Folder breadcrumbs */}
           {breadcrumbData.breadcrumbs.length > 0 && (
             <>
-              {breadcrumbData.breadcrumbs.map((folder, index) => (
-                <div key={folder.id} className="flex items-center">
-                  <span className="text-muted-foreground dark:text-muted-foreground/60 mx-1">/</span>
-                  <button
-                    onClick={() => navigateToFolder(folder.id)}
-                    className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                  >
-                    {folder.name}
-                  </button>
+              {/* Show ellipsis if more than 2 breadcrumbs on small screens */}
+              {breadcrumbData.breadcrumbs.length > 2 && (
+                <div className="flex items-center sm:hidden flex-shrink-0">
+                  <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5">/</span>
+                  <span className="text-muted-foreground dark:text-muted-foreground/60">...</span>
                 </div>
-              ))}
+              )}
+              
+              {breadcrumbData.breadcrumbs.map((folder, index) => {
+                // On small screens, only show the last breadcrumb if there are more than 2
+                const isLastBreadcrumb = index === breadcrumbData.breadcrumbs.length - 1;
+                const shouldShowOnMobile = breadcrumbData.breadcrumbs.length <= 2 || isLastBreadcrumb;
+                
+                return (
+                  <div 
+                    key={folder.id} 
+                    className={`flex items-center flex-shrink-0 min-w-0 ${!shouldShowOnMobile ? 'hidden sm:flex' : 'flex'}`}
+                  >
+                    <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5 sm:mx-1 flex-shrink-0">/</span>
+                    <button
+                      onClick={() => navigateToFolder(folder.id)}
+                      className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+                      title={folder.name}
+                    >
+                      {folder.name}
+                    </button>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>
@@ -268,7 +325,21 @@ export function VaultManager() {
     <div className="flex-1 flex flex-col h-full relative">
       {/* Header removed - now handled by layout */}
 
-      <div className="flex-1 overflow-auto p-4 mt-4">
+      <div 
+        className="flex-1 overflow-auto p-4 mt-1 relative"
+        onDragOver={handleFileDragOver}
+        onDragLeave={handleFileDragLeave}
+        onDrop={handleFileDrop}
+      >
+        {/* Drag overlay - only show when files tab is active */}
+        {isDragOver && activeTab === 'files' && (
+          <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
+            <div className="text-center">
+              <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
+              <p className="text-muted-foreground mt-2">Supported formats: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG, JPEG</p>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />

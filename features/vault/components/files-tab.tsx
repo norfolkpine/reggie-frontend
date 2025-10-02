@@ -29,6 +29,7 @@ interface UploadingFile {
 export const FilesTab = React.forwardRef<{
   getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
   navigateToFolder: (folderId: number) => void;
+  handleFilesDrop: (files: File[]) => Promise<void>;
 }, FilesTabProps>(({ projectId, projectName, teamId, requestedNavigation, onBreadcrumbChange }, ref) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -53,7 +54,6 @@ export const FilesTab = React.forwardRef<{
   const [currentFolderId, setCurrentFolderId] = useState(0);
   const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{ id: number; name: string }[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedFiles, setDraggedFiles] = useState<number[]>([]);
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null);
@@ -285,11 +285,67 @@ export const FilesTab = React.forwardRef<{
     onBreadcrumbChange?.();
   }, [folderBreadcrumbs, onBreadcrumbChange]);
 
+  // Process dropped files for upload
+  const processFilesDrop = useCallback(async (droppedFiles: File[]) => {
+    const supportedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png', '.jpg', '.jpeg'];
+    const validFiles = droppedFiles.filter(file => {
+      const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return supportedFileTypes.includes(extension);
+    });
+
+    if (validFiles.length === 0) {
+      toast({ title: "File Upload Failed", description: "No supported file types selected." });
+      return;
+    }
+
+    if (validFiles.length !== droppedFiles.length) {
+      toast({
+        title: "File Upload Failed",
+        description: `${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.`
+      });
+    }
+
+    const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))];
+    setFiles(updatedFiles);
+
+    if (!user) {
+      toast({ title: "File Upload Failed", description: "You must be logged in to upload files." });
+      return;
+    }
+
+    const uploadedFiles: any[] = [];
+    const failedFiles: { file: File; error: string }[] = [];
+
+    for (const fileObj of updatedFiles) {
+      try {
+        const result = await uploadFiles({
+          file: fileObj.file,
+          project_uuid: projectId,
+          uploaded_by: user?.id || 0,
+          parent_id: currentFolderId,
+          team: teamId || undefined
+        });
+        uploadedFiles.push(result);
+      } catch (err: any) {
+        console.error("Error uploading file:", fileObj.file.name, err);
+        failedFiles.push({ file: fileObj.file, error: err?.message || 'Upload failed' });
+        toast({
+          title: "Upload Failed",
+          description: `${fileObj.file.name}: ${err?.message || 'Upload failed'}`,
+          variant: "destructive"
+        });
+      }
+    }
+
+    handleFileUpload(uploadedFiles, failedFiles);
+  }, [files, user, projectId, currentFolderId, teamId, toast]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     getBreadcrumbData: () => breadcrumbRef.current,
     navigateToFolder: handleBreadcrumbClick,
-  }), [handleBreadcrumbClick]);
+    handleFilesDrop: processFilesDrop,
+  }), [handleBreadcrumbClick, processFilesDrop]);
 
   // Handle navigation requests from parent (breadcrumb clicks)
   useEffect(() => {
@@ -355,38 +411,6 @@ export const FilesTab = React.forwardRef<{
     }
     setDraggedFiles([]);
   }, [draggedFiles, allFiles]);
-
-  const handleFileDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); }, []);
-  const handleFileDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }, []);
-  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragOver(false);
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    const supportedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png', '.jpg', '.jpeg'];
-    const validFiles = droppedFiles.filter(file => { const extension = '.' + file.name.split('.').pop()?.toLowerCase(); return supportedFileTypes.includes(extension); });
-    if (validFiles.length === 0) { toast({ title: "File Upload Failed", description: "No supported file types selected." }); return; }
-    if (validFiles.length !== droppedFiles.length) { toast({ title: "File Upload Failed", description: `${droppedFiles.length - validFiles.length} unsupported file(s) were skipped.` }); }
-    const updatedFiles = [...files, ...validFiles.map((file) => ({ file, progress: 0 }))]; setFiles(updatedFiles);
-    if (!user) { toast({ title: "File Upload Failed", description: "You must be logged in to upload files." }); return; }
-
-    const uploadedFiles: any[] = [];
-    const failedFiles: { file: File; error: string }[] = [];
-
-    for (const fileObj of updatedFiles) {
-      try {
-        const result = await uploadFiles({ file: fileObj.file, project_uuid: projectId, uploaded_by: user?.id || 0 });
-        uploadedFiles.push(result);
-      } catch (err: any) {
-        console.error("Error uploading file:", fileObj.file.name, err);
-        failedFiles.push({ file: fileObj.file, error: err?.message || 'Upload failed' });
-        toast({
-          title: "Upload Failed",
-          description: `${fileObj.file.name}: ${err?.message || 'Upload failed'}`,
-          variant: "destructive"
-        });
-      }
-    }
-    handleFileUpload(uploadedFiles, failedFiles);
-  }, [files, uploadFiles]);
 
   const handleFileUpload = useCallback(async (uploadedFiles: any[], failedFiles?: { file: File; error: string }[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -457,10 +481,6 @@ export const FilesTab = React.forwardRef<{
         activeFilters={activeFilters}
         onFilterChange={handleFilterChange}
         isRightSectionOpen={rightSection !== null}
-        isDragOver={isDragOver}
-        onFileDragOver={handleFileDragOver}
-        onFileDragLeave={handleFileDragLeave}
-        onFileDrop={handleFileDrop}
         selectedFiles={selectedFiles}
         isDeleting={isDeleting}
         onBulkDelete={handleBulkDelete}

@@ -19,10 +19,6 @@ interface FilesTabContentProps {
   onFilterChange: (filterType: string, checked: boolean) => void;
 
   isRightSectionOpen?: boolean;
-  isDragOver?: boolean;
-  onFileDragOver?: (e: React.DragEvent) => void;
-  onFileDragLeave?: (e: React.DragEvent) => void;
-  onFileDrop?: (e: React.DragEvent) => void;
 
   selectedFiles: number[];
   isDeleting: boolean;
@@ -63,25 +59,7 @@ export function FilesTabContent(props: FilesTabContentProps) {
     <TabsContent
       value="files"
       className="mt-4 relative"
-      onDragOver={props.onFileDragOver}
-      onDragLeave={props.onFileDragLeave}
-      onDrop={props.onFileDrop}
     >
-      {/* Drag overlay for file uploads */}
-      {props.isDragOver && (
-        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
-            <div className="text-center">
-              <div className="w-8 h-8 mx-auto mb-2 text-blue-500 flex items-center justify-center">
-                📎
-              </div>
-              <p className="text-lg font-medium text-gray-900">Drop files here</p>
-              <p className="text-sm text-gray-500">Release to upload</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}

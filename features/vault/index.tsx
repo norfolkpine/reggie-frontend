@@ -31,6 +31,7 @@ import { useHeader } from "@/contexts/header-context"
 import Link from "next/link"
 import SearchInput from "@/components/ui/search-input"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
 export default function Projects() {
   const { toast } = useToast()
@@ -42,6 +43,7 @@ export default function Projects() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<"starred" | "user" | "userProjects">("user")
   const auth = useAuth()
+  const router = useRouter()
 
   // Set header actions and custom content
   useEffect(() => {
@@ -317,7 +319,8 @@ export default function Projects() {
                   project={project}
                   onSelect={(projectName) => {
                     // Navigate to the project page
-                    window.location.href = `/vault/${projectId}`;
+                    // window.location.href = `/vault/${projectId}`;
+                    router.push(`/vault/${projectId}`);
                   }}
                   onProjectDeleted={handleProjectDeleted}
                   onProjectRenamed={handleProjectRenamed}

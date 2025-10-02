@@ -1,27 +1,183 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect, ReactNode } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { GripVertical } from "lucide-react"
+import { useState, useRef, useCallback, useEffect, ReactNode, memo, useMemo } from "react"
+import { GripVertical, X } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
+/**
+ * ResizableContent Component
+ * 
+ * A responsive layout component that provides resizable left and right sections.
+ * 
+ * Desktop behavior (> 1024px):
+ * - Side-by-side layout with draggable resize handle
+ * - Left section width adjustable between 20% and 80%
+ * - Right section takes remaining width
+ * 
+ * Mobile behavior (<= 1024px):
+ * - Two modes available:
+ *   1. "drawer" mode: Right section slides in from the right edge (85% width, max 28rem)
+ *   2. "overlay" mode: Right section appears centered on top of left section
+ * - Both modes include:
+ *   - Semi-transparent backdrop (dismissible)
+ *   - Close button (X icon)
+ *   - Smooth transitions
+ * 
+ * @example
+ * ```tsx
+ * <ResizableContent
+ *   showRightSection={isOpen}
+ *   leftSectionContent={<MainContent />}
+ *   rightSectionContent={<SidePanel />}
+ *   mobileMode="drawer"
+ *   onMobileClose={() => setIsOpen(false)}
+ * />
+ * ```
+ */
 interface ResizableContentProps {
   showRightSection?: boolean
   rightSectionContent?: ReactNode
   leftSectionContent?: ReactNode
+  mobileMode?: "drawer" | "overlay" // Mode for mobile: drawer slides in, overlay covers
+  onMobileClose?: () => void // Callback when closing on mobile
 }
 
-export function ResizableContent({
+// Memoized left section to prevent re-renders
+const LeftSection = memo(({ children, width }: { children: ReactNode; width: number }) => {
+  return (
+    <div 
+      className="absolute top-0 left-0 h-full transition-all duration-200 ease-in-out" 
+      style={{ width: `calc(${width}% - 2.5px)` }}
+    >
+      <div className="h-full overflow-hidden">
+        {children}
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if width changes significantly (more than 0.1%) or children change
+  return Math.abs(prevProps.width - nextProps.width) < 0.1 && prevProps.children === nextProps.children;
+});
+LeftSection.displayName = 'LeftSection';
+
+// Memoized right section to prevent re-renders
+const RightSection = memo(({ 
+  children, 
+  width, 
+  show, 
+  isMobile, 
+  mobileMode,
+  onClose 
+}: { 
+  children: ReactNode; 
+  width: number; 
+  show: boolean;
+  isMobile: boolean;
+  mobileMode: "drawer" | "overlay";
+  onClose?: () => void;
+}) => {
+  // Desktop layout
+  if (!isMobile) {
+    return (
+      <div 
+        className={cn(
+          "absolute top-0 right-0 h-full bg-muted/30 transition-all duration-200 ease-in-out",
+          !show && "opacity-0 pointer-events-none"
+        )}
+        style={{ width: `calc(${width}% - 2.5px)` }}
+      >
+        <div className="h-full overflow-hidden">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile: Drawer mode - slides in from right
+  if (mobileMode === "drawer") {
+    return (
+      <>
+        {/* Backdrop */}
+        {show && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 lg:hidden"
+            onClick={onClose}
+          />
+        )}
+        
+        {/* Drawer */}
+        <div 
+          className={cn(
+            "fixed top-0 right-0 h-full w-[85%] max-w-md shadow-xl z-50 transition-transform duration-300 ease-in-out lg:hidden",
+            show ? "translate-x-0" : "translate-x-full"
+          )}
+        >
+
+          
+          <div className="h-full overflow-hidden">
+            {children}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Mobile: Overlay mode - appears on top
+  return (
+    <>
+      {/* Backdrop */}
+      {show && (
+        <div 
+          className="absolute inset-0 bg-black/50 z-40 transition-opacity duration-300 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Overlay */}
+      <div 
+        className={cn(
+          "absolute inset-4 rounded-lg shadow-2xl z-50 transition-all duration-300 ease-in-out lg:hidden",
+          show ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+        )}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        
+        <div className="h-full overflow-hidden">
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if key props change
+  return Math.abs(prevProps.width - nextProps.width) < 0.1 && 
+         prevProps.show === nextProps.show && 
+         prevProps.isMobile === nextProps.isMobile &&
+         prevProps.mobileMode === nextProps.mobileMode &&
+         prevProps.children === nextProps.children;
+});
+RightSection.displayName = 'RightSection';
+
+export const ResizableContent = memo(function ResizableContent({
   showRightSection = true,
   rightSectionContent,
-  leftSectionContent
+  leftSectionContent,
+  mobileMode = "drawer",
+  onMobileClose
 }: ResizableContentProps) {
   const [leftWidth, setLeftWidth] = useState(50) // percentage
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isDraggingRef = useRef(false)
+  const isMobile = useMediaQuery("(max-width: 1024px)")
 
   const handleMouseDown = useCallback(() => {
     setIsDragging(true)
@@ -59,150 +215,58 @@ export function ResizableContent({
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
 
-  // Generate dummy items for left section
-  const leftItems = Array.from({ length: 50 }, (_, i) => ({
-    id: i + 1,
-    title: `Scrollable Item ${i + 1}`,
-    description: `This is a description for item ${i + 1}. It contains some dummy content to demonstrate scrolling functionality.`,
-    status: ["Active", "Pending", "Completed"][i % 3],
-    date: new Date(2024, 0, i + 1).toLocaleDateString(),
-  }))
+  // Adjust left width when right section visibility changes
+  useEffect(() => {
+    if (!showRightSection) {
+      setLeftWidth(100);
+    } else {
+      setLeftWidth(50);
+    }
+  }, [showRightSection]);
 
-  // Generate dummy items for right section
-  const rightItems = Array.from({ length: 8 }, (_, i) => ({
-    id: i + 1,
-    title: `Fixed Item ${i + 1}`,
-    value: Math.floor(Math.random() * 1000),
-    type: ["Info", "Warning", "Success"][i % 3],
-  }))
+  // Calculate right width
+  const rightWidth = useMemo(() => 100 - leftWidth, [leftWidth]);
 
-  if (!showRightSection) {
-    return (
-      <div className="h-full bg-background">
-        {leftSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Scrollable Section</h1>
-              <p className="text-muted-foreground">This section contains scrollable content</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {leftItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <Badge
-                        variant={
-                          item.status === "Active" ? "default" : item.status === "Pending" ? "secondary" : "outline"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-2">{item.description}</p>
-                    <p className="text-sm text-muted-foreground">Date: {item.date}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
+  // Single layout for all scenarios - no conditional rendering to reduce re-renders
   return (
     <div ref={containerRef} className="h-full bg-background relative overflow-hidden">
-      {/* Left Section - Scrollable */}
-      <div className="absolute top-0 left-0 h-full" style={{ width: `calc(${leftWidth}% - 2.5px)` }}>
-        {leftSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Scrollable Section</h1>
-              <p className="text-muted-foreground">This section contains scrollable content</p>
-            </div>
+      {/* Left Section - Always rendered, full width on mobile */}
+      <LeftSection width={!isMobile && showRightSection ? leftWidth : 100}>
+        {leftSectionContent}
+      </LeftSection>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {leftItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <Badge
-                        variant={
-                          item.status === "Active" ? "default" : item.status === "Pending" ? "secondary" : "outline"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-2">{item.description}</p>
-                    <p className="text-sm text-muted-foreground">Date: {item.date}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Resize Handle - Only visible on desktop when right section is shown */}
+      {!isMobile && showRightSection && (
+        <div
+          className={cn(
+            "absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-all duration-200 z-10",
+            isDragging ? "bg-primary/10" : "hover:bg-primary/5"
+          )}
+          style={{ left: `calc(${leftWidth}% - 2.5px)` }}
+          onMouseDown={handleMouseDown}
+        >
+          <GripVertical 
+            className={cn(
+              "w-3 h-3 transition-colors",
+              isDragging 
+                ? "text-primary" 
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            )}
+            style={{ strokeWidth: 0.5 }} 
+          />
+        </div>
+      )}
 
-      {/* Resize Handle - 5px gap */}
-      <div
-        className="absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-colors z-10 hover:bg-gray-100 dark:hover:bg-gray-800"
-        style={{ left: `calc(${leftWidth}% - 2.5px)` }}
-        onMouseDown={handleMouseDown}
+      {/* Right Section - Responsive: side-by-side on desktop, drawer/overlay on mobile */}
+      <RightSection 
+        width={rightWidth} 
+        show={showRightSection}
+        isMobile={isMobile}
+        mobileMode={mobileMode}
+        onClose={onMobileClose}
       >
-        <GripVertical className="w-3 h-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" style={{ strokeWidth: 0.5 }} />
-      </div>
-
-      {/* Right Section - Fixed/Pinned */}
-      <div className="absolute top-0 right-0 h-full bg-muted/30" style={{ width: `calc(${100 - leftWidth}% - 2.5px)` }}>
-        {rightSectionContent || (
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-card flex-shrink-0">
-              <h1 className="text-2xl font-bold text-foreground">Fixed Section</h1>
-              <p className="text-muted-foreground">This section is pinned and never scrolls</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {rightItems.map((item, index) => (
-                  <div key={item.id}>
-                    <Card className="hover:shadow-sm transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-foreground">{item.title}</h3>
-                            <p className="text-2xl font-bold text-primary mt-1">{item.value}</p>
-                          </div>
-                          <Badge
-                            variant={item.type === "Info" ? "default" : item.type === "Warning" ? "secondary" : "outline"}
-                          >
-                            {item.type}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    {index < rightItems.length - 1 && <Separator className="my-2" />}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 space-y-2 sticky bottom-0 bg-muted/30 pt-4">
-                <Button className="w-full">Primary Action</Button>
-                <Button variant="outline" className="w-full bg-transparent">
-                  Secondary Action
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        {rightSectionContent}
+      </RightSection>
     </div>
   )
-}
+});
