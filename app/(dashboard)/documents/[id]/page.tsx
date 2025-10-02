@@ -24,6 +24,13 @@ import { ConfigProvider } from '@/config';
 import { CunninghamProvider } from '@openfun/cunningham-react';
 import { useAuth } from '@/contexts/auth-context';
 
+// Required for static export - generate static params for dynamic routes
+export async function generateStaticParams() {
+  // Return empty array for now - this route will be handled client-side
+  // In a real app, you might want to pre-generate common document IDs
+  return []
+}
+
 export function DocLayout() {
   const { id } = useParams();
 
