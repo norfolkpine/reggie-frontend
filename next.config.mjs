@@ -15,9 +15,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: true, // Required for static export
   },
-  output: 'standalone',
+  // Cloudflare Pages configuration - static export
+  // Changed from 'standalone' (Vercel) to 'export' (Cloudflare Pages)
+  output: 'export', // Generate static files for Cloudflare Pages
+  trailingSlash: true, // Add trailing slashes to URLs for better routing
+  distDir: 'out', // Output directory for static files
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
