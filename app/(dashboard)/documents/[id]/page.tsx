@@ -1,12 +1,5 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
-import Head from 'next/head';
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import * as Y from 'yjs';
-
 import {
   Doc,
   KEY_DOC,
@@ -23,13 +16,12 @@ import { TextErrors } from '@/components/text-errors';
 import { ConfigProvider } from '@/config';
 import { CunninghamProvider } from '@openfun/cunningham-react';
 import { useAuth } from '@/contexts/auth-context';
-
-// Required for static export - generate static params for dynamic routes
-export async function generateStaticParams() {
-  // Return empty array for now - this route will be handled client-side
-  // In a real app, you might want to pre-generate common document IDs
-  return []
-}
+import { useQueryClient } from '@tanstack/react-query';
+import Head from 'next/head';
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import * as Y from 'yjs';
 
 export function DocLayout() {
   const { id } = useParams();
