@@ -1,6 +1,11 @@
 # Cloudflare Pages configuration for Reggie Frontend
 name = "reggie-frontend"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Pages needs the Next on Pages build artifacts
+main = ".vercel/output/static/_worker.js"
+pages_build_output_dir = ".vercel/output/static"
 
 # Production environment
 [env.production]
@@ -9,7 +14,3 @@ name = "reggie-frontend"
 # Staging environment
 [env.staging]
 name = "reggie-frontend-staging"
-
-# Cloudflare Pages build configuration
-# This tells Cloudflare Pages where to find the built static files
-pages_build_output_dir = "out"

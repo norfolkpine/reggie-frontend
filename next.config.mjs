@@ -15,11 +15,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: false, // Vercel can optimize images
+    unoptimized: true, // Cloudflare Pages image optimization handled downstream
   },
-  // Vercel configuration - standalone build (better for dynamic routes)
-  output: 'standalone', // Generate standalone build for Vercel
-  // Remove trailingSlash and distDir for Vercel
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
