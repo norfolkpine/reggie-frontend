@@ -15,9 +15,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: true, // Required for static export
   },
-  output: 'standalone',
+  // Cloudflare Pages configuration - static export
+  // Changed from 'standalone' (Vercel) to 'export' (Cloudflare Pages)
+  output: 'export', // Generate static files for Cloudflare Pages
+  trailingSlash: true, // Add trailing slashes to URLs for better routing
+  distDir: 'out', // Output directory for static files
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
@@ -72,7 +76,8 @@ widenClientFileUpload: true,
 // This can increase your server load as well as your hosting bill.
 // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
 // side errors will fail.
-tunnelRoute: "/monitoring",
+// DISABLED for static export (Cloudflare Pages) - tunnelRoute doesn't work with static exports
+// tunnelRoute: "/monitoring",
 
 // Automatically tree-shake Sentry logger statements to reduce bundle size
 disableLogger: true,
