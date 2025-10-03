@@ -15,11 +15,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: true, // Disable image optimization
   },
-  // Cloudflare Pages configuration - static export
-  // Changed from 'standalone' (Vercel) to 'export' (Cloudflare Pages)
-  output: 'export', // Generate static files for Cloudflare Pages
+  // Vercel configuration - standalone
+  // Changed back from 'export' (Cloudflare Pages) to 'standalone' (Vercel)
+  output: 'standalone', // Generate standalone server for Vercel
   trailingSlash: true, // Add trailing slashes to URLs for better routing
   distDir: 'out', // Output directory for static files
   experimental: {
