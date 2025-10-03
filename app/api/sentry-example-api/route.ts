@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-
 // Environment-based flag to enable/disable Sentry example functionality
 // Only enabled in development or when explicitly set
 const SENTRY_EXAMPLE_ENABLED = process.env.NODE_ENV === 'development' || process.env.ENABLE_SENTRY_EXAMPLE === 'true';
