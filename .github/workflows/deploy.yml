@@ -24,8 +24,26 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
+      - name: Verify Service Account
+        run: |
+          echo "Current service account:"
+          gcloud auth list --filter=status:ACTIVE --format="value(account)"
+          echo "Project:"
+          gcloud config get-value project
+
+      - name: Set Project
+        run: gcloud config set project ${{ env.PROJECT_ID }}
+
+      - name: Verify Artifact Registry Access
+        run: |
+          echo "Testing Artifact Registry access..."
+          gcloud artifacts repositories list --location=australia-southeast1 --project=${{ env.PROJECT_ID }}
+          echo "Repository access verified!"
+
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker australia-southeast1-docker.pkg.dev --quiet
+        run: |
+          gcloud auth configure-docker australia-southeast1-docker.pkg.dev --quiet
+          echo "Docker configured for Artifact Registry"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -34,6 +52,18 @@ jobs:
         run: |
           IMAGE_FRONTEND=australia-southeast1-docker.pkg.dev/${PROJECT_ID}/containers/${IMAGE_NAME_FRONTEND}:latest
           echo "Building and pushing Docker image: $IMAGE_FRONTEND"
+          
+          # Verify we can access the repository before building
+          echo "Verifying repository access..."
+          gcloud artifacts repositories describe containers \
+            --location=australia-southeast1 \
+            --project=${PROJECT_ID} || {
+            echo "Repository not found, creating it..."
+            gcloud artifacts repositories create containers \
+              --repository-format=docker \
+              --location=australia-southeast1 \
+              --project=${PROJECT_ID}
+          }
           
           # Build with cache and push in one step
           docker buildx build --builder default \
@@ -50,6 +80,8 @@ jobs:
             --cache-to type=gha,mode=max \
             --push \
             -t "$IMAGE_FRONTEND" .
+          
+          echo "Docker image built and pushed successfully!"
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
