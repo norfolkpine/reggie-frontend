@@ -21,7 +21,7 @@ const nextConfig = {
   // Changed back from 'export' (Cloudflare Pages) to 'standalone' (Vercel)
   output: 'standalone', // Generate standalone server for Vercel
   trailingSlash: true, // Add trailing slashes to URLs for better routing
-  distDir: 'out', // Output directory for static files
+  // distDir is not used with standalone output - Next.js uses .next/standalone
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
