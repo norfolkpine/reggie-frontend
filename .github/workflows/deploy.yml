@@ -7,8 +7,8 @@ on:
       - dev
 
 env:
-  PROJECT_ID: bh-reggie-test
-  IMAGE_NAME_FRONTEND: reggie-frontend
+  PROJECT_ID: bh-opie-test
+  IMAGE_NAME_FRONTEND: opie-frontend
 
 jobs:
   build-and-deploy:
