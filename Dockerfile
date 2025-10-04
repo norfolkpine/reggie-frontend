@@ -18,7 +18,7 @@ ARG SENTRY_AUTH_TOKEN
 # Install dependencies first (better caching)
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN if [ -f package-lock.json ]; then npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install; \
+    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install --frozen-lockfile; \
     elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
     else npm install; fi
 
@@ -37,7 +37,10 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 
 # Build the Next.js app
-RUN npm run build
+# Ensure we're not in Cloudflare Pages mode for Docker build
+ENV CF_PAGES=0
+ENV NEXT_ON_PAGES=0
+RUN if [ -f pnpm-lock.yaml ]; then pnpm run build; else npm run build; fi
 
 # ---- Production Stage ----
 FROM node:24.4.1-alpine AS runner
