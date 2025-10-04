@@ -110,9 +110,10 @@ jobs:
           username: github-actions
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
-          envs: PROJECT_ID,IMAGE_NAME_FRONTEND
           script: |
             # Set variables
+            PROJECT_ID=bh-opie
+            IMAGE_NAME_FRONTEND=opie-frontend
             IMAGE_FRONTEND=australia-southeast1-docker.pkg.dev/${PROJECT_ID}/containers/${IMAGE_NAME_FRONTEND}:latest
             
             # Create frontend directory if it doesn't exist
