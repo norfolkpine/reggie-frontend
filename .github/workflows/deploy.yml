@@ -23,6 +23,7 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: Verify Service Account
         run: |
@@ -30,6 +31,8 @@ jobs:
           gcloud auth list --filter=status:ACTIVE --format="value(account)"
           echo "Project:"
           gcloud config get-value project
+          echo "Testing basic GCP access:"
+          gcloud projects describe ${{ env.PROJECT_ID }} --format="value(projectId)"
 
       - name: Set Project
         run: gcloud config set project ${{ env.PROJECT_ID }}
@@ -39,6 +42,12 @@ jobs:
           echo "Testing Artifact Registry access..."
           gcloud artifacts repositories list --location=australia-southeast1 --project=${{ env.PROJECT_ID }}
           echo "Repository access verified!"
+          
+          # Additional verification - check if we can describe the specific repository
+          echo "Checking specific repository access..."
+          gcloud artifacts repositories describe containers --location=australia-southeast1 --project=${{ env.PROJECT_ID }} || {
+            echo "Repository 'containers' not found, will create it during build step"
+          }
 
       - name: Configure Docker for Artifact Registry
         run: |
