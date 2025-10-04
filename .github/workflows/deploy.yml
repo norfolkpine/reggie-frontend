@@ -94,14 +94,14 @@ jobs:
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
-          NEXT_PUBLIC_DEFAULT_AGENT_ID: ${{ vars.NEXT_PUBLIC_DEFAULT_AGENT_ID }}
-          NEXT_PUBLIC_API_ORIGIN: ${{ secrets.NEXT_PUBLIC_API_ORIGIN }}
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-          NEXT_PUBLIC_NANGO_API_URL: ${{ vars.NEXT_PUBLIC_NANGO_API_URL }}
-          NEXT_PUBLIC_NANGO_BASE_URL: ${{ vars.NEXT_PUBLIC_NANGO_BASE_URL }}
-          COLLABORATION_WS_URL: ${{ secrets.COLLABORATION_WS_URL }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          NEXT_PUBLIC_DEFAULT_AGENT_ID: ${{ vars.NEXT_PUBLIC_DEFAULT_AGENT_ID || '' }}
+          NEXT_PUBLIC_API_ORIGIN: ${{ secrets.NEXT_PUBLIC_API_ORIGIN || '' }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000' }}
+          NEXT_PUBLIC_NANGO_API_URL: ${{ vars.NEXT_PUBLIC_NANGO_API_URL || '' }}
+          NEXT_PUBLIC_NANGO_BASE_URL: ${{ vars.NEXT_PUBLIC_NANGO_BASE_URL || '' }}
+          COLLABORATION_WS_URL: ${{ secrets.COLLABORATION_WS_URL || '' }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || '' }}
 
       - name: Deploy on VM (single optimized step)
         uses: appleboy/ssh-action@v1.0.3
@@ -110,6 +110,7 @@ jobs:
           username: github-actions
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
+          envs: PROJECT_ID,IMAGE_NAME_FRONTEND
           script: |
             # Set variables
             IMAGE_FRONTEND=australia-southeast1-docker.pkg.dev/${PROJECT_ID}/containers/${IMAGE_NAME_FRONTEND}:latest
