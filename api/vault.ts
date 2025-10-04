@@ -29,7 +29,7 @@ export async function getVaultFilesByProject(
   search: string = '',
   parentId: number = 0
 ): Promise<VaultFilesResponse> {
-  let url = `/reggie/api/v1/vault-files/by-project/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}&parent_id=${parentId}`;
+  let url = `/opie/api/v1/vault-files/by-project/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}&parent_id=${parentId}`;
   
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;
@@ -73,7 +73,7 @@ export async function uploadFiles({
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
 
   try {
-    const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/`, {
+    const response = await fetch(`${BASE_URL}/opie/api/v1/vault-files/`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -98,7 +98,7 @@ export async function uploadFiles({
 
 export async function deleteVaultFile(fileId: number): Promise<void> {
   try {
-    await api.delete(`/reggie/api/v1/vault-files/${fileId}/`);
+    await api.delete(`/opie/api/v1/vault-files/${fileId}/`);
   } catch (error) {
     const { message } = handleApiError(error);
     throw new Error(message || 'Failed to delete file');
@@ -107,7 +107,7 @@ export async function deleteVaultFile(fileId: number): Promise<void> {
 
 export async function updateVaultFile(fileId: number, data: { original_filename?: string }): Promise<VaultFile> {
   try {
-    const response = await api.patch(`/reggie/api/v1/vault-files/${fileId}/`, data);
+    const response = await api.patch(`/opie/api/v1/vault-files/${fileId}/`, data);
     return response as VaultFile;
   } catch (error) {
     const { message } = handleApiError(error);
@@ -139,7 +139,7 @@ export async function chatWithVaultAgent(params: {
     // Include CSRF token if available  
     ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
   };
-  const response = await fetch(`${BASE_URL}/reggie/api/v1/vault-files/vault-agent-chat/`, {
+  const response = await fetch(`${BASE_URL}/opie/api/v1/vault-files/vault-agent-chat/`, {
     method: "POST",
     headers,
     body: JSON.stringify(params),
@@ -190,7 +190,7 @@ export async function createFolder({
 
   try {
     console.log("payload", payload);
-    const response = await api.post('/reggie/api/v1/vault-files/', payload);
+    const response = await api.post('/opie/api/v1/vault-files/', payload);
     return response as VaultFile;
   } catch (error: any) {
     const message = error?.message || 'Failed to create folder';
@@ -201,7 +201,7 @@ export async function createFolder({
 
 export async function moveVaultFiles(fileIds: number[], targetFolderId: number): Promise<void> {
   try {
-    await api.post('/reggie/api/v1/vault-files/move/', {
+    await api.post('/opie/api/v1/vault-files/move/', {
       file_ids: fileIds,
       target_folder_id: targetFolderId
     });

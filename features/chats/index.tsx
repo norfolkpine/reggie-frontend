@@ -13,7 +13,7 @@ import { createChatSession, ChatSession } from "@/api/chat-sessions";
 import { useHeader } from "@/contexts/header-context";
 
 // Default agent ID to use for new conversations
-const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-8e3621016-reggie";
+const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-8e3621016-opie";
 
 export default function ChatsComponent() {
   const router = useRouter();

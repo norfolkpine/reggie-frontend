@@ -338,7 +338,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
       const assistantMessageId = `assistant-${uuidv4()}`;
       // Don't create empty assistant message here - wait for actual content
 
-      const response = await fetch(`${BASE_URL}/reggie/api/v1/chat/stream/`, {
+      const response = await fetch(`${BASE_URL}/opie/api/v1/chat/stream/`, {
         method: "POST", 
         credentials: 'include',
         headers: { "Content-Type": "application/json", ...(csrfToken && { "X-CSRFToken": csrfToken })}, 

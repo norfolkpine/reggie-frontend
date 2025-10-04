@@ -171,7 +171,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
             </AvatarFallback>
           </Avatar>
           <div className="grid flex-1">
-            <span className="font-medium text-sm">Reggie</span>
+            <span className="font-medium text-sm">Opie</span>
             <span className="text-xs text-muted-foreground">
               Team Collaboration
             </span>

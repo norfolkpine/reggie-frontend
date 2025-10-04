@@ -5,7 +5,7 @@ export const getProjects = async (page: number = 1) => {
   console.log('Fetching projects list, page:', page);
   
   try {
-    const response = await api.get('/reggie/api/v1/projects/', {
+    const response = await api.get('/opie/api/v1/projects/', {
       params: { page: page.toString() }
     });
     console.log('Projects list response:', response);
@@ -21,11 +21,11 @@ export const getProject = async (id: string) => {
   
   // Try different endpoint patterns
   const endpoints = [
-    `/reggie/api/v1/projects/${id}/`,
-    `/reggie/api/v1/projects/uuid/${id}/`,
-    `/reggie/api/v1/projects/by-uuid/${id}/`,
-    `/reggie/api/v1/projects/?uuid=${id}`,
-    `/reggie/api/v1/projects/?project_uuid=${id}`
+    `/opie/api/v1/projects/${id}/`,
+    `/opie/api/v1/projects/uuid/${id}/`,
+    `/opie/api/v1/projects/by-uuid/${id}/`,
+    `/opie/api/v1/projects/?uuid=${id}`,
+    `/opie/api/v1/projects/?project_uuid=${id}`
   ];
   
   for (const endpoint of endpoints) {
@@ -47,20 +47,20 @@ export const getProject = async (id: string) => {
 };
 
 export const createProject = async (project: Omit<Partial<Project>, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.post('/reggie/api/v1/projects/', project);
+  const response = await api.post('/opie/api/v1/projects/', project);
   return response as Project;
 };
 
 export const updateProject = async (id: string, project: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.put(`/reggie/api/v1/projects/${id}/`, project);
+  const response = await api.put(`/opie/api/v1/projects/${id}/`, project);
   return response as Project;
 };
 
 export const patchProject = async (id: string | number, project: PatchedProject) => {
-  const response = await api.patch(`/reggie/api/v1/projects/${id}/`, project);
+  const response = await api.patch(`/opie/api/v1/projects/${id}/`, project);
   return response as Project;
 };
 
 export const deleteProject = async (id: string) => {
-  await api.delete(`/reggie/api/v1/projects/${id}/`);
+  await api.delete(`/opie/api/v1/projects/${id}/`);
 };

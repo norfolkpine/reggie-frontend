@@ -55,7 +55,7 @@ export default function CollectionsTestPage() {
   
   // API Configuration - Update this to match your backend URL
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-  const API_ENDPOINT = `${API_BASE_URL}/reggie/api/v1`;
+  const API_ENDPOINT = `${API_BASE_URL}/opie/api/v1`;
   
   // State
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -702,7 +702,7 @@ export default function CollectionsTestPage() {
           <ul className="text-xs space-y-1 mt-1">
             <li>• Update NEXT_PUBLIC_API_BASE_URL environment variable to match your backend</li>
             <li>• Default backend URL: http://127.0.0.1:8000</li>
-            <li>• API endpoints: /reggie/api/v1/collections/ and /reggie/api/v1/files/</li>
+            <li>• API endpoints: /opie/api/v1/collections/ and /opie/api/v1/files/</li>
             <li>• Ensure your backend has the collections API endpoints implemented</li>
           </ul>
         </div>

@@ -16,18 +16,18 @@ interface PaginatedModelProviderList {
 }
 
 export const getModelProviders = async (page: number = 1) => {
-  const response = await api.get('/reggie/api/v1/model-providers/', {
+  const response = await api.get('/opie/api/v1/model-providers/', {
     params: { page: page.toString() },
   });
   return response as PaginatedModelProviderList;
 };
 
 export const getAllModelProviders = async () => {
-  const response = await api.get('/reggie/api/v1/model-providers/listmodels/', { });
+  const response = await api.get('/opie/api/v1/model-providers/listmodels/', { });
   return response;
 };
 
 export const getModelProvider = async (provider: string) => {
-  const response = await api.get(`/reggie/api/v1/model-providers/${provider}/`);
+  const response = await api.get(`/opie/api/v1/model-providers/${provider}/`);
   return response.data as ModelProvider;
 };

@@ -7,38 +7,38 @@ interface StreamChatResponse {
 }
 
 export const getAgents = async (page: number = 1) => {
-  const response = await api.get('/reggie/api/v1/agents/', {
+  const response = await api.get('/opie/api/v1/agents/', {
     params: { page: page.toString() },
   });
   return response as PaginatedAgentList;
 };
 
 export const getAgent = async (id: number) => {
-  const response = await api.get(`/reggie/api/v1/agents/${id}/`);
+  const response = await api.get(`/opie/api/v1/agents/${id}/`);
   return response as Agent;
 };
 
 export const createAgent = async (agent: Omit<Partial<Agent>, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.post('/reggie/api/v1/agents/', agent);
+  const response = await api.post('/opie/api/v1/agents/', agent);
   return response as Agent;
 };
 
 export const updateAgent = async (id: number, agent: Omit<Partial<Agent>, 'id' | 'created_at' | 'updated_at'>) => {
-  const response = await api.put(`/reggie/api/v1/agents/${id}/`, agent);
+  const response = await api.put(`/opie/api/v1/agents/${id}/`, agent);
   return response as Agent;
 };
 
 export const patchAgent = async (id: number, agent: PatchedAgent) => {
-  const response = await api.patch(`/reggie/api/v1/agents/${id}/`, agent);
+  const response = await api.patch(`/opie/api/v1/agents/${id}/`, agent);
   return response as Agent;
 };
 
 export const deleteAgent = async (id: number) => {
-  await api.delete(`/reggie/api/v1/agents/${id}/`);
+  await api.delete(`/opie/api/v1/agents/${id}/`);
 };
 
 export const getAgentInstructions = async (id: number) => {
-  const response = await api.get(`/reggie/api/v1/agents/${id}/instructions/`);
+  const response = await api.get(`/opie/api/v1/agents/${id}/instructions/`);
   return response as Agent;
 };
 
@@ -49,7 +49,7 @@ interface StreamChatRequest {
 }
 
 export const getAgentStreamChat = async (message: string, agentId: string, sessionId: string) => {
-  const response = await api.post('/reggie/api/v1/chat/stream/', {
+  const response = await api.post('/opie/api/v1/chat/stream/', {
     agent_id: agentId,
     message,
     session_id: sessionId,

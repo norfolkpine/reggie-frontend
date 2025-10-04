@@ -345,7 +345,7 @@ export function useVaultChat({
       const assistantMessageId = `assistant-${uuidv4()}`;
 
       // Use the vault chat endpoint
-      const response = await fetch(`${BASE_URL}/reggie/api/v1/vault/chat/stream/`, {
+      const response = await fetch(`${BASE_URL}/opie/api/v1/vault/chat/stream/`, {
         method: "POST",
         credentials: 'include',
         headers: {

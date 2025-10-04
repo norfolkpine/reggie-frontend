@@ -25,17 +25,17 @@ images: {
 
 #### 2. `wrangler.toml` (New file)
 ```toml
-# Cloudflare Pages configuration for Reggie Frontend
-name = "reggie-frontend"
+# Cloudflare Pages configuration for Opie Frontend
+name = "opie-frontend"
 compatibility_date = "2024-01-01"
 
 # Production environment
 [env.production]
-name = "reggie-frontend"
+name = "opie-frontend"
 
 # Staging environment
 [env.staging]
-name = "reggie-frontend-staging"
+name = "opie-frontend-staging"
 
 # Cloudflare Pages build configuration
 # This tells Cloudflare Pages where to find the built static files

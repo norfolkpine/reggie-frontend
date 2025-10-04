@@ -1,6 +1,6 @@
 'use client';
 
-const ENCRYPTION_KEY = 'reggie.encryption.key';
+const ENCRYPTION_KEY = 'opie.encryption.key';
 const IV_LENGTH = 12;
 const SALT_LENGTH = 16;
 

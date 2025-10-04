@@ -44,7 +44,7 @@ console.log('CSRF Token:', csrfToken);
 
 // 4. Test API call
 if (csrfToken) {
-  const response = await fetch('http://127.0.0.1:8000/reggie/api/v1/projects/', {
+  const response = await fetch('http://127.0.0.1:8000/opie/api/v1/projects/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

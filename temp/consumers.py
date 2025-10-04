@@ -18,9 +18,9 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from apps.reggie.agents.agent_builder import AgentBuilder
-from apps.reggie.models import ChatSession, EphemeralFile  # Added this import
-from apps.reggie.utils.session_title import TITLE_MANAGER  # Added this import
+from apps.opie.agents.agent_builder import AgentBuilder
+from apps.opie.models import ChatSession, EphemeralFile  # Added this import
+from apps.opie.utils.session_title import TITLE_MANAGER  # Added this import
 from agno.media import File as AgnoFile  # Added this import
 
 logger = logging.getLogger(__name__)

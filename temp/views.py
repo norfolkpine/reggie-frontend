@@ -68,8 +68,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from slack_sdk import WebClient
 
-from apps.reggie.agents.helpers.agent_helpers import get_schema
-from apps.reggie.utils.gcs_utils import ingest_single_file
+from apps.opie.agents.helpers.agent_helpers import get_schema
+from apps.opie.utils.gcs_utils import ingest_single_file
 from apps.slack_integration.models import (
     SlackWorkspace,
 )
@@ -1767,7 +1767,7 @@ def init_agent(user, agent_id, session_id):
 @extend_schema(
     request=StreamAgentRequestSerializer,
     responses={200: {"type": "string", "description": "Server-Sent Events stream"}},
-    tags=["Reggie AI"],
+    tags=["Opie AI"],
 )
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
@@ -1835,7 +1835,7 @@ def stream_agent_response(request):
     return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
 
 
-@extend_schema(tags=["Reggie AI"])
+@extend_schema(tags=["Opie AI"])
 class ChatSessionViewSet(viewsets.ModelViewSet):
     serializer_class = ChatSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1857,7 +1857,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         if not db_url:
             return Response({"error": "DATABASE_URL is not configured."}, status=500)
 
-        table_name = getattr(settings, "AGENT_STORAGE_TABLE", "reggie_storage_sessions")
+        table_name = getattr(settings, "AGENT_STORAGE_TABLE", "opie_storage_sessions")
         schema = get_schema()
         storage = PostgresAgentStorage(table_name=table_name, db_url=db_url, schema=schema)
         agentSession = storage.read(session_id=str(session.id))

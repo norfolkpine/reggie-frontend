@@ -15,7 +15,7 @@ This project uses Sentry for error tracking, performance monitoring, and source 
 
 ### Sentry Organization Details
 - **Organization:** `ben-heath-pty-ltd`
-- **Project:** `bh-reggie-frontend`
+- **Project:** `bh-opie-frontend`
 - **DSN:** Configured via environment variables (see below)
 
 ## CI/CD Setup

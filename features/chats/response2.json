@@ -2,91 +2,91 @@ data: {"debug": "Agent build time: 6.47s"}
 
 data: {"event": "ChatTitle", "title": "AML and KYC Overview"}
 
-data: {"created_at": 1758300721, "event": "RunStarted", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "model": "gpt-4o", "model_provider": "OpenAI"}
+data: {"created_at": 1758300721, "event": "RunStarted", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "model": "gpt-4o", "model_provider": "OpenAI"}
 
-data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "Electronic", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300724, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "Electronic", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Funds", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Funds", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Transfers", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Transfers", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": ":", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": ":", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Certain", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Certain", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " information", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " information", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " about", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " about", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " the", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " the", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " origin", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " origin", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " of", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " of", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " the", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " the", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " funds", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " funds", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " must", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " must", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " accompany", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " accompany", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " electronic", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " electronic", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " transfers", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " transfers", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " ([", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " ([", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "Anti", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "Anti", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "-M", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "-M", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "oney", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "oney", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Lau", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Lau", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "nd", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "nd", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "ering", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "ering", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " and", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " and", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Counter", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Counter", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "-T", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300725, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "-T", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "error", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "error", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "ism", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "ism", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Financing", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Financing", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Act", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " Act", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " ", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": " ", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "200", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "200", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "6", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "6", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "](", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "](", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "#", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "#", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "25", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "25", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": ")).", "content_type": "str", "thinking": ""}
+data: {"created_at": 1758300726, "event": "RunResponseContent", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": ")).", "content_type": "str", "thinking": ""}
 
-data: {"created_at": 1758300726, "event": "MemoryUpdateStarted", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9"}
+data: {"created_at": 1758300726, "event": "MemoryUpdateStarted", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9"}
 
-data: {"created_at": 1758300727, "event": "MemoryUpdateCompleted", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9"}
+data: {"created_at": 1758300727, "event": "MemoryUpdateCompleted", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9"}
 
-data: {"created_at": 1758300733, "event": "RunCompleted", "agent_id": "o-8e3621016-reggie", "agent_name": "Reggie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**Electronic Funds Transfers**: Certain information about the origin of the funds must accompany electronic transfers ([Anti-Money Laundering and Counter-Terrorism Financing Act 2006](#25)).", "content_type": "str"}
+data: {"created_at": 1758300733, "event": "RunCompleted", "agent_id": "o-8e3621016-opie", "agent_name": "Opie", "run_id": "0b942619-ee53-4e78-a053-8db6a1941ecd", "session_id": "278c64f1-f858-4684-a602-88eb1e9e87b9", "content": "**Electronic Funds Transfers**: Certain information about the origin of the funds must accompany electronic transfers ([Anti-Money Laundering and Counter-Terrorism Financing Act 2006](#25)).", "content_type": "str"}
 

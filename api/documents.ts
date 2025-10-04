@@ -6,7 +6,7 @@ const apiVersion = 'v1.0';
 const apiUrl = `/api/${apiVersion}/documents`;
 
 export const getDocuments = async (page: number = 1) => {
-  const response = await api.get('/reggie/api/documents/', {
+  const response = await api.get('/opie/api/documents/', {
     params: { page: page.toString() },
   });
   return response as PaginatedDocumentList;
@@ -59,7 +59,7 @@ export const updateDocument = async (
   id: number,
   document: Omit<Document, 'id' | 'created_at' | 'updated_at'>
 ) => {
-  const response = await api.put(`/reggie/api/documents/${id}/`, document);
+  const response = await api.put(`/opie/api/documents/${id}/`, document);
   return response as Document;
 };
 
