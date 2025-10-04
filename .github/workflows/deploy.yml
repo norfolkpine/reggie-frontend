@@ -121,12 +121,12 @@ jobs:
             cd ~/frontend
             
             # Create docker-compose.yml with correct image URL
-            cat > docker-compose.yml << 'EOF'
+            cat > docker-compose.yml << EOF
             version: '3.8'
             services:
               frontend:
                 container_name: opie-frontend
-                image: ${IMAGE_FRONTEND}
+                image: $IMAGE_FRONTEND
                 ports:
                   - "5173:3000"
                 env_file:
