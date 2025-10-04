@@ -8,12 +8,12 @@ on:
 
 env:
   PROJECT_ID: bh-opie
-
   IMAGE_NAME_FRONTEND: opie-frontend
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: bh-opie
     timeout-minutes: 15
     steps:
       - name: Checkout code
