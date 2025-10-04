@@ -120,13 +120,12 @@ jobs:
             mkdir -p ~/frontend
             cd ~/frontend
             
-            # Create docker-compose.yml if it doesn't exist
-            if [ ! -f docker-compose.yml ]; then
-              cat > docker-compose.yml << 'EOF'
+            # Create docker-compose.yml with correct image URL
+            cat > docker-compose.yml << 'EOF'
             version: '3.8'
             services:
               frontend:
-                container_name: frontend-app
+                container_name: opie-frontend
                 image: ${IMAGE_FRONTEND}
                 ports:
                   - "5173:3000"
@@ -136,15 +135,13 @@ jobs:
                 environment:
                   - NODE_ENV=production
             EOF
-            fi
             
             # Create .env.frontend if it doesn't exist
             if [ ! -f .env.frontend ]; then
               echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env.frontend
             fi
             
-            # Update image in docker-compose.yml
-            sed -i "s|\${IMAGE_FRONTEND}|$IMAGE_FRONTEND|g" docker-compose.yml
+            # No need to update image - it's already correct in docker-compose.yml
             
             # Authenticate with GCP (if not already done)
             if [ ! -f gcp-key.json ]; then
