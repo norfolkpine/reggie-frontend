@@ -27,7 +27,7 @@ export const adminService = {
   // Get projects data
   async getProjects() {
     try {
-      const projectsData = await api.get('/reggie/api/v1/projects/');
+      const projectsData = await api.get('/opie/api/v1/projects/');
       return projectsData;
     } catch (error) {
       console.error('Failed to fetch projects:', error);
@@ -38,7 +38,7 @@ export const adminService = {
   // Get documents data
   async getDocuments() {
     try {
-      const documentsData = await api.get('/reggie/api/documents/');
+      const documentsData = await api.get('/opie/api/documents/');
       return documentsData;
     } catch (error) {
       console.error('Failed to fetch documents:', error);
@@ -49,7 +49,7 @@ export const adminService = {
   // Get agents data
   async getAgents() {
     try {
-      const agentsData = await api.get('/reggie/api/v1/agents/');
+      const agentsData = await api.get('/opie/api/v1/agents/');
       return agentsData;
     } catch (error) {
       console.error('Failed to fetch agents:', error);
@@ -60,7 +60,7 @@ export const adminService = {
   // Get knowledge bases data
   async getKnowledgeBases() {
     try {
-      const knowledgeBasesData = await api.get('/reggie/api/v1/knowledge-bases/');
+      const knowledgeBasesData = await api.get('/opie/api/v1/knowledge-bases/');
       return knowledgeBasesData;
     } catch (error) {
       console.error('Failed to fetch knowledge bases:', error);

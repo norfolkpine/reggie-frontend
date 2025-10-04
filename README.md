@@ -1,12 +1,12 @@
-# Reggie AI
+# Opie AI
 
 A powerful multi-agent platform for corporate compliance, built with Next.js and Django.
 
-![Reggie AI Screenshot](/placeholder.svg?height=400&width=800)
+![Opie AI Screenshot](/placeholder.svg?height=400&width=800)
 
 ## Overview
 
-Reggie AI is an intelligent compliance assistant that helps organizations navigate complex regulatory requirements, manage compliance documentation, and stay up-to-date with changing regulations. Leveraging multiple specialized AI agents, Reggie provides comprehensive compliance support across various domains.
+Opie AI is an intelligent compliance assistant that helps organizations navigate complex regulatory requirements, manage compliance documentation, and stay up-to-date with changing regulations. Leveraging multiple specialized AI agents, Opie provides comprehensive compliance support across various domains.
 
 ## Features
 
@@ -21,7 +21,7 @@ Reggie AI is an intelligent compliance assistant that helps organizations naviga
 
 ## AI Agents
 
-Reggie AI includes several specialized agents:
+Opie AI includes several specialized agents:
 
 - **Policy Advisor** - Reviews and suggests improvements to company policies
 - **Regulatory Monitor** - Tracks regulatory changes in your industry
@@ -63,5 +63,5 @@ Reggie AI includes several specialized agents:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/norfolkpine/reggie-frontend.git
-   cd reggie-frontend
+   git clone https://github.com/norfolkpine/opie-frontend.git
+   cd opie-frontend

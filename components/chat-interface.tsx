@@ -340,7 +340,7 @@ export default function ChatInterface() {
             </Card>
 
             <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
-              <span>Reggie can make mistakes. Check important info.</span>
+              <span>Opie can make mistakes. Check important info.</span>
               <span>?</span>
             </div>
           </div>
@@ -478,7 +478,7 @@ export default function ChatInterface() {
               </Card>
 
               <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground px-2">
-                <span>Reggie can make mistakes. Check important info.</span>
+                <span>Opie can make mistakes. Check important info.</span>
                 <span>?</span>
               </div>
             </div>

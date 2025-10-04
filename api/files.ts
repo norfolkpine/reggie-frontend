@@ -3,7 +3,7 @@ import { File, PaginatedFileList, PatchedFile } from '../types/api';
 import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 import { getCSRFToken } from './utils';
 
-const ENDPOINT = '/reggie/api/v1/files/'
+const ENDPOINT = '/opie/api/v1/files/'
 
 // Response types from OpenAPI spec
 interface UploadFileResponse {
@@ -128,7 +128,7 @@ export const uploadFiles = async (files: globalThis.File[], options?: FileUpload
   }
 
   const csrfToken = getCSRFToken();
-  const response = await fetch(BASE_URL+'/reggie/api/v1/files/', {
+  const response = await fetch(BASE_URL+'/opie/api/v1/files/', {
     method: 'POST',
     body: formData,
     credentials: 'include',
@@ -239,7 +239,7 @@ interface BulkFileUploadRequest {
 }
 
 export const bulkUploadFiles = async (data: BulkFileUploadRequest) => {
-  const response = await api.post('/reggie/api/v1/files/bulk-upload/', data);
+  const response = await api.post('/opie/api/v1/files/bulk-upload/', data);
   return response as any;
 };
 
@@ -262,7 +262,7 @@ export const uploadFilesWithFormData = async (files: globalThis.File[], options?
     formData.append('team', options.team.toString());
   }
 
-  const response = await api.post('/reggie/api/v1/files/bulk-upload/', formData, {
+  const response = await api.post('/opie/api/v1/files/bulk-upload/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

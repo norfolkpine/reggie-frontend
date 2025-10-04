@@ -201,7 +201,7 @@ export default function Sidebar() {
           <div className="p-3 flex flex-col gap-3">
             {/* Header with logo and collapse button */}
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-xl">Reggie</span>
+              <span className="font-semibold text-xl">Opie</span>
               <Button
                 variant="ghost"
                 size="icon"

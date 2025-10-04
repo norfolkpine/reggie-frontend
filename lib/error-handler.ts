@@ -67,7 +67,7 @@ export class ErrorHandler {
       },
       contexts: {
         app: {
-          name: 'reggie-frontend',
+          name: 'opie-frontend',
           version: '1.0.0',
         },
         browser: {
@@ -156,7 +156,7 @@ export class ErrorHandler {
           },
           contexts: {
             app: {
-              name: 'reggie-frontend',
+              name: 'opie-frontend',
               version: '1.0.0',
             },
             browser: {

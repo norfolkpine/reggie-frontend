@@ -100,7 +100,7 @@ interface HistorySection {
 
 // Update the chats array to include a view property
 const chats: ChatItem[] = [
-  { name: "Reggie", icon: "🤖", url: "/chat" },
+  { name: "Opie", icon: "🤖", url: "/chat" },
   // { name: "Explore Agents", icon: "🔍", url: "/agent" },
 ];
 

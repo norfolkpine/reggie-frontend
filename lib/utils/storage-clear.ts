@@ -96,7 +96,7 @@ export function clearWebSQL(): void {
     if ('openDatabase' in window) {
       // WebSQL doesn't have a direct way to list databases
       // We'll try to clear common database names
-      const commonDbNames = ['reggie', 'reggie_cache', 'reggie_data', 'app_cache'];
+      const commonDbNames = ['opie', 'opie_cache', 'opie_data', 'app_cache'];
       
       commonDbNames.forEach(dbName => {
         try {

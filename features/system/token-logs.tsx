@@ -161,7 +161,7 @@ export function TokenLogs() {
       if (debouncedSearchValue) params.search = debouncedSearchValue;
 
       const query = new URLSearchParams(params).toString();
-      const response = await api.get(`/reggie/api/v1/usage/tokens/?${query}`) as TokenLogsApiResponse;
+      const response = await api.get(`/opie/api/v1/usage/tokens/?${query}`) as TokenLogsApiResponse;
 
       if (response && response.results) {
         setTokenData(response.results);

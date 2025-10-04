@@ -64,14 +64,14 @@ export function InstructionsDialog({
         <DialogHeader>
           <DialogTitle>Project Instructions</DialogTitle>
           <DialogDescription>
-            Reggie will follow these instructions for all conversations in this project.
+            Opie will follow these instructions for all conversations in this project.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-2">
           <Label htmlFor="project-instructions" className="sr-only">Instructions</Label>
           <Textarea
             id="project-instructions"
-            placeholder="Write instructions for Reggie..."
+            placeholder="Write instructions for Opie..."
             value={instructions}
             onChange={e => setInstructions(e.target.value)}
             className="h-[250px] min-h-[150px] text-sm"

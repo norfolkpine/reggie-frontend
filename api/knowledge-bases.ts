@@ -2,7 +2,7 @@ import { api } from '@/lib/api-client';
 import { KnowledgeBase, PaginatedKnowledgeBaseList, PatchedKnowledgeBase } from '../types/api';
 import { PaginatedKnowledgeBaseFileList } from '../types/knowledge-base';
 
-const knowledgeBaseApi = '/reggie/api/v1/knowledge-bases/';
+const knowledgeBaseApi = '/opie/api/v1/knowledge-bases/';
 
 export const getKnowledgeBases = async (page: number = 1, file_id?: string) => {
   const response = await api.get(knowledgeBaseApi, {

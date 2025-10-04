@@ -60,7 +60,7 @@ This feature enhances the chat interface to show the AI agent's thinking process
 The reasoning feature is properly integrated with the backend API:
 
 ```typescript
-// Request payload sent to /reggie/api/v1/chat/stream/
+// Request payload sent to /opie/api/v1/chat/stream/
 {
   agent_id: "agent-id",
   message: "user message",

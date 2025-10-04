@@ -1,6 +1,6 @@
 import { api, BASE_URL, triggerTokenExpiration } from '@/lib/api-client';
 
-const ENDPOINT = '/reggie/api/v1/usage/tokens'
+const ENDPOINT = '/opie/api/v1/usage/tokens'
 
 export const getTokenUsage = async (page: number = 1,page_size: number,
   search: string) => {

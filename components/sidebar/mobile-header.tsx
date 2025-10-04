@@ -33,7 +33,7 @@ export function MobileHeader({
             <Menu className="h-5 w-5" />
           </Button>
           {customContent || (
-            <h1 className="text-xl font-medium text-foreground">Reggie</h1>
+            <h1 className="text-xl font-medium text-foreground">Opie</h1>
           )}
         </div>
 

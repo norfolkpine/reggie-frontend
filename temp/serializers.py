@@ -2,7 +2,7 @@ import os
 
 from rest_framework import serializers
 
-from apps.reggie.models import Collection
+from apps.opie.models import Collection
 from apps.teams.models import Team
 
 from .models import (

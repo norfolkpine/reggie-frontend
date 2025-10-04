@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Reggie API
+  title: Opie API
   version: 1.0.0 (v1)
-  description: API documentation for Reggie SaaS application
+  description: API documentation for Opie SaaS application
 paths:
   /a/{team_slug}/team/api/invitations/:
     get:
@@ -2721,9 +2721,9 @@ paths:
                   details:
                     type: string
           description: ''
-  /reggie/api/v1/agents/:
+  /opie/api/v1/agents/:
     get:
-      operationId: reggie_api_v1_agents_list
+      operationId: opie_api_v1_agents_list
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2749,7 +2749,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedAgentList'
           description: ''
     post:
-      operationId: reggie_api_v1_agents_create
+      operationId: opie_api_v1_agents_create
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2779,9 +2779,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Agent'
           description: ''
-  /reggie/api/v1/agents/{agent_id}/instructions/:
+  /opie/api/v1/agents/{agent_id}/instructions/:
     get:
-      operationId: reggie_api_v1_agents_instructions_retrieve
+      operationId: opie_api_v1_agents_instructions_retrieve
       description: Fetch the instruction assigned directly to the agent (if enabled).
       parameters:
       - in: path
@@ -2807,9 +2807,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentInstructionsResponse'
           description: ''
-  /reggie/api/v1/agents/{id}/:
+  /opie/api/v1/agents/{id}/:
     get:
-      operationId: reggie_api_v1_agents_retrieve
+      operationId: opie_api_v1_agents_retrieve
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2835,7 +2835,7 @@ paths:
                 $ref: '#/components/schemas/Agent'
           description: ''
     put:
-      operationId: reggie_api_v1_agents_update
+      operationId: opie_api_v1_agents_update
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2873,7 +2873,7 @@ paths:
                 $ref: '#/components/schemas/Agent'
           description: ''
     patch:
-      operationId: reggie_api_v1_agents_partial_update
+      operationId: opie_api_v1_agents_partial_update
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2910,7 +2910,7 @@ paths:
                 $ref: '#/components/schemas/Agent'
           description: ''
     delete:
-      operationId: reggie_api_v1_agents_destroy
+      operationId: opie_api_v1_agents_destroy
       description: |-
         API endpoint that allows managing agents.
         Returns:
@@ -2931,9 +2931,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/categories/:
+  /opie/api/v1/categories/:
     get:
-      operationId: reggie_api_v1_categories_list
+      operationId: opie_api_v1_categories_list
       description: API endpoint that allows listing agent categories.
       parameters:
       - name: page
@@ -2954,9 +2954,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCategoryList'
           description: ''
-  /reggie/api/v1/categories/{id}/:
+  /opie/api/v1/categories/{id}/:
     get:
-      operationId: reggie_api_v1_categories_retrieve
+      operationId: opie_api_v1_categories_retrieve
       description: API endpoint that allows listing agent categories.
       parameters:
       - in: path
@@ -2977,9 +2977,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
-  /reggie/api/v1/chat-sessions/:
+  /opie/api/v1/chat-sessions/:
     get:
-      operationId: reggie_api_v1_chat_sessions_list
+      operationId: opie_api_v1_chat_sessions_list
       parameters:
       - name: page
         required: false
@@ -2988,7 +2988,7 @@ paths:
         schema:
           type: integer
       tags:
-      - Reggie AI
+      - Opie AI
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3000,9 +3000,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedChatSessionList'
           description: ''
     post:
-      operationId: reggie_api_v1_chat_sessions_create
+      operationId: opie_api_v1_chat_sessions_create
       tags:
-      - Reggie AI
+      - Opie AI
       requestBody:
         content:
           application/json:
@@ -3025,9 +3025,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatSession'
           description: ''
-  /reggie/api/v1/chat-sessions/{id}/:
+  /opie/api/v1/chat-sessions/{id}/:
     get:
-      operationId: reggie_api_v1_chat_sessions_retrieve
+      operationId: opie_api_v1_chat_sessions_retrieve
       parameters:
       - in: path
         name: id
@@ -3037,7 +3037,7 @@ paths:
         description: A UUID string identifying this chat session.
         required: true
       tags:
-      - Reggie AI
+      - Opie AI
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3049,7 +3049,7 @@ paths:
                 $ref: '#/components/schemas/ChatSession'
           description: ''
     put:
-      operationId: reggie_api_v1_chat_sessions_update
+      operationId: opie_api_v1_chat_sessions_update
       parameters:
       - in: path
         name: id
@@ -3059,7 +3059,7 @@ paths:
         description: A UUID string identifying this chat session.
         required: true
       tags:
-      - Reggie AI
+      - Opie AI
       requestBody:
         content:
           application/json:
@@ -3083,7 +3083,7 @@ paths:
                 $ref: '#/components/schemas/ChatSession'
           description: ''
     patch:
-      operationId: reggie_api_v1_chat_sessions_partial_update
+      operationId: opie_api_v1_chat_sessions_partial_update
       parameters:
       - in: path
         name: id
@@ -3093,7 +3093,7 @@ paths:
         description: A UUID string identifying this chat session.
         required: true
       tags:
-      - Reggie AI
+      - Opie AI
       requestBody:
         content:
           application/json:
@@ -3116,7 +3116,7 @@ paths:
                 $ref: '#/components/schemas/ChatSession'
           description: ''
     delete:
-      operationId: reggie_api_v1_chat_sessions_destroy
+      operationId: opie_api_v1_chat_sessions_destroy
       parameters:
       - in: path
         name: id
@@ -3126,16 +3126,16 @@ paths:
         description: A UUID string identifying this chat session.
         required: true
       tags:
-      - Reggie AI
+      - Opie AI
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/chat-sessions/{id}/messages/:
+  /opie/api/v1/chat-sessions/{id}/messages/:
     get:
-      operationId: reggie_api_v1_chat_sessions_messages_retrieve
+      operationId: opie_api_v1_chat_sessions_messages_retrieve
       parameters:
       - in: path
         name: id
@@ -3145,7 +3145,7 @@ paths:
         description: A UUID string identifying this chat session.
         required: true
       tags:
-      - Reggie AI
+      - Opie AI
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3156,9 +3156,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatSession'
           description: ''
-  /reggie/api/v1/collections/:
+  /opie/api/v1/collections/:
     get:
-      operationId: reggie_api_v1_collections_list
+      operationId: opie_api_v1_collections_list
       description: Get a hierarchical list of collections accessible to the user.
         If no collection_uuid provided, returns root contents (folders + files). If
         collection_uuid provided, returns collection contents. ALL results are paginated
@@ -3250,7 +3250,7 @@ paths:
                               type: string
           description: ''
     post:
-      operationId: reggie_api_v1_collections_create
+      operationId: opie_api_v1_collections_create
       description: API endpoint for managing hierarchical collections (folders).
       tags:
       - Collections
@@ -3276,9 +3276,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Collection'
           description: ''
-  /reggie/api/v1/collections/{uuid}/:
+  /opie/api/v1/collections/{uuid}/:
     get:
-      operationId: reggie_api_v1_collections_retrieve
+      operationId: opie_api_v1_collections_retrieve
       description: Get detailed information about a collection including files and
         subcollections
       summary: Get collection details
@@ -3302,7 +3302,7 @@ paths:
                 $ref: '#/components/schemas/CollectionDetail'
           description: ''
     put:
-      operationId: reggie_api_v1_collections_update
+      operationId: opie_api_v1_collections_update
       description: API endpoint for managing hierarchical collections (folders).
       parameters:
       - in: path
@@ -3336,7 +3336,7 @@ paths:
                 $ref: '#/components/schemas/Collection'
           description: ''
     patch:
-      operationId: reggie_api_v1_collections_partial_update
+      operationId: opie_api_v1_collections_partial_update
       description: API endpoint for managing hierarchical collections (folders).
       parameters:
       - in: path
@@ -3369,7 +3369,7 @@ paths:
                 $ref: '#/components/schemas/Collection'
           description: ''
     delete:
-      operationId: reggie_api_v1_collections_destroy
+      operationId: opie_api_v1_collections_destroy
       description: API endpoint for managing hierarchical collections (folders).
       parameters:
       - in: path
@@ -3386,9 +3386,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/collections/{uuid}/add-files/:
+  /opie/api/v1/collections/{uuid}/add-files/:
     post:
-      operationId: reggie_api_v1_collections_add_files_create
+      operationId: opie_api_v1_collections_add_files_create
       description: Add existing files to a collection
       parameters:
       - in: path
@@ -3421,9 +3421,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Collection'
           description: ''
-  /reggie/api/v1/collections/{uuid}/delete/:
+  /opie/api/v1/collections/{uuid}/delete/:
     delete:
-      operationId: reggie_api_v1_collections_delete_destroy
+      operationId: opie_api_v1_collections_delete_destroy
       description: Delete a collection and optionally handle its contents
       summary: Delete collection
       parameters:
@@ -3466,9 +3466,9 @@ paths:
                   error:
                     type: string
           description: ''
-  /reggie/api/v1/collections/{uuid}/move-to/:
+  /opie/api/v1/collections/{uuid}/move-to/:
     post:
-      operationId: reggie_api_v1_collections_move_to_create
+      operationId: opie_api_v1_collections_move_to_create
       description: Move this collection to a different parent collection
       parameters:
       - in: path
@@ -3501,9 +3501,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Collection'
           description: ''
-  /reggie/api/v1/collections/{uuid}/reorder-files/:
+  /opie/api/v1/collections/{uuid}/reorder-files/:
     post:
-      operationId: reggie_api_v1_collections_reorder_files_create
+      operationId: opie_api_v1_collections_reorder_files_create
       description: Reorder files within a collection
       parameters:
       - in: path
@@ -3536,9 +3536,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Collection'
           description: ''
-  /reggie/api/v1/collections/create-folder/:
+  /opie/api/v1/collections/create-folder/:
     post:
-      operationId: reggie_api_v1_collections_create_folder_create
+      operationId: opie_api_v1_collections_create_folder_create
       description: Create a new folder or collection, optionally within a parent collection
       summary: Create folder/collection
       tags:
@@ -3598,9 +3598,9 @@ paths:
                   error:
                     type: string
           description: ''
-  /reggie/api/v1/collections/tree/:
+  /opie/api/v1/collections/tree/:
     get:
-      operationId: reggie_api_v1_collections_tree_retrieve
+      operationId: opie_api_v1_collections_tree_retrieve
       description: Get the complete collection tree structure
       tags:
       - Collections
@@ -3614,9 +3614,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Collection'
           description: ''
-  /reggie/api/v1/expected-output/:
+  /opie/api/v1/expected-output/:
     get:
-      operationId: reggie_api_v1_expected_output_list
+      operationId: opie_api_v1_expected_output_list
       description: API endpoint that allows managing agent expected outputs.
       parameters:
       - name: page
@@ -3638,7 +3638,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedAgentExpectedOutputList'
           description: ''
     post:
-      operationId: reggie_api_v1_expected_output_create
+      operationId: opie_api_v1_expected_output_create
       description: API endpoint that allows managing agent expected outputs.
       tags:
       - Agent Expected Output
@@ -3664,9 +3664,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentExpectedOutput'
           description: ''
-  /reggie/api/v1/expected-output/{id}/:
+  /opie/api/v1/expected-output/{id}/:
     get:
-      operationId: reggie_api_v1_expected_output_retrieve
+      operationId: opie_api_v1_expected_output_retrieve
       description: API endpoint that allows managing agent expected outputs.
       parameters:
       - in: path
@@ -3688,7 +3688,7 @@ paths:
                 $ref: '#/components/schemas/AgentExpectedOutput'
           description: ''
     put:
-      operationId: reggie_api_v1_expected_output_update
+      operationId: opie_api_v1_expected_output_update
       description: API endpoint that allows managing agent expected outputs.
       parameters:
       - in: path
@@ -3722,7 +3722,7 @@ paths:
                 $ref: '#/components/schemas/AgentExpectedOutput'
           description: ''
     patch:
-      operationId: reggie_api_v1_expected_output_partial_update
+      operationId: opie_api_v1_expected_output_partial_update
       description: API endpoint that allows managing agent expected outputs.
       parameters:
       - in: path
@@ -3755,7 +3755,7 @@ paths:
                 $ref: '#/components/schemas/AgentExpectedOutput'
           description: ''
     delete:
-      operationId: reggie_api_v1_expected_output_destroy
+      operationId: opie_api_v1_expected_output_destroy
       description: API endpoint that allows managing agent expected outputs.
       parameters:
       - in: path
@@ -3772,9 +3772,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/file-tags/:
+  /opie/api/v1/file-tags/:
     get:
-      operationId: reggie_api_v1_file_tags_list
+      operationId: opie_api_v1_file_tags_list
       description: API endpoint that allows managing file tags.
       parameters:
       - name: page
@@ -3796,7 +3796,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedFileTagList'
           description: ''
     post:
-      operationId: reggie_api_v1_file_tags_create
+      operationId: opie_api_v1_file_tags_create
       description: API endpoint that allows managing file tags.
       tags:
       - File Tags
@@ -3822,9 +3822,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileTag'
           description: ''
-  /reggie/api/v1/file-tags/{id}/:
+  /opie/api/v1/file-tags/{id}/:
     get:
-      operationId: reggie_api_v1_file_tags_retrieve
+      operationId: opie_api_v1_file_tags_retrieve
       description: API endpoint that allows managing file tags.
       parameters:
       - in: path
@@ -3846,7 +3846,7 @@ paths:
                 $ref: '#/components/schemas/FileTag'
           description: ''
     put:
-      operationId: reggie_api_v1_file_tags_update
+      operationId: opie_api_v1_file_tags_update
       description: API endpoint that allows managing file tags.
       parameters:
       - in: path
@@ -3880,7 +3880,7 @@ paths:
                 $ref: '#/components/schemas/FileTag'
           description: ''
     patch:
-      operationId: reggie_api_v1_file_tags_partial_update
+      operationId: opie_api_v1_file_tags_partial_update
       description: API endpoint that allows managing file tags.
       parameters:
       - in: path
@@ -3913,7 +3913,7 @@ paths:
                 $ref: '#/components/schemas/FileTag'
           description: ''
     delete:
-      operationId: reggie_api_v1_file_tags_destroy
+      operationId: opie_api_v1_file_tags_destroy
       description: API endpoint that allows managing file tags.
       parameters:
       - in: path
@@ -3930,9 +3930,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/files/:
+  /opie/api/v1/files/:
     get:
-      operationId: reggie_api_v1_files_list
+      operationId: opie_api_v1_files_list
       description: API endpoint that allows managing files.
       parameters:
       - name: page
@@ -3942,7 +3942,7 @@ paths:
         schema:
           type: integer
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3954,7 +3954,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedFileList'
           description: ''
     post:
-      operationId: reggie_api_v1_files_create
+      operationId: opie_api_v1_files_create
       description: |-
         Upload one or more files to the system.
 
@@ -3967,7 +3967,7 @@ paths:
         Supported file types: PDF, DOCX, TXT, CSV, JSON
       summary: Upload files
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           multipart/form-data:
@@ -4031,9 +4031,9 @@ paths:
                   error:
                     type: string
           description: ''
-  /reggie/api/v1/files/{uuid}/:
+  /opie/api/v1/files/{uuid}/:
     get:
-      operationId: reggie_api_v1_files_retrieve
+      operationId: opie_api_v1_files_retrieve
       description: API endpoint that allows managing files.
       parameters:
       - in: path
@@ -4043,7 +4043,7 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4055,7 +4055,7 @@ paths:
                 $ref: '#/components/schemas/File'
           description: ''
     put:
-      operationId: reggie_api_v1_files_update
+      operationId: opie_api_v1_files_update
       description: API endpoint that allows managing files.
       parameters:
       - in: path
@@ -4065,7 +4065,7 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4089,7 +4089,7 @@ paths:
                 $ref: '#/components/schemas/File'
           description: ''
     patch:
-      operationId: reggie_api_v1_files_partial_update
+      operationId: opie_api_v1_files_partial_update
       description: API endpoint that allows managing files.
       parameters:
       - in: path
@@ -4099,7 +4099,7 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4122,7 +4122,7 @@ paths:
                 $ref: '#/components/schemas/File'
           description: ''
     delete:
-      operationId: reggie_api_v1_files_destroy
+      operationId: opie_api_v1_files_destroy
       description: API endpoint that allows managing files.
       parameters:
       - in: path
@@ -4132,16 +4132,16 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/files/{uuid}/reingest/:
+  /opie/api/v1/files/{uuid}/reingest/:
     post:
-      operationId: reggie_api_v1_files_reingest_create
+      operationId: opie_api_v1_files_reingest_create
       description: Manually trigger re-ingestion of a file into all its linked knowledge
         bases.
       parameters:
@@ -4152,7 +4152,7 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4175,9 +4175,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/File'
           description: ''
-  /reggie/api/v1/files/{uuid}/update-progress/:
+  /opie/api/v1/files/{uuid}/update-progress/:
     post:
-      operationId: reggie_api_v1_files_update_progress_create
+      operationId: opie_api_v1_files_update_progress_create
       description: |-
         Update ingestion progress for a file.
         Called by the Cloud Run ingestion service.
@@ -4190,7 +4190,7 @@ paths:
           format: uuid
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4213,14 +4213,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/File'
           description: ''
-  /reggie/api/v1/files/bulk-delete-and-unlink/:
+  /opie/api/v1/files/bulk-delete-and-unlink/:
     post:
-      operationId: reggie_api_v1_files_bulk_delete_and_unlink_create
+      operationId: opie_api_v1_files_bulk_delete_and_unlink_create
       description: |-
         Bulk delete files and unlink them from all knowledge bases.
         Accepts the same input as unlink_from_kb: {"file_ids": [...], "knowledgebase_ids": [...]}
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4243,12 +4243,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/File'
           description: ''
-  /reggie/api/v1/files/ingest-selected/:
+  /opie/api/v1/files/ingest-selected/:
     post:
-      operationId: reggie_api_v1_files_ingest_selected_create
+      operationId: opie_api_v1_files_ingest_selected_create
       description: Manually ingest selected files into multiple knowledge bases.
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4271,14 +4271,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileIngest'
           description: ''
-  /reggie/api/v1/files/link-to-kb/:
+  /opie/api/v1/files/link-to-kb/:
     post:
-      operationId: reggie_api_v1_files_link_to_kb_create
+      operationId: opie_api_v1_files_link_to_kb_create
       description: |-
         Link files to knowledge bases without ingestion.
         Simply creates the links in the database.
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4301,9 +4301,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/File'
           description: ''
-  /reggie/api/v1/files/list/:
+  /opie/api/v1/files/list/:
     get:
-      operationId: reggie_api_v1_files_list_list
+      operationId: opie_api_v1_files_list_list
       description: |-
         List all accessible files with their associated knowledge bases.
 
@@ -4336,7 +4336,7 @@ paths:
           type: string
         description: Filter by file type (pdf, docx, txt, etc.)
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4347,9 +4347,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedFileList'
           description: ''
-  /reggie/api/v1/files/list-with-kbs/:
+  /opie/api/v1/files/list-with-kbs/:
     get:
-      operationId: reggie_api_v1_files_list_with_kbs_list
+      operationId: opie_api_v1_files_list_with_kbs_list
       description: |-
         List all files with their associated knowledge bases.
 
@@ -4382,7 +4382,7 @@ paths:
           type: string
         description: Filter by file type (pdf, docx, txt, etc.)
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4393,9 +4393,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedFileList'
           description: ''
-  /reggie/api/v1/files/move-to-collection/:
+  /opie/api/v1/files/move-to-collection/:
     post:
-      operationId: reggie_api_v1_files_move_to_collection_create
+      operationId: opie_api_v1_files_move_to_collection_create
       description: Move one or more files to a different collection
       summary: Move files between collections
       tags:
@@ -4448,9 +4448,9 @@ paths:
                   error:
                     type: string
           description: ''
-  /reggie/api/v1/files/unlink-from-kb/:
+  /opie/api/v1/files/unlink-from-kb/:
     post:
-      operationId: reggie_api_v1_files_unlink_from_kb_create
+      operationId: opie_api_v1_files_unlink_from_kb_create
       description: |-
         Remove files from knowledge bases by deleting their FileKnowledgeBaseLink entries.
 
@@ -4551,9 +4551,9 @@ paths:
                   error:
                     type: string
           description: ''
-  /reggie/api/v1/global-instructions/:
+  /opie/api/v1/global-instructions/:
     get:
-      operationId: reggie_api_v1_global_instructions_list
+      operationId: opie_api_v1_global_instructions_list
       parameters:
       - name: page
         required: false
@@ -4573,9 +4573,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAgentInstructionList'
           description: ''
-  /reggie/api/v1/global-instructions/{id}/:
+  /opie/api/v1/global-instructions/{id}/:
     get:
-      operationId: reggie_api_v1_global_instructions_retrieve
+      operationId: opie_api_v1_global_instructions_retrieve
       parameters:
       - in: path
         name: id
@@ -4595,9 +4595,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentInstruction'
           description: ''
-  /reggie/api/v1/global-outputs/:
+  /opie/api/v1/global-outputs/:
     get:
-      operationId: reggie_api_v1_global_outputs_list
+      operationId: opie_api_v1_global_outputs_list
       parameters:
       - name: page
         required: false
@@ -4617,9 +4617,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAgentExpectedOutputList'
           description: ''
-  /reggie/api/v1/global-outputs/{id}/:
+  /opie/api/v1/global-outputs/{id}/:
     get:
-      operationId: reggie_api_v1_global_outputs_retrieve
+      operationId: opie_api_v1_global_outputs_retrieve
       parameters:
       - in: path
         name: id
@@ -4639,9 +4639,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentExpectedOutput'
           description: ''
-  /reggie/api/v1/instructions/:
+  /opie/api/v1/instructions/:
     get:
-      operationId: reggie_api_v1_instructions_list
+      operationId: opie_api_v1_instructions_list
       description: API endpoint that allows managing agent instructions.
       parameters:
       - name: page
@@ -4663,7 +4663,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedAgentInstructionList'
           description: ''
     post:
-      operationId: reggie_api_v1_instructions_create
+      operationId: opie_api_v1_instructions_create
       description: API endpoint that allows managing agent instructions.
       tags:
       - Agent Instructions
@@ -4689,9 +4689,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentInstruction'
           description: ''
-  /reggie/api/v1/instructions/{id}/:
+  /opie/api/v1/instructions/{id}/:
     get:
-      operationId: reggie_api_v1_instructions_retrieve
+      operationId: opie_api_v1_instructions_retrieve
       description: API endpoint that allows managing agent instructions.
       parameters:
       - in: path
@@ -4713,7 +4713,7 @@ paths:
                 $ref: '#/components/schemas/AgentInstruction'
           description: ''
     put:
-      operationId: reggie_api_v1_instructions_update
+      operationId: opie_api_v1_instructions_update
       description: API endpoint that allows managing agent instructions.
       parameters:
       - in: path
@@ -4747,7 +4747,7 @@ paths:
                 $ref: '#/components/schemas/AgentInstruction'
           description: ''
     patch:
-      operationId: reggie_api_v1_instructions_partial_update
+      operationId: opie_api_v1_instructions_partial_update
       description: API endpoint that allows managing agent instructions.
       parameters:
       - in: path
@@ -4780,7 +4780,7 @@ paths:
                 $ref: '#/components/schemas/AgentInstruction'
           description: ''
     delete:
-      operationId: reggie_api_v1_instructions_destroy
+      operationId: opie_api_v1_instructions_destroy
       description: API endpoint that allows managing agent instructions.
       parameters:
       - in: path
@@ -4797,9 +4797,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/knowledge-base/pdf-urls/:
+  /opie/api/v1/knowledge-base/pdf-urls/:
     get:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_list
+      operationId: opie_api_v1_knowledge_base_pdf_urls_list
       parameters:
       - name: page
         required: false
@@ -4808,7 +4808,7 @@ paths:
         schema:
           type: integer
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4820,9 +4820,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedKnowledgeBasePdfURLList'
           description: ''
     post:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_create
+      operationId: opie_api_v1_knowledge_base_pdf_urls_create
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4845,9 +4845,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/KnowledgeBasePdfURL'
           description: ''
-  /reggie/api/v1/knowledge-base/pdf-urls/{id}/:
+  /opie/api/v1/knowledge-base/pdf-urls/{id}/:
     get:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_retrieve
+      operationId: opie_api_v1_knowledge_base_pdf_urls_retrieve
       parameters:
       - in: path
         name: id
@@ -4856,7 +4856,7 @@ paths:
         description: A unique integer value identifying this knowledge base pdf url.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4868,7 +4868,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBasePdfURL'
           description: ''
     put:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_update
+      operationId: opie_api_v1_knowledge_base_pdf_urls_update
       parameters:
       - in: path
         name: id
@@ -4877,7 +4877,7 @@ paths:
         description: A unique integer value identifying this knowledge base pdf url.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4901,7 +4901,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBasePdfURL'
           description: ''
     patch:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_partial_update
+      operationId: opie_api_v1_knowledge_base_pdf_urls_partial_update
       parameters:
       - in: path
         name: id
@@ -4910,7 +4910,7 @@ paths:
         description: A unique integer value identifying this knowledge base pdf url.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -4933,7 +4933,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBasePdfURL'
           description: ''
     delete:
-      operationId: reggie_api_v1_knowledge_base_pdf_urls_destroy
+      operationId: opie_api_v1_knowledge_base_pdf_urls_destroy
       parameters:
       - in: path
         name: id
@@ -4942,16 +4942,16 @@ paths:
         description: A unique integer value identifying this knowledge base pdf url.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/knowledge-bases/:
+  /opie/api/v1/knowledge-bases/:
     get:
-      operationId: reggie_api_v1_knowledge_bases_list
+      operationId: opie_api_v1_knowledge_bases_list
       description: List files with optional filename filtering (search) and dynamic
         pagination size (pageitem).
       summary: List files
@@ -5058,7 +5058,7 @@ paths:
                                 nullable: true
           description: ''
     post:
-      operationId: reggie_api_v1_knowledge_bases_create
+      operationId: opie_api_v1_knowledge_bases_create
       tags:
       - Knowledge Bases
       requestBody:
@@ -5083,9 +5083,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/KnowledgeBase'
           description: ''
-  /reggie/api/v1/knowledge-bases/{id}/:
+  /opie/api/v1/knowledge-bases/{id}/:
     get:
-      operationId: reggie_api_v1_knowledge_bases_retrieve
+      operationId: opie_api_v1_knowledge_bases_retrieve
       parameters:
       - in: path
         name: id
@@ -5106,7 +5106,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBase'
           description: ''
     put:
-      operationId: reggie_api_v1_knowledge_bases_update
+      operationId: opie_api_v1_knowledge_bases_update
       parameters:
       - in: path
         name: id
@@ -5139,7 +5139,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBase'
           description: ''
     patch:
-      operationId: reggie_api_v1_knowledge_bases_partial_update
+      operationId: opie_api_v1_knowledge_bases_partial_update
       parameters:
       - in: path
         name: id
@@ -5171,7 +5171,7 @@ paths:
                 $ref: '#/components/schemas/KnowledgeBase'
           description: ''
     delete:
-      operationId: reggie_api_v1_knowledge_bases_destroy
+      operationId: opie_api_v1_knowledge_bases_destroy
       parameters:
       - in: path
         name: id
@@ -5187,9 +5187,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/knowledge-bases/{id}/files/:
+  /opie/api/v1/knowledge-bases/{id}/files/:
     get:
-      operationId: reggie_api_v1_knowledge_bases_files_list
+      operationId: opie_api_v1_knowledge_bases_files_list
       description: |-
         List all files that have been ingested or are being ingested into this knowledge base.
 
@@ -5247,9 +5247,9 @@ paths:
               schema:
                 description: Knowledge base not found
           description: ''
-  /reggie/api/v1/knowledge-bases/{id}/share-to-teams/:
+  /opie/api/v1/knowledge-bases/{id}/share-to-teams/:
     post:
-      operationId: reggie_api_v1_knowledge_bases_share_to_teams_create
+      operationId: opie_api_v1_knowledge_bases_share_to_teams_create
       description: |-
         Share this knowledge base with other teams by adding team IDs.
         Only the owner (uploaded_by) or a superuser can share.
@@ -5284,9 +5284,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/KnowledgeBase'
           description: ''
-  /reggie/api/v1/model-providers/:
+  /opie/api/v1/model-providers/:
     get:
-      operationId: reggie_api_v1_model_providers_list
+      operationId: opie_api_v1_model_providers_list
       description: Returns a list of enabled model providers.
       parameters:
       - name: page
@@ -5307,9 +5307,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedModelProviderList'
           description: ''
-  /reggie/api/v1/model-providers/{id}/:
+  /opie/api/v1/model-providers/{id}/:
     get:
-      operationId: reggie_api_v1_model_providers_retrieve
+      operationId: opie_api_v1_model_providers_retrieve
       description: Returns a list of enabled model providers.
       parameters:
       - in: path
@@ -5330,9 +5330,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ModelProvider'
           description: ''
-  /reggie/api/v1/projects/:
+  /opie/api/v1/projects/:
     get:
-      operationId: reggie_api_v1_projects_list
+      operationId: opie_api_v1_projects_list
       description: API endpoint that allows managing projects.
       parameters:
       - name: page
@@ -5354,7 +5354,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedProjectList'
           description: ''
     post:
-      operationId: reggie_api_v1_projects_create
+      operationId: opie_api_v1_projects_create
       description: API endpoint that allows managing projects.
       tags:
       - Projects
@@ -5380,9 +5380,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
-  /reggie/api/v1/projects/{uuid}/:
+  /opie/api/v1/projects/{uuid}/:
     get:
-      operationId: reggie_api_v1_projects_retrieve
+      operationId: opie_api_v1_projects_retrieve
       description: API endpoint that allows managing projects.
       parameters:
       - in: path
@@ -5404,7 +5404,7 @@ paths:
                 $ref: '#/components/schemas/Project'
           description: ''
     put:
-      operationId: reggie_api_v1_projects_update
+      operationId: opie_api_v1_projects_update
       description: API endpoint that allows managing projects.
       parameters:
       - in: path
@@ -5438,7 +5438,7 @@ paths:
                 $ref: '#/components/schemas/Project'
           description: ''
     patch:
-      operationId: reggie_api_v1_projects_partial_update
+      operationId: opie_api_v1_projects_partial_update
       description: API endpoint that allows managing projects.
       parameters:
       - in: path
@@ -5471,7 +5471,7 @@ paths:
                 $ref: '#/components/schemas/Project'
           description: ''
     delete:
-      operationId: reggie_api_v1_projects_destroy
+      operationId: opie_api_v1_projects_destroy
       description: API endpoint that allows managing projects.
       parameters:
       - in: path
@@ -5488,9 +5488,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/storage-buckets/:
+  /opie/api/v1/storage-buckets/:
     get:
-      operationId: reggie_api_v1_storage_buckets_list
+      operationId: opie_api_v1_storage_buckets_list
       description: API endpoint that allows managing storage buckets.
       parameters:
       - name: page
@@ -5512,7 +5512,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedStorageBucketList'
           description: ''
     post:
-      operationId: reggie_api_v1_storage_buckets_create
+      operationId: opie_api_v1_storage_buckets_create
       description: API endpoint that allows managing storage buckets.
       tags:
       - Storage Buckets
@@ -5538,9 +5538,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/StorageBucket'
           description: ''
-  /reggie/api/v1/storage-buckets/{id}/:
+  /opie/api/v1/storage-buckets/{id}/:
     get:
-      operationId: reggie_api_v1_storage_buckets_retrieve
+      operationId: opie_api_v1_storage_buckets_retrieve
       description: API endpoint that allows managing storage buckets.
       parameters:
       - in: path
@@ -5562,7 +5562,7 @@ paths:
                 $ref: '#/components/schemas/StorageBucket'
           description: ''
     put:
-      operationId: reggie_api_v1_storage_buckets_update
+      operationId: opie_api_v1_storage_buckets_update
       description: API endpoint that allows managing storage buckets.
       parameters:
       - in: path
@@ -5596,7 +5596,7 @@ paths:
                 $ref: '#/components/schemas/StorageBucket'
           description: ''
     patch:
-      operationId: reggie_api_v1_storage_buckets_partial_update
+      operationId: opie_api_v1_storage_buckets_partial_update
       description: API endpoint that allows managing storage buckets.
       parameters:
       - in: path
@@ -5629,7 +5629,7 @@ paths:
                 $ref: '#/components/schemas/StorageBucket'
           description: ''
     delete:
-      operationId: reggie_api_v1_storage_buckets_destroy
+      operationId: opie_api_v1_storage_buckets_destroy
       description: API endpoint that allows managing storage buckets.
       parameters:
       - in: path
@@ -5646,9 +5646,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/tags/:
+  /opie/api/v1/tags/:
     get:
-      operationId: reggie_api_v1_tags_list
+      operationId: opie_api_v1_tags_list
       description: API endpoint that allows managing tags.
       parameters:
       - name: page
@@ -5658,7 +5658,7 @@ paths:
         schema:
           type: integer
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5670,10 +5670,10 @@ paths:
                 $ref: '#/components/schemas/PaginatedTagList'
           description: ''
     post:
-      operationId: reggie_api_v1_tags_create
+      operationId: opie_api_v1_tags_create
       description: API endpoint that allows managing tags.
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5696,9 +5696,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Tag'
           description: ''
-  /reggie/api/v1/tags/{id}/:
+  /opie/api/v1/tags/{id}/:
     get:
-      operationId: reggie_api_v1_tags_retrieve
+      operationId: opie_api_v1_tags_retrieve
       description: API endpoint that allows managing tags.
       parameters:
       - in: path
@@ -5708,7 +5708,7 @@ paths:
         description: A unique integer value identifying this tag.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5720,7 +5720,7 @@ paths:
                 $ref: '#/components/schemas/Tag'
           description: ''
     put:
-      operationId: reggie_api_v1_tags_update
+      operationId: opie_api_v1_tags_update
       description: API endpoint that allows managing tags.
       parameters:
       - in: path
@@ -5730,7 +5730,7 @@ paths:
         description: A unique integer value identifying this tag.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5754,7 +5754,7 @@ paths:
                 $ref: '#/components/schemas/Tag'
           description: ''
     patch:
-      operationId: reggie_api_v1_tags_partial_update
+      operationId: opie_api_v1_tags_partial_update
       description: API endpoint that allows managing tags.
       parameters:
       - in: path
@@ -5764,7 +5764,7 @@ paths:
         description: A unique integer value identifying this tag.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5787,7 +5787,7 @@ paths:
                 $ref: '#/components/schemas/Tag'
           description: ''
     delete:
-      operationId: reggie_api_v1_tags_destroy
+      operationId: opie_api_v1_tags_destroy
       description: API endpoint that allows managing tags.
       parameters:
       - in: path
@@ -5797,16 +5797,16 @@ paths:
         description: A unique integer value identifying this tag.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/templates/:
+  /opie/api/v1/templates/:
     get:
-      operationId: reggie_api_v1_templates_retrieve
+      operationId: opie_api_v1_templates_retrieve
       description: Returns global instruction templates and expected output templates.
       tags:
       - Agent Templates
@@ -5820,9 +5820,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GlobalTemplatesResponse'
           description: ''
-  /reggie/api/v1/user-feedback/:
+  /opie/api/v1/user-feedback/:
     get:
-      operationId: reggie_api_v1_user_feedback_list
+      operationId: opie_api_v1_user_feedback_list
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       parameters:
       - name: page
@@ -5832,7 +5832,7 @@ paths:
         schema:
           type: integer
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5844,10 +5844,10 @@ paths:
                 $ref: '#/components/schemas/PaginatedUserFeedbackList'
           description: ''
     post:
-      operationId: reggie_api_v1_user_feedback_create
+      operationId: opie_api_v1_user_feedback_create
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5870,9 +5870,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserFeedback'
           description: ''
-  /reggie/api/v1/user-feedback/{id}/:
+  /opie/api/v1/user-feedback/{id}/:
     get:
-      operationId: reggie_api_v1_user_feedback_retrieve
+      operationId: opie_api_v1_user_feedback_retrieve
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       parameters:
       - in: path
@@ -5882,7 +5882,7 @@ paths:
         description: A unique integer value identifying this user feedback.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5894,7 +5894,7 @@ paths:
                 $ref: '#/components/schemas/UserFeedback'
           description: ''
     put:
-      operationId: reggie_api_v1_user_feedback_update
+      operationId: opie_api_v1_user_feedback_update
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       parameters:
       - in: path
@@ -5904,7 +5904,7 @@ paths:
         description: A unique integer value identifying this user feedback.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5928,7 +5928,7 @@ paths:
                 $ref: '#/components/schemas/UserFeedback'
           description: ''
     patch:
-      operationId: reggie_api_v1_user_feedback_partial_update
+      operationId: opie_api_v1_user_feedback_partial_update
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       parameters:
       - in: path
@@ -5938,7 +5938,7 @@ paths:
         description: A unique integer value identifying this user feedback.
         required: true
       tags:
-      - reggie
+      - opie
       requestBody:
         content:
           application/json:
@@ -5961,7 +5961,7 @@ paths:
                 $ref: '#/components/schemas/UserFeedback'
           description: ''
     delete:
-      operationId: reggie_api_v1_user_feedback_destroy
+      operationId: opie_api_v1_user_feedback_destroy
       description: API endpoint for submitting and viewing user feedback on chat sessions.
       parameters:
       - in: path
@@ -5971,16 +5971,16 @@ paths:
         description: A unique integer value identifying this user feedback.
         required: true
       tags:
-      - reggie
+      - opie
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/vault-files/:
+  /opie/api/v1/vault-files/:
     get:
-      operationId: reggie_api_v1_vault_files_list
+      operationId: opie_api_v1_vault_files_list
       parameters:
       - name: page
         required: false
@@ -6001,7 +6001,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedVaultFileList'
           description: ''
     post:
-      operationId: reggie_api_v1_vault_files_create
+      operationId: opie_api_v1_vault_files_create
       description: Upload a file to the vault. Requires multipart/form-data.
       summary: Upload a vault file
       tags:
@@ -6022,9 +6022,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/VaultFile'
           description: ''
-  /reggie/api/v1/vault-files/{id}/:
+  /opie/api/v1/vault-files/{id}/:
     get:
-      operationId: reggie_api_v1_vault_files_retrieve
+      operationId: opie_api_v1_vault_files_retrieve
       parameters:
       - in: path
         name: id
@@ -6045,7 +6045,7 @@ paths:
                 $ref: '#/components/schemas/VaultFile'
           description: ''
     put:
-      operationId: reggie_api_v1_vault_files_update
+      operationId: opie_api_v1_vault_files_update
       parameters:
       - in: path
         name: id
@@ -6078,7 +6078,7 @@ paths:
                 $ref: '#/components/schemas/VaultFile'
           description: ''
     patch:
-      operationId: reggie_api_v1_vault_files_partial_update
+      operationId: opie_api_v1_vault_files_partial_update
       parameters:
       - in: path
         name: id
@@ -6110,7 +6110,7 @@ paths:
                 $ref: '#/components/schemas/VaultFile'
           description: ''
     delete:
-      operationId: reggie_api_v1_vault_files_destroy
+      operationId: opie_api_v1_vault_files_destroy
       parameters:
       - in: path
         name: id
@@ -6126,9 +6126,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /reggie/api/v1/vault-files/{id}/share/:
+  /opie/api/v1/vault-files/{id}/share/:
     post:
-      operationId: reggie_api_v1_vault_files_share_create
+      operationId: opie_api_v1_vault_files_share_create
       description: Share this vault file with users or teams.
       parameters:
       - in: path
@@ -6161,9 +6161,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/VaultFile'
           description: ''
-  /reggie/api/v1/vault-files/by-project/:
+  /opie/api/v1/vault-files/by-project/:
     get:
-      operationId: reggie_api_v1_vault_files_by_project_retrieve
+      operationId: opie_api_v1_vault_files_by_project_retrieve
       description: 'Get all vault files by project UUID. Usage: /vault-files/by-project/?project_uuid=<uuid>'
       tags:
       - Files
@@ -8957,7 +8957,7 @@ components:
           description: Storage credentials (encrypted). Not needed for system buckets.
         is_system:
           type: boolean
-          description: Whether this is a system bucket (e.g. bh-reggie-media)
+          description: Whether this is a system bucket (e.g. bh-opie-media)
         team:
           type: integer
           nullable: true
@@ -9334,7 +9334,7 @@ components:
           description: Storage credentials (encrypted). Not needed for system buckets.
         is_system:
           type: boolean
-          description: Whether this is a system bucket (e.g. bh-reggie-media)
+          description: Whether this is a system bucket (e.g. bh-opie-media)
         team:
           type: integer
           nullable: true
@@ -9387,7 +9387,7 @@ components:
           description: Storage credentials (encrypted). Not needed for system buckets.
         is_system:
           type: boolean
-          description: Whether this is a system bucket (e.g. bh-reggie-media)
+          description: Whether this is a system bucket (e.g. bh-opie-media)
         team:
           type: integer
           nullable: true
@@ -10076,7 +10076,7 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: bh_reggie_sessionid
+      name: bh_opie_sessionid
     jwtAuth:
       type: http
       scheme: bearer

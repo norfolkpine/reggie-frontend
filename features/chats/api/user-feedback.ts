@@ -10,5 +10,5 @@ export interface UserFeedbackPayload {
 }
 
 export async function sendUserFeedback(payload: UserFeedbackPayload) {
-  return api.post('/reggie/api/v1/user-feedback/', payload);
+  return api.post('/opie/api/v1/user-feedback/', payload);
 }

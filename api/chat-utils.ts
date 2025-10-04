@@ -9,7 +9,7 @@ import { patchChatSession } from './chat-sessions';
 export const generateChatTitle = async (message: string): Promise<string> => {
   try {
     // Call the AI to generate a title
-    const response = await api.post('/reggie/api/v1/generate-title/', {
+    const response = await api.post('/opie/api/v1/generate-title/', {
       message: message
     });
     

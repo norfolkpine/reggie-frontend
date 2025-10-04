@@ -283,7 +283,7 @@ export function FileManager() {
       console.log('Fetching data with params:', params);
 
       // Use the new file manager endpoint
-      const response = await api.get(`/reggie/api/v1/files/?${new URLSearchParams(params)}`);
+      const response = await api.get(`/opie/api/v1/files/?${new URLSearchParams(params)}`);
       
       if (response && typeof response === 'object' && 'results' in response) {
         // File manager response with pagination
@@ -479,7 +479,7 @@ export function FileManager() {
                 const parentPath = pathParts.slice(0, i).join('/');
                 console.log(`Trying to find by name "${pathPart}" in parent path "${parentPath}"`);
                 
-                const parentResponse = await api.get(`/reggie/api/v1/files/?file_manager=true&page_size=1000&collection_uuid=${breadcrumbTrail[i-1]?.uuid || ''}`);
+                const parentResponse = await api.get(`/opie/api/v1/files/?file_manager=true&page_size=1000&collection_uuid=${breadcrumbTrail[i-1]?.uuid || ''}`);
                 if (parentResponse && typeof parentResponse === 'object' && 'results' in parentResponse) {
                   const parentData = parentResponse as any;
                   parentCollection = parentData.results.find((item: any) => 
@@ -820,7 +820,7 @@ export function FileManager() {
       setCurrentPage(1); // Reset to first page when navigating
       
       // Fetch data for the new collection
-      const response = await api.get(`/reggie/api/v1/files/?file_manager=true&page=1&page_size=${itemsPerPage}&collection_uuid=${collectionUuid}`);
+      const response = await api.get(`/opie/api/v1/files/?file_manager=true&page=1&page_size=${itemsPerPage}&collection_uuid=${collectionUuid}`);
       if (response && typeof response === 'object' && 'results' in response) {
         const data = response as any;
         setCurrentLocation(data.results);

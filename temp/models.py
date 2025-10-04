@@ -21,7 +21,7 @@ from django.urls import reverse
 from django.utils.text import slugify
 
 # Local imports
-from apps.reggie.utils.gcs_utils import ingest_single_file
+from apps.opie.utils.gcs_utils import ingest_single_file
 from apps.teams.models import BaseTeamModel
 from apps.users.models import CustomUser
 from apps.utils.models import BaseModel
@@ -452,7 +452,7 @@ class StorageBucket(BaseModel):
     credentials = models.JSONField(
         null=True, blank=True, help_text="Storage credentials (encrypted). Not needed for system buckets."
     )
-    is_system = models.BooleanField(default=False, help_text="Whether this is a system bucket (e.g. bh-reggie-media)")
+    is_system = models.BooleanField(default=False, help_text="Whether this is a system bucket (e.g. bh-opie-media)")
     team = models.ForeignKey(
         "teams.Team",
         on_delete=models.CASCADE,
@@ -465,8 +465,8 @@ class StorageBucket(BaseModel):
     class Meta:
         unique_together = [("team", "bucket_name")]
         indexes = [
-            models.Index(fields=["team", "is_system"], name="reggie_stor_team_id_1e43c2_idx"),
-            models.Index(fields=["bucket_name"], name="reggie_stor_bucket__53379e_idx"),
+            models.Index(fields=["team", "is_system"], name="opie_stor_team_id_1e43c2_idx"),
+            models.Index(fields=["bucket_name"], name="opie_stor_bucket__53379e_idx"),
         ]
 
     def __str__(self):

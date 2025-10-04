@@ -43,11 +43,11 @@ export interface PaginatedCollectionResponse {
 export type CollectionDetail = Collection;
 
 export async function createFolder(data: CreateFolderRequest): Promise<Collection> {
-  return api.post('/reggie/api/v1/collections/create-folder/', data) as Promise<Collection>;
+  return api.post('/opie/api/v1/collections/create-folder/', data) as Promise<Collection>;
 }
 
 export async function listCollections(): Promise<Collection[]> {
-  return api.get('/reggie/api/v1/collections/') as Promise<Collection[]>;
+  return api.get('/opie/api/v1/collections/') as Promise<Collection[]>;
 }
 
 export async function listCollectionsPaginated(page: number = 1, pageSize: number = 10, search?: string): Promise<PaginatedCollectionResponse> {
@@ -60,34 +60,34 @@ export async function listCollectionsPaginated(page: number = 1, pageSize: numbe
     params.search = search;
   }
   
-  return api.get('/reggie/api/v1/collections/', { params }) as Promise<PaginatedCollectionResponse>;
+  return api.get('/opie/api/v1/collections/', { params }) as Promise<PaginatedCollectionResponse>;
 }
 
 export async function getCollectionTree(): Promise<Collection[]> {
-  return api.get('/reggie/api/v1/collections/tree/') as Promise<Collection[]>;
+  return api.get('/opie/api/v1/collections/tree/') as Promise<Collection[]>;
 }
 
 export async function getCollectionDetails(id: number): Promise<CollectionDetail> {
-  return api.get(`/reggie/api/v1/collections/${id}/`) as Promise<CollectionDetail>;
+  return api.get(`/opie/api/v1/collections/${id}/`) as Promise<CollectionDetail>;
 }
 
 export async function getCollectionByUuid(uuid: string): Promise<CollectionDetail> {
-  return api.get(`/reggie/api/v1/collections/${uuid}/`) as Promise<CollectionDetail>;
+  return api.get(`/opie/api/v1/collections/${uuid}/`) as Promise<CollectionDetail>;
 }
 
 export async function deleteCollection(uuid: string): Promise<void> {
-  return api.delete(`/reggie/api/v1/collections/${uuid}/`) as Promise<void>;
+  return api.delete(`/opie/api/v1/collections/${uuid}/`) as Promise<void>;
 }
 
 export async function updateCollection(uuid: string, data: Partial<CreateFolderRequest>): Promise<Collection> {
-  return api.patch(`/reggie/api/v1/collections/${uuid}/`, data) as Promise<Collection>;
+  return api.patch(`/opie/api/v1/collections/${uuid}/`, data) as Promise<Collection>;
 }
 
 /**
  * Move a collection to a new parent collection
  */
 export async function moveCollection(uuid: string, parentUuid: string | null): Promise<Collection> {
-  return api.patch(`/reggie/api/v1/collections/${uuid}/`, {
+  return api.patch(`/opie/api/v1/collections/${uuid}/`, {
     parent_uuid_write: parentUuid
   }) as Promise<Collection>;
 }
