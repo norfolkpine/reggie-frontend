@@ -4,13 +4,12 @@ compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare Pages needs the Next on Pages build artifacts
-main = ".vercel/output/static/_worker.js"
 pages_build_output_dir = ".vercel/output/static"
 
 # Production environment
 [env.production]
 name = "reggie-frontend"
 
-# Staging environment
-[env.staging]
-name = "reggie-frontend-staging"
+# Preview (aka staging) environment for Cloudflare Pages
+[env.preview]
+name = "reggie-frontend-preview"
