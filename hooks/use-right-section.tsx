@@ -28,6 +28,7 @@ export function RightSectionProvider({ children }: { children: ReactElement | Re
   }, []);
 
   const hideRightSection = useCallback(() => {
+    console.log('hideRightSection called');
     setRightSection(null);
   }, []);
 

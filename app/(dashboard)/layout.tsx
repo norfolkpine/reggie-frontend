@@ -80,7 +80,7 @@ const MainContentWrapper = React.memo(({
     >
       <div className="h-full overflow-auto" ref={scrollContainerRef}>
         {renderHeader()}
-        <div className="px-2">
+        <div className="min-h-[calc(100vh-8rem)]">
           {children}
         </div>
       </div>

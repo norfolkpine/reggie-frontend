@@ -162,12 +162,26 @@ export default function Projects() {
 
   const getProjectIcon = (name: string) => {
     const icons = [Database, Globe, BarChart, Code, Zap, FileText]
-    return icons[Math.floor(Math.random() * icons.length)]
+    // Use deterministic selection based on name hash to avoid hydration mismatch
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      const char = name.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return icons[Math.abs(hash) % icons.length]
   }
 
   const getProjectColor = (name: string) => {
     const colors = ["bg-blue-50", "bg-purple-50", "bg-green-50", "bg-yellow-50", "bg-red-50", "bg-indigo-50"]
-    return colors[Math.floor(Math.random() * colors.length)]
+    // Use deterministic selection based on name hash to avoid hydration mismatch
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      const char = name.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return colors[Math.abs(hash) % colors.length]
   }
 
 
