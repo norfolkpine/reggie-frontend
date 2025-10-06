@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-interface HeaderAction {
+export interface HeaderAction {
   label: string;
   onClick: () => void;
   variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
