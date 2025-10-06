@@ -78,7 +78,10 @@ export const useResponsiveStore = create<UseResponsiveStore>((set) => ({
 
     window.addEventListener('resize', debouncedResizeHandler);
 
-    resizeHandler();
+    // Use requestAnimationFrame to ensure this runs after the initial render
+    requestAnimationFrame(() => {
+      resizeHandler();
+    });
 
     return () => {
       window.removeEventListener('resize', debouncedResizeHandler);

@@ -173,7 +173,7 @@ export const ResizableContent = memo(function ResizableContent({
   mobileMode = "drawer",
   onMobileClose
 }: ResizableContentProps) {
-  const [leftWidth, setLeftWidth] = useState(50) // percentage
+  const [leftWidth, setLeftWidth] = useState(65) // percentage
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isDraggingRef = useRef(false)
@@ -220,7 +220,7 @@ export const ResizableContent = memo(function ResizableContent({
     if (!showRightSection) {
       setLeftWidth(100);
     } else {
-      setLeftWidth(50);
+      setLeftWidth(65);
     }
   }, [showRightSection]);
 
@@ -239,10 +239,10 @@ export const ResizableContent = memo(function ResizableContent({
       {!isMobile && showRightSection && (
         <div
           className={cn(
-            "absolute top-0 h-full w-3 bg-transparent cursor-col-resize flex items-center justify-center transition-all duration-200 z-10",
+            "absolute top-0 h-full w-1 bg-transparent cursor-col-resize flex items-center justify-center transition-all duration-200 z-10",
             isDragging ? "bg-primary/10" : "hover:bg-primary/5"
           )}
-          style={{ left: `calc(${leftWidth}% - 2.5px)` }}
+          style={{ left: `calc(${leftWidth}% - 0.5px)` }}
           onMouseDown={handleMouseDown}
         >
           <GripVertical 

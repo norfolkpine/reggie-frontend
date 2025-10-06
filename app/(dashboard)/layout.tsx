@@ -21,6 +21,7 @@ const MainContentWrapper = React.memo(({
   headerCustomContent,
   isMobile,
   isScrolled,
+  scrollProgress,
   scrollContainerRef,
   backgroundClass
 }: { 
@@ -30,6 +31,7 @@ const MainContentWrapper = React.memo(({
   headerCustomContent: React.ReactNode;
   isMobile: boolean;
   isScrolled: boolean;
+  scrollProgress: number;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   backgroundClass: string;
 }) => {
@@ -47,7 +49,7 @@ const MainContentWrapper = React.memo(({
     }
 
     return (
-      <div className={`sticky top-0 z-50 transition-all duration-200 ${
+      <div className={`sticky top-0 z-50 transition-all duration-150 ease-out ${
         isScrolled 
           ? 'shadow-md backdrop-blur-md bg-background/80' 
           : 'bg-background'
@@ -60,15 +62,25 @@ const MainContentWrapper = React.memo(({
     );
   };
 
+  // Calculate dynamic border radius based on scroll progress
+  const borderRadius = 12 * (1 - scrollProgress); // 12px (rounded-xl) to 0px
+  
   return (
-    <div className={cn(
-      backgroundClass,
-      "h-full border shadow-sm  overflow-hidden mx-2 transition-all duration-300 ease-in-out",
-      isScrolled ? "mt-0 rounded-none" : "mt-2 rounded-xl"
-    )}>
+    <div 
+      className={cn(
+        backgroundClass,
+        "border shadow-sm  overflow-hidden mx-2 mb-2 transition-all duration-150 ease-out",
+        isScrolled ? "-mt-2 h-[calc(100%+2px)]" : "mt-2",
+        !isScrolled && "h-[calc(100%-1rem)]"
+      )}
+      style={{
+        borderRadius: `${borderRadius}px`,
+        marginTop: isScrolled ? '-2px' : '8px'
+      }}
+    >
       <div className="h-full overflow-auto" ref={scrollContainerRef}>
         {renderHeader()}
-        <div className="px-2">
+        <div className="min-h-[calc(100vh-8rem)]">
           {children}
         </div>
       </div>
@@ -84,6 +96,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isMobile } = useResponsiveStore();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Get active and closing panels
@@ -113,7 +126,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
     const handleScroll = () => {
       const scrollTop = scrollContainer.scrollTop;
+      const maxScroll = 20; // Adjust this value to control when corners fully disappear
+      const progress = Math.min(scrollTop / maxScroll, 1);
+      
       setIsScrolled(scrollTop > 0);
+      setScrollProgress(progress);
     };
 
     scrollContainer.addEventListener('scroll', handleScroll);
@@ -131,12 +148,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       headerCustomContent={headerCustomContent}
       isMobile={isMobile}
       isScrolled={isScrolled}
+      scrollProgress={scrollProgress}
       scrollContainerRef={scrollContainerRef}
       backgroundClass={backgroundClass}
     >
       {children}
     </MainContentWrapper>
-  ), [customHeader, headerActions, headerCustomContent, isMobile, isScrolled, backgroundClass, children]);
+  ), [customHeader, headerActions, headerCustomContent, isMobile, isScrolled, scrollProgress, backgroundClass, children]);
 
   // Memoize right section content
   const rightSectionContent = React.useMemo(() => rightSection?.component, [rightSection?.component]);

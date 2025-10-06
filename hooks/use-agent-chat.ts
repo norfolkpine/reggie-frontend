@@ -411,6 +411,27 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                 if (onTitleUpdate) {
                   onTitleUpdate(parsedData.title);
                 }
+              } else if (parsedData.event === "RunStarted") {
+                setIsAgentResponding(true);
+              } else if (parsedData.event === "RunCompleted") {
+                setIsAgentResponding(false);
+                // Update the final message with the complete content if provided
+                if (parsedData.content) {
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (lastMessageIndex >= 0 && newMessages[lastMessageIndex].role === 'assistant') {
+                      newMessages[lastMessageIndex] = {
+                        ...newMessages[lastMessageIndex],
+                        content: parsedData.content,
+                        id: parsedData.run_id || parsedData.session_id || newMessages[lastMessageIndex].id,
+                        toolCalls: Array.from(currentToolCalls.values()),
+                        reasoningSteps: currentReasoningSteps,
+                      };
+                    }
+                    return newMessages;
+                  });
+                }
               } else if (parsedData.event === "ToolCallStarted") {
                
                   if(parsedData.tool){
@@ -444,7 +465,7 @@ export function useAgentChat({ agentId, sessionId: ssid = null, onNewSessionCrea
                     });
                 }
                 
-              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent") {
+              } else if (parsedData.event === "RunResponse" || parsedData.event === "RunResponseContent" || parsedData.event === "RunContent") {
                 const tokenPart = parsedData.token ?? parsedData.content ?? '';
                 
                 // Update reasoning steps if available
