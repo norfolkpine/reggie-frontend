@@ -62,7 +62,13 @@ export default function ChatsComponent() {
     const actions = isMobile ? [
       {
         label: "History",
-        onClick: () => setIsMobileDockOpen(true),
+        onClick: () => {
+          setIsMobileDockOpen(true);
+          // Set the dock to show current agent history
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('chat-dock-state', JSON.stringify({ activeTab: 'current' }));
+          }
+        },
         icon: <History className="h-4 w-4" />,
         variant: "outline" as const,
         size: "sm" as const
@@ -264,7 +270,7 @@ export default function ChatsComponent() {
       
       {/* Desktop dock - always visible on desktop */}
       <div className="hidden md:block">
-        <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+        <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} currentAgentId={agentId} />
       </div>
       
       {/* Mobile dock - overlay on mobile */}
@@ -275,6 +281,7 @@ export default function ChatsComponent() {
             onNewChat={handleNewChat}
             isMobile={true}
             onClose={() => setIsMobileDockOpen(false)}
+            currentAgentId={agentId}
           />
         </div>
       )}

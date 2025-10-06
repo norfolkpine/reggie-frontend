@@ -37,12 +37,14 @@ const AgentChatDock = memo(function AgentChatDock({
   selectedSessionId: selectedSessionIdProp,
   isMobile = false,
   onClose,
+  currentAgentId,
 }: {
   onSelectChat?: (chatId: string, agentCode?: string | null) => void
   onNewChat?: () => void
   selectedSessionId?: string
   isMobile?: boolean
   onClose?: () => void
+  currentAgentId?: string
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sections, setSections] = useState<ChatSection[]>([])
@@ -111,9 +113,18 @@ const AgentChatDock = memo(function AgentChatDock({
 
   // Memoize sections based on search & date
   const memoizedSections = useMemo(() => {
-    const filtered = searchQuery.trim()
-      ? chatSessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
-      : chatSessions
+    let filtered = chatSessions
+
+    // Filter by current agent if activeTab is "current" and currentAgentId is provided
+    if (activeTab === "current" && currentAgentId) {
+      filtered = filtered.filter((s) => s.agent_code === currentAgentId)
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    }
+
     const today: ChatItem[] = []
     const history: ChatItem[] = []
     const nowStr = new Date().toDateString()
@@ -140,7 +151,7 @@ const AgentChatDock = memo(function AgentChatDock({
     if (today.length) newSections.push({ title: "Today", expanded: true, items: today })
     if (history.length) newSections.push({ title: "History", expanded: true, items: history })
     return newSections
-  }, [chatSessions, searchQuery])
+  }, [chatSessions, searchQuery, activeTab, currentAgentId])
 
   // Update sections state when memoizedSections changes
   useEffect(() => {

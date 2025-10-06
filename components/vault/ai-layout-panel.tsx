@@ -37,11 +37,12 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
   };
 
   const handleClose = () => {
+    console.log('AI Layout Panel close button clicked');
     hideRightSection();
   };
 
   return (
-    <div className="flex bg-card rounded-xl border border-border shadow-sm mx-2 my-2" style={{ height: 'calc(100% - 1rem)' }}>
+    <div className="flex bg-card rounded-xl border border-border shadow-sm mr-2 my-2" style={{ height: 'calc(100% - 1rem)' }}>
       {/* Panel Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
@@ -53,14 +54,18 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Button clicked directly');
+                handleClose();
+              }}
               title="Close AI Assistant"
+              className="p-2 rounded-md hover:bg-muted hover:text-foreground z-40 relative bg-background"
             >
               <X className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
 

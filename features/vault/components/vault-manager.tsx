@@ -24,7 +24,7 @@ export function VaultManager() {
   const router = useRouter();
   const { toast } = useToast();
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
-  const { showRightSection, rightSection } = useRightSection();
+  const { showRightSection, rightSection, toggleRightSection } = useRightSection();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
@@ -121,13 +121,13 @@ export function VaultManager() {
     projectId: projectId
   }), [breadcrumbData.currentFolderId, breadcrumbData.breadcrumbs, project?.name, projectId]);
 
-  // Ask AI handler
+  // Ask AI handler - now toggles the AI panel
   const handleAskAI = useCallback(() => {
     if (!project) return;
     
     const aiPanelComponent = <AiLayoutPanel contextData={aiPanelContext} />;
-    showRightSection("vault-ai-panel", aiPanelComponent);
-  }, [project, aiPanelContext, showRightSection]);
+    toggleRightSection("vault-ai-panel", aiPanelComponent);
+  }, [project, aiPanelContext, toggleRightSection]);
 
   // Set header actions and custom content
   useEffect(() => {
