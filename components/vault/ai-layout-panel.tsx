@@ -62,8 +62,7 @@ export function AiLayoutPanel({ contextData }: AiLayoutPanelProps) {
                 handleClose();
               }}
               title="Close AI Assistant"
-              className="p-2 rounded-md hover:bg-muted hover:text-foreground z-50 relative bg-background"
-              style={{ zIndex: 9999 }}
+              className="p-2 rounded-md hover:bg-muted hover:text-foreground z-40 relative bg-background"
             >
               <X className="h-4 w-4" />
             </button>
