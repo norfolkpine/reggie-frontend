@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Menu, RefreshCcw, Bot } from "lucide-react";
+import { Plus, Menu, RefreshCcw, Bot, History } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import AgentChatDock from "./components/agent-chat-dock";
@@ -63,7 +63,7 @@ export default function ChatsComponent() {
       {
         label: "History",
         onClick: () => setIsMobileDockOpen(true),
-        icon: <Menu className="h-4 w-4" />,
+        icon: <History className="h-4 w-4" />,
         variant: "outline" as const,
         size: "sm" as const
       },
