@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   frontend:
-    container_name: frontend-app
+    container_name: opie-frontend
     image: ${IMAGE_FRONTEND}
     ports:
       - "5173:3000"
