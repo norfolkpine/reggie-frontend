@@ -30,6 +30,7 @@ import { handleApiError } from "@/lib/utils/handle-api-error";
 import { LinkButton } from "@/components/link-button";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthErrorResponse } from "@/types/api";
+import { redirectToProvider } from "@/api/auth";
 
 type SignUpFormProps = HTMLAttributes<HTMLDivElement>;
 
@@ -318,6 +319,10 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 className="w-full"
                 type="button"
                 disabled={isLoading}
+                onClick={() => {
+                  // Redirect to Google using allauth headless endpoint
+                  redirectToProvider('google', '/account/provider/callback')
+                }}
               >
                 <IconBrandGoogle className="h-4 w-4" /> Google
               </Button>
