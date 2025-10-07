@@ -250,3 +250,32 @@ export function redirectToProvider(providerId: string, callbackURL: string = '/a
     form.submit();
   });
 }
+
+export interface ProviderAccount {
+  uid: string;
+  provider: {
+    id: string;
+    name: string;
+    flows: string[];
+    client_id?: string;
+  };
+  display?: string;
+}
+
+export interface ProviderAccountsResponse {
+  status: number;
+  data: ProviderAccount[];
+}
+
+export async function getProviderAccounts(): Promise<ProviderAccountsResponse> {
+  const response = await api.get(`${settings.baseUrl}/account/providers`);
+  return response as ProviderAccountsResponse;
+}
+
+export async function disconnectProviderAccount(providerId: string, accountUid: string): Promise<AllauthResponse> {
+  const response = await api.delete(`${settings.baseUrl}/account/providers`, {
+    body: JSON.stringify({ provider: providerId, account: accountUid }),
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return response as AllauthResponse;
+}
