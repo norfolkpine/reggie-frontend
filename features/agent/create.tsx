@@ -155,7 +155,7 @@ function AgentCreationContent() {
       if (agentData.systemMessage && agentData.systemMessage.trim()) {
         const instruction = await createInstruction({
           instruction: agentData.systemMessage,
-          category: "SYSTEM",
+          category: "System",
           is_enabled: true,
           is_global: false,
           user: 1, // This should be the current user ID
@@ -218,7 +218,7 @@ function AgentCreationContent() {
     <div className="flex-1 flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+          <form className="space-y-4">
             <FormField
               control={form.control}
               name="name"
