@@ -11,6 +11,7 @@ import { teamStorage } from "@/lib/utils/team-storage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentProvider, useAgent } from "./context/agent-context";
 import { useHeader } from "@/contexts/header-context";
+import { useAuth } from "@/contexts/auth-context";
 import { getKnowledgeBases } from "@/api/knowledge-bases"
 import { KnowledgeBase } from "@/types/api"
 import { getAllModelProviders, ModelProvider } from "@/api/agent-providers";
@@ -47,6 +48,7 @@ function AgentCreationContent() {
   const { toast } = useToast();
   const { setAgentData, setIsSubmitting, setIsFetchingData } = useAgent();
   const { setHeaderCustomContent, setHeaderActions } = useHeader();
+  const { user } = useAuth();
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -155,10 +157,10 @@ function AgentCreationContent() {
       if (agentData.systemMessage && agentData.systemMessage.trim()) {
         const instruction = await createInstruction({
           instruction: agentData.systemMessage,
-          category: "System",
+          category: "USER",
           is_enabled: true,
           is_global: false,
-          user: 1, // This should be the current user ID
+          user: user?.id || 1, // Use current user ID or fallback to 1
           agent: 0, // Will be set by the backend
         });
         instructionId = instruction.id;
