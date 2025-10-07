@@ -1,4 +1,6 @@
-import { api } from '@/lib/api-client';
+import { api, ensureCSRFToken } from '@/lib/api-client';
+import { getCSRFToken } from '@/api';
+import { BASE_URL } from '@/lib/api-client';
 import { 
   Login, 
   User, 
@@ -39,6 +41,8 @@ export const settings = {
   baseUrl: `/_allauth/${Client.BROWSER}/v1`,
   withCredentials: false
 }
+
+export type AuthProcess = 'login' | 'connect'
 
 export async function login(credentials: Login): Promise<LoginResponse> {
   const response = await api.post(`${settings.baseUrl}/auth/login`, credentials);
@@ -88,7 +92,8 @@ export async function getAllauthUser(): Promise<AllauthUserResponse> {
     
     if (is404Error) {
       console.warn('Allauth user endpoint not available, using mock data');
-      return {
+      const mock = {
+        status: 200,
         data: {
           id: 1,
           username: 'demo_user',
@@ -96,11 +101,9 @@ export async function getAllauthUser(): Promise<AllauthUserResponse> {
           first_name: 'Demo',
           last_name: 'User',
           display: 'Demo User'
-        },
-        meta: {
-          is_authenticated: true
         }
       } as AllauthUserResponse;
+      return mock;
     }
     throw error;
   }
@@ -119,7 +122,8 @@ export async function updateAllauthUser(userData: AllauthUserUpdate): Promise<Al
     
     if (is404Error) {
       console.warn('Allauth user update endpoint not available, using mock response');
-      return {
+      const mock = {
+        status: 200,
         data: {
           id: 1,
           username: userData.username || 'demo_user',
@@ -127,11 +131,9 @@ export async function updateAllauthUser(userData: AllauthUserUpdate): Promise<Al
           first_name: userData.first_name || 'Demo',
           last_name: userData.last_name || 'User',
           display: `${userData.first_name || 'Demo'} ${userData.last_name || 'User'}`
-        },
-        meta: {
-          is_authenticated: true
         }
       } as AllauthUserResponse;
+      return mock;
     }
     throw error;
   }
@@ -149,7 +151,11 @@ export async function addEmailAddress(emailData: AllauthEmailAdd): Promise<Allau
 }
 
 export async function deleteEmailAddress(emailData: AllauthEmailDelete): Promise<AllauthResponse> {
-  const response = await api.delete(`${settings.baseUrl}/account/email`, emailData);
+  const response = await api.delete(`${settings.baseUrl}/account/email`, {
+    // RequestInit allows body on DELETE; our api wrapper passes it through
+    body: JSON.stringify(emailData),
+    headers: { 'Content-Type': 'application/json' }
+  });
   return response as AllauthResponse;
 }
 
@@ -213,4 +219,34 @@ export async function authenticateMFA(authData: AllauthMFAAuthenticate): Promise
 export async function deactivateAuthenticator(authenticatorId: string): Promise<AllauthResponse> {
   const response = await api.delete(`${settings.baseUrl}/account/authenticators/${authenticatorId}`);
   return response as AllauthResponse;
+}
+
+// Social login: Redirect to provider via Django Allauth headless endpoint
+export function redirectToProvider(providerId: string, callbackURL: string = '/account/provider/callback', process: AuthProcess = 'login') {
+  // Ensure CSRF token exists before posting the form
+  void ensureCSRFToken().then(() => {
+    const csrf = getCSRFToken();
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${BASE_URL}${settings.baseUrl}/auth/provider/redirect`;
+
+    const fields: Record<string, string> = {
+      provider: providerId,
+      process,
+      callback_url: window.location.protocol + '//' + window.location.host + callbackURL,
+      csrfmiddlewaretoken: csrf || ''
+    };
+
+    Object.entries(fields).forEach(([name, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  });
 }
