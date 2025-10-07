@@ -102,9 +102,18 @@ export default function ProfileForm() {
       await disconnectProviderAccount('google', acc.uid)
       setProviders((prev) => (prev || []).filter(p => !(p.provider.id === 'google' && p.uid === acc.uid)))
       toast({ title: 'Disconnected', description: 'Google account disconnected.' })
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to disconnect Google', e)
-      toast({ title: 'Error', description: 'Failed to disconnect Google.', variant: 'destructive' })
+      const firstError = Array.isArray(e?.errors) && e.errors.length ? e.errors[0] : null
+      const isNoPassword = firstError?.code === 'no_password'
+      const description = firstError?.message
+        || (typeof e?.message === 'string' ? e.message : null)
+        || 'Failed to disconnect Google.'
+      toast({
+        title: 'Error',
+        description: isNoPassword ? `${description} Please set a password before disconnecting this provider.` : description,
+        variant: 'destructive'
+      })
     }
   }
 
