@@ -11,6 +11,7 @@ import { teamStorage } from "@/lib/utils/team-storage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentProvider, useAgent } from "./context/agent-context";
 import { useHeader } from "@/contexts/header-context";
+import { useAuth } from "@/contexts/auth-context";
 import { getKnowledgeBases } from "@/api/knowledge-bases"
 import { KnowledgeBase } from "@/types/api"
 import { getAllModelProviders, ModelProvider } from "@/api/agent-providers";
@@ -32,6 +33,7 @@ import {
 import { useForm } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 const formSchema = z.object({
@@ -40,13 +42,15 @@ const formSchema = z.object({
   systemMessage: z.string().default(""),
   model: z.string().min(1, "Model is required"),
   knowledgeBaseId: z.string().nullable().default(null),
-  searchKnowledge: z.boolean().default(false)
+  searchKnowledge: z.boolean().default(false),
+  citeKnowledge: z.boolean().default(false)
 });
 
 function AgentCreationContent() {
   const { toast } = useToast();
   const { setAgentData, setIsSubmitting, setIsFetchingData } = useAgent();
   const { setHeaderCustomContent, setHeaderActions } = useHeader();
+  const { user } = useAuth();
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -57,7 +61,8 @@ function AgentCreationContent() {
       systemMessage: "",
       model: "",
       knowledgeBaseId: null,
-      searchKnowledge: false
+      searchKnowledge: false,
+      citeKnowledge: false
     }
   });
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
@@ -132,6 +137,7 @@ function AgentCreationContent() {
           form.setValue("model", agent.model.toString());
           form.setValue("knowledgeBaseId", agent.knowledge_base || null);
           form.setValue("searchKnowledge", agent.search_knowledge || false);
+          form.setValue("citeKnowledge", false);
         } catch (error) {
           console.error('Error fetching agent data:', error);
         } finally {
@@ -146,7 +152,7 @@ function AgentCreationContent() {
     setIsSubmitting(true);
     try {
       const agentData = form.getValues();
-      if (agentData.knowledgeBaseId) {
+      if (agentData.knowledgeBaseId && agentData.knowledgeBaseId !== "none") {
         agentData.searchKnowledge = true;
       }
 
@@ -155,10 +161,10 @@ function AgentCreationContent() {
       if (agentData.systemMessage && agentData.systemMessage.trim()) {
         const instruction = await createInstruction({
           instruction: agentData.systemMessage,
-          category: "System",
+          category: "USER",
           is_enabled: true,
           is_global: false,
-          user: 1, // This should be the current user ID
+          user: user?.id || 1, // Use current user ID or fallback to 1
           agent: 0, // Will be set by the backend
         });
         instructionId = instruction.id;
@@ -171,6 +177,7 @@ function AgentCreationContent() {
         team: teamStorage.getActiveTeam()?.id || null,
         knowledge_base: agentData.knowledgeBaseId === "none" || !agentData.knowledgeBaseId ? undefined : agentData.knowledgeBaseId,
         search_knowledge: agentData.searchKnowledge || false,
+        cite_knowledge: agentData.citeKnowledge || false,
         instructions_id: instructionId,
         custom_instruction: agentData.systemMessage || "",
       };
@@ -218,7 +225,7 @@ function AgentCreationContent() {
     <div className="flex-1 flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4">
         <Form {...form}>
-          <form className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -310,8 +317,10 @@ function AgentCreationContent() {
                       field.onChange(value === "none" ? null : value);
                       if (value && value !== "none") {
                         form.setValue("searchKnowledge", true);
+                        form.setValue("citeKnowledge", true);
                       } else {
                         form.setValue("searchKnowledge", false);
+                        form.setValue("citeKnowledge", false);
                       }
                     }}
                     value={field.value ?? "none"}
@@ -341,9 +350,31 @@ function AgentCreationContent() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="citeKnowledge"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Cite Knowledge Sources
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, the agent will cite sources from the knowledge base in its responses.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
             <div className="mt-8 flex justify-between">
               <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
-              <Button type="submit" onClick={handleSave}>{agentId ? "Update Agent" : "Create Agent"}</Button>
+              <Button type="submit">{agentId ? "Update Agent" : "Create Agent"}</Button>
             </div>
           </form>
         </Form>
