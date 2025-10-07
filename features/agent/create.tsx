@@ -161,7 +161,7 @@ function AgentCreationContent() {
       if (agentData.systemMessage && agentData.systemMessage.trim()) {
         const instruction = await createInstruction({
           instruction: agentData.systemMessage,
-          category: "USER",
+          category: "User",
           is_enabled: true,
           is_global: false,
           user: user?.id || 1, // Use current user ID or fallback to 1
