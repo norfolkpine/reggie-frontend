@@ -90,7 +90,6 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
         setUser(null);
       });
     } catch (error) {
-      console.error("Logout failed:", error);
       // Even if logout API fails, we should still clear local storage
       await clearAllStorage(queryClient || undefined);
       flushSync(() => {
