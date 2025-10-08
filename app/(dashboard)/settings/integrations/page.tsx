@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search } from "@/components/search";
 import { Button } from "@/components/custom/button";
-import { getNangoIntegrations, getIntegrations, NangoConnection, Integration, revokeAccess, saveNangoConnection, getConnections, createNangoSession } from "@/api/integrations";
+import { getIntegrations, getNangoIntegrations, NangoConnection, Integration, revokeAccess, saveNangoConnection, getConnections, createNangoSession } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
 import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
@@ -62,7 +62,7 @@ export default function IntegrationsSettingsPage() {
   // React Query for integrations
   const { data: integrationsData, isLoading: integrationsLoading, error: integrationsError } = useQuery({
     queryKey: ['integrations'],
-    queryFn: () => getIntegrations(),
+    queryFn: () => getIntegrations(), 
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -77,12 +77,12 @@ export default function IntegrationsSettingsPage() {
 
   // Memoized processed integrations with connection status
   const apps = useMemo(() => {
-    console.log("integrations", integrationsData);
     if (!integrationsData || !connectionsData) return [];
 
+    const integrations = Array.isArray(integrationsData) ? integrationsData : (integrationsData as any)?.data || (integrationsData as any)?.results || [];
     const connections = Array.isArray(connectionsData) ? connectionsData : (connectionsData as any)?.data || (connectionsData as any)?.results || [];
 
-    return integrationsData.map((integration: any) => {
+    return integrations.map(integration => {
       const isConnected = connections?.some((connection: NangoConnection) => connection.provider === integration.key);
       return {
         ...integration,
@@ -122,8 +122,6 @@ export default function IntegrationsSettingsPage() {
 
         // Create Nango instance without session token initially
         const nangoInstance = new Nango();
-        console.log('[Nango] Connect UI instance:', nangoInstance);
-
         setNango(nangoInstance);
         console.log('[Nango] Nango instance created');
 
@@ -158,9 +156,13 @@ export default function IntegrationsSettingsPage() {
     // Create session token for this specific integration
     let sessionToken;
     try {
-      const sessionToken = await createNangoSession(integration.key);
-      console.log("sessionToken", sessionToken);
+      console.log(`[Nango] Creating session token for integration: ${integration.key}`);
+      sessionToken = await createNangoSession(integration.key);
+      console.log(`[Nango] Session token received:`, sessionToken);
+      console.log(`[Nango] Session token type:`, typeof sessionToken);
+      console.log(`[Nango] Session token length:`, sessionToken?.length);
       setNangoSessionToken(sessionToken);
+      console.log(`[Nango] Session token created successfully`);
     } catch (error) {
       console.error('[Nango] Failed to create session token:', error);
       setIsInitializing(false);
@@ -222,7 +224,7 @@ export default function IntegrationsSettingsPage() {
               // Save the connection to database
               console.log('[Nango] Saving connection to database...', { provider: actualProvider, connectionId });
 
-              const handleConnectionSave = async () => {
+              const               handleConnectionSave = async () => {
                 console.log('[Nango] Waiting for webhook processing...');
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
