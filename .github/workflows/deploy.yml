@@ -120,6 +120,11 @@ jobs:
             mkdir -p ~/frontend
             cd ~/frontend
             
+            # Verify we're in the correct directory
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
+            
             # Create docker-compose.yml with correct image URL
             cat > docker-compose.yml << EOF
             version: '3.8'
@@ -140,6 +145,13 @@ jobs:
             if [ ! -f .env.frontend ]; then
               echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env.frontend
             fi
+            
+            # Verify docker-compose.yml was created correctly
+            echo "Verifying docker-compose.yml:"
+            cat docker-compose.yml
+            echo "Current directory: $(pwd)"
+            echo "Files in current directory:"
+            ls -la
             
             # No need to update image - it's already correct in docker-compose.yml
 
@@ -176,6 +188,21 @@ jobs:
             fi
             
             # Deploy with optimized commands
+            # Ensure we're in the correct directory before running docker-compose
+            echo "Final directory check before deployment:"
+            echo "Current directory: $(pwd)"
+            echo "Checking for docker-compose.yml:"
+            if [ -f docker-compose.yml ]; then
+              echo "✓ docker-compose.yml found"
+              echo "Contents:"
+              cat docker-compose.yml
+            else
+              echo "✗ docker-compose.yml not found!"
+              echo "Directory contents:"
+              ls -la
+              exit 1
+            fi
+            
             echo "Pulling latest image..."
             sudo docker-compose pull --quiet
             
