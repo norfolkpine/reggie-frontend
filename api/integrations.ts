@@ -1,4 +1,5 @@
 import { api } from '@/lib/api-client';
+import { type } from 'os';
 
 export interface Integration {
   key: string;
@@ -47,8 +48,12 @@ interface Connection {
   connectionId: string | undefined;
 }
 
+interface NangoSession {
+  token: string;
+}
+
 export const getIntegrations = async (page: number = 1) => {
-  const response = await api.get('/integrations/integrations', {
+  const response = await api.get('/integrations/apps/', {
     params: { page: page.toString() }
   });
   
@@ -57,16 +62,16 @@ export const getIntegrations = async (page: number = 1) => {
   const integrations = data.data || data.results || data;
   
   return integrations.map((integration: any) => ({
-    key: integration.unique_key,
-    title: integration.display_name,
+    key: integration.key,
+    title: integration.title,
     description: `Provider: ${integration.provider}`,
-    icon_url: integration.logo,
+    icon_url: integration.icon_url,
     is_connected: false, // This will be updated based on connections
   })) as Integration[];
 };
 
 export const getConnections = async (page: number = 1) => {
-  const response = await api.get('/integrations/connections/', {
+  const response = await api.get('/integrations/conections/', {
     params: { page: page.toString() }
   });
   return response as NangoConnection[];
@@ -124,25 +129,10 @@ export const createNangoSession = async (integration: string): Promise<string> =
   console.log(`[API] Creating Nango session for integration: ${integration}`);
   try {
     const response = await api.post('/integrations/nangosession/', { integration });
-    console.log(`[API] Session creation response:`, response);
     const data = response as any;
 
-    if (data.error) {
-      console.error(`[API] Session creation failed with error: ${data.error}`);
-      throw new Error(`Failed to create Nango session: ${data.error}`);
-    }
-
-    // Extract token from the response structure
-    // Handle both nested {data: {token: "..."}} and direct {token: "..."} structures
-    const token = data.data?.token || data.token;
-    
-    if (!token) {
-      console.error(`[API] Missing token in response:`, data);
-      console.error(`[API] Response structure:`, JSON.stringify(data, null, 2));
-      throw new Error('Invalid session response: missing token');
-    }
-
-    console.log(`[API] Session token created successfully: ${token.substring(0, 20)}...`);
+    const token = data.token as string;
+    console.log((typeof token))
     return token;
   } catch (error) {
     console.error(`[API] Session creation failed:`, error);
