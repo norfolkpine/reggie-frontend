@@ -79,11 +79,9 @@ export default function IntegrationsSettingsPage() {
     console.log("integrations", integrationsData);
     if (!integrationsData || !connectionsData) return [];
 
-    const integrations = Array.isArray(integrationsData) ? integrationsData : (integrationsData as any)?.data || (integrationsData as any)?.results || [];
-
     const connections = Array.isArray(connectionsData) ? connectionsData : (connectionsData as any)?.data || (connectionsData as any)?.results || [];
 
-    return integrations.map((integration: any) => {
+    return integrationsData.map((integration: any) => {
       const isConnected = connections?.some((connection: NangoConnection) => connection.provider === integration.key);
       return {
         ...integration,
@@ -150,10 +148,9 @@ export default function IntegrationsSettingsPage() {
 
     // Create session token for this specific integration
     try {
-      console.log(`[Nango] Creating session token for integration: ${integration.key}`);
       const sessionToken = await createNangoSession(integration.key);
+      console.log("sessionToken", sessionToken);
       setNangoSessionToken(sessionToken);
-      console.log(`[Nango] Session token created successfully`);
     } catch (error) {
       console.error('[Nango] Failed to create session token:', error);
       toast({
