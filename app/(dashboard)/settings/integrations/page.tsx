@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search } from "@/components/search";
 import { Button } from "@/components/custom/button";
-import { getNangoIntegrations, NangoConnection, Integration, revokeAccess, saveNangoConnection, getConnections, createNangoSession } from "@/api/integrations";
+import { getIntegrations, getNangoIntegrations, NangoConnection, Integration, revokeAccess, saveNangoConnection, getConnections, createNangoSession } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
 import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
@@ -61,7 +61,7 @@ export default function IntegrationsSettingsPage() {
   // React Query for integrations
   const { data: integrationsData, isLoading: integrationsLoading, error: integrationsError } = useQuery({
     queryKey: ['integrations'],
-    queryFn: () => getNangoIntegrations(),
+    queryFn: () => getIntegrations(), 
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -78,9 +78,10 @@ export default function IntegrationsSettingsPage() {
   const apps = useMemo(() => {
     if (!integrationsData || !connectionsData) return [];
 
+    const integrations = Array.isArray(integrationsData) ? integrationsData : (integrationsData as any)?.data || (integrationsData as any)?.results || [];
     const connections = Array.isArray(connectionsData) ? connectionsData : (connectionsData as any)?.data || (connectionsData as any)?.results || [];
 
-    return integrationsData.map(integration => {
+    return integrations.map(integration => {
       const isConnected = connections?.some((connection: NangoConnection) => connection.provider === integration.key);
       return {
         ...integration,

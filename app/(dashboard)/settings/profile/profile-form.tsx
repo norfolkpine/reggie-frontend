@@ -63,6 +63,11 @@ export default function ProfileForm() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     mode: 'onChange',
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      username: '',
+    }
   })
 
   // Initialize form with auth context user data
