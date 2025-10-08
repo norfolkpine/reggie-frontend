@@ -55,6 +55,7 @@ export default function IntegrationsSettingsPage() {
   const [nangoConnect, setNangoConnect] = useState<any>(null);
   const [nango, setNango] = useState<Nango | null>(null);
   const [appIntegration, setIntegration] = useState<Integration | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -135,24 +136,34 @@ export default function IntegrationsSettingsPage() {
   }, [toast]);
 
   const initializeConnectUI = async (integration: Integration) => {
+    // Prevent multiple simultaneous initializations
+    if (isInitializing) {
+      console.log('[Nango] Connect UI is already being initialized, skipping...');
+      return null;
+    }
 
     if (nangoConnect) {
       console.log('[Nango] Using existing Connect UI instance');
       return nangoConnect;
     }
 
+    setIsInitializing(true);
+
     if (!nango) {
       console.error('[Nango] Cannot initialize Connect UI: missing nango instance');
+      setIsInitializing(false);
       return null;
     }
 
     // Create session token for this specific integration
+    let sessionToken;
     try {
       const sessionToken = await createNangoSession(integration.key);
       console.log("sessionToken", sessionToken);
       setNangoSessionToken(sessionToken);
     } catch (error) {
       console.error('[Nango] Failed to create session token:', error);
+      setIsInitializing(false);
       toast({
         title: "Session Error",
         description: "Failed to create connection session. Please try again.",
@@ -256,6 +267,50 @@ export default function IntegrationsSettingsPage() {
               setNangoConnect(null);
             } else if (event.type === 'close') {
               console.log('[Nango] Connect UI closed');
+              
+              // Force cleanup of any remaining DOM elements
+              setTimeout(() => {
+                console.log('[Nango] Cleaning up leftover DOM elements...');
+                
+                // Remove all possible Connect UI elements
+                const selectors = [
+                  'iframe[src*="connect"]',
+                  'iframe[src*="opie.sh"]',
+                  '[data-nango-connect]',
+                  '.nango-connect',
+                  '#nango-connect',
+                  '.modal-overlay',
+                  '.modal-backdrop',
+                  '[role="dialog"]',
+                  '.connect-ui-modal',
+                  '.nango-modal'
+                ];
+                
+                selectors.forEach(selector => {
+                  const elements = document.querySelectorAll(selector);
+                  elements.forEach(element => {
+                    console.log(`[Nango] Removing: ${selector}`);
+                    element.remove();
+                  });
+                });
+                
+                // Restore page interactions
+                document.body.style.pointerEvents = '';
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                
+                // Remove any blocking styles from all elements
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(element => {
+                  if (element instanceof HTMLElement) {
+                    element.style.pointerEvents = '';
+                    element.style.userSelect = '';
+                    element.style.position = '';
+                  }
+                });
+                
+                console.log('[Nango] Cleanup completed');
+              }, 100);
             }
           } catch (error) {
             console.error('[Nango] Error handling event:', error);
@@ -265,19 +320,26 @@ export default function IntegrationsSettingsPage() {
       });
 
       console.log("connectUI", connectUI);
-      console.log(`[Nango] Setting session token: ${nangoSessionToken}`);
-      if (nangoSessionToken) {
-        connectUI.setSessionToken(nangoSessionToken!);
+      console.log(`[Nango] Setting session token: ${sessionToken}`);
+      console.log(`[Nango] Session token is truthy:`, !!sessionToken);
+      console.log(`[Nango] Session token value:`, sessionToken);
+      
+      if (sessionToken) {
+        console.log(`[Nango] About to set session token on Connect UI`);
+        connectUI.setSessionToken(sessionToken);
         setNangoConnect(connectUI);
         console.log(`[Nango] Connect UI initialized and ready`);
       } else {
         console.error('[Nango] Session token is null, cannot set session token');
+        console.error('[Nango] Session token value:', sessionToken);
         return null;
       }
 
+      setIsInitializing(false);
       return connectUI;
     } catch (error) {
       console.error('[Nango] Error initializing Connect UI:', error);
+      setIsInitializing(false);
       return null;
     }
   };
