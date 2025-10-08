@@ -132,14 +132,18 @@ export const createNangoSession = async (integration: string): Promise<string> =
       throw new Error(`Failed to create Nango session: ${data.error}`);
     }
 
-    // Nango returns the token in the response
-    if (!data.token) {
+    // Extract token from the response structure
+    // Handle both nested {data: {token: "..."}} and direct {token: "..."} structures
+    const token = data.data?.token || data.token;
+    
+    if (!token) {
       console.error(`[API] Missing token in response:`, data);
+      console.error(`[API] Response structure:`, JSON.stringify(data, null, 2));
       throw new Error('Invalid session response: missing token');
     }
 
-    console.log(`[API] Session token created successfully: ${data.token.substring(0, 20)}...`);
-    return data.token;
+    console.log(`[API] Session token created successfully: ${token.substring(0, 20)}...`);
+    return token;
   } catch (error) {
     console.error(`[API] Session creation failed:`, error);
     throw error;

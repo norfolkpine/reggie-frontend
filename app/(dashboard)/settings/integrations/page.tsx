@@ -145,9 +145,13 @@ export default function IntegrationsSettingsPage() {
     }
 
     // Create session token for this specific integration
+    let sessionToken;
     try {
       console.log(`[Nango] Creating session token for integration: ${integration.key}`);
-      const sessionToken = await createNangoSession(integration.key);
+      sessionToken = await createNangoSession(integration.key);
+      console.log(`[Nango] Session token received:`, sessionToken);
+      console.log(`[Nango] Session token type:`, typeof sessionToken);
+      console.log(`[Nango] Session token length:`, sessionToken?.length);
       setNangoSessionToken(sessionToken);
       console.log(`[Nango] Session token created successfully`);
     } catch (error) {
@@ -264,13 +268,18 @@ export default function IntegrationsSettingsPage() {
       });
 
       console.log("connectUI", connectUI);
-      console.log(`[Nango] Setting session token: ${nangoSessionToken}`);
-      if (nangoSessionToken) {
-        connectUI.setSessionToken(nangoSessionToken!);
+      console.log(`[Nango] Setting session token: ${sessionToken}`);
+      console.log(`[Nango] Session token is truthy:`, !!sessionToken);
+      console.log(`[Nango] Session token value:`, sessionToken);
+      
+      if (sessionToken) {
+        console.log(`[Nango] About to set session token on Connect UI`);
+        connectUI.setSessionToken(sessionToken);
         setNangoConnect(connectUI);
         console.log(`[Nango] Connect UI initialized and ready`);
       } else {
         console.error('[Nango] Session token is null, cannot set session token');
+        console.error('[Nango] Session token value:', sessionToken);
         return null;
       }
 
