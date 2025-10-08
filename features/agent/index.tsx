@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import TypingIndicator from "../chats/components/typing-indicator"
 import { useHeader } from "@/contexts/header-context"
+import { CreateAgentDialog } from "./create-dialog";
+import { AgentProvider } from "./context/agent-context"
 
 const categories = ["All", "Sales", "Marketing", "Engineering", "Product"]
 
@@ -25,12 +27,14 @@ export default function ExploreAgents() {
   const {toast} = useToast()
   const router = useRouter()
   const { setHeaderActions, setHeaderCustomContent } = useHeader()
+  const [createAgentOpen, setCreateAgentOpen] = useState(false);
+  const [agentId, setAgentId] = useState<number | null>(null);
 
   // Memoized header actions
   const headerActions = useMemo(() => [
     {
       label: "Create Agent",
-      onClick: () => router.push('/agent/create'),
+      onClick: () => setCreateAgentOpen(true),
       icon: <Plus className="h-4 w-4" />,
       variant: "default" as const,
       size: "sm" as const
@@ -73,6 +77,11 @@ export default function ExploreAgents() {
   const handleDeleteAgent = useCallback(async () => {
     await fetchAgents();
   }, [fetchAgents]);
+
+  const handleEditAgent = useCallback((id: number) => {
+    setAgentId(id);
+    setCreateAgentOpen(true);
+  }, []);
 
   useEffect(() => {
     fetchAgents()
@@ -130,11 +139,25 @@ export default function ExploreAgents() {
               title="All Agents"
               agents={filteredAgents}
               onDelete={handleDeleteAgent}
+              onEdit={handleEditAgent}
             />
           </>
         )}
       </div>
+      <AgentProvider>
+        <CreateAgentDialog
+          open={createAgentOpen}
+          onOpenChange={(open) => {
+            setCreateAgentOpen(open);
+            if (!open) setAgentId(null);
+          }}
+          agent_id={agentId}
+          onSuccess={fetchAgents}
+        />
+      </AgentProvider>
+      
     </div>
+    
   )
 }
 

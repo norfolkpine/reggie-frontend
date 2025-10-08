@@ -29,9 +29,10 @@ import { useToast } from "@/components/ui/use-toast";
 interface AgentCardProps {
   agent: Agent;
   onDelete?: (id: number) => void;
+  onEdit?: (id: number) => void;
 }
 
-export function AgentCard({ agent, onDelete }: AgentCardProps) {
+export function AgentCard({ agent, onDelete, onEdit }: AgentCardProps) {
   const router = useRouter();
   const { refresh } = useChatSessionContext();
   const { toast } = useToast();
@@ -111,7 +112,7 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/agent/create?id=${agent.id}`);
+                    if (onEdit) onEdit(agent.id);
                   }}
                 >
                   Edit
