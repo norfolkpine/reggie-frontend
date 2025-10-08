@@ -303,7 +303,7 @@ export function VaultManager() {
     if (!project || !project.id) return;
     setIsRenaming(true);
     try {
-      await import("@/api/projects").then(({ updateProject }) => updateProject(project.id!, { ...project, name: newName }));
+      await import("@/api/projects").then(({ updateProject }) => updateProject(project.uuid ?? project.id!, { ...project, name: newName }));
       toast({ title: "Project renamed", description: `Project renamed to '${newName}'.` });
       setRenameOpen(false);
       setNewName("");
