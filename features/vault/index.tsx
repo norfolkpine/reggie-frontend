@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { EmptyState } from "@/components/ui/empty-state"
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Plus,
   MessageSquare,
@@ -20,30 +20,32 @@ import {
   Loader2,
   User,
   Folder,
-} from "lucide-react"
-import { CreateProjectDialog } from "./components/create-project-dialog"
-import { getProjects, createProject } from "@/api/projects"
-import { ProjectCard } from "./components/project-card"
-import { Project, getProjectId } from "@/types/api"
-import { formatDateVariants } from "@/lib/utils/date-formatter"
-import { useAuth } from "@/contexts/auth-context"
-import { useHeader } from "@/contexts/header-context"
-import Link from "next/link"
-import SearchInput from "@/components/ui/search-input"
-import { useToast } from "@/components/ui/use-toast"
-import { useRouter } from "next/navigation"
+} from "lucide-react";
+import { CreateProjectDialog } from "./components/create-project-dialog";
+import { getProjects, createProject } from "@/api/projects";
+import { ProjectCard } from "./components/project-card";
+import { Project, getProjectId } from "@/types/api";
+import { formatDateVariants } from "@/lib/utils/date-formatter";
+import { useAuth } from "@/contexts/auth-context";
+import { useHeader } from "@/contexts/header-context";
+import Link from "next/link";
+import SearchInput from "@/components/ui/search-input";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function Projects() {
-  const { toast } = useToast()
-  const { setHeaderActions, setHeaderCustomContent } = useHeader()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [createProjectOpen, setCreateProjectOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [viewMode, setViewMode] = useState<"starred" | "user" | "userProjects">("user")
-  const auth = useAuth()
-  const router = useRouter()
+  const { toast } = useToast();
+  const { setHeaderActions, setHeaderCustomContent } = useHeader();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"starred" | "user" | "userProjects">(
+    "user"
+  );
+  const auth = useAuth();
+  const router = useRouter();
 
   // Set header actions and custom content
   useEffect(() => {
@@ -54,12 +56,14 @@ export default function Projects() {
         onClick: () => setCreateProjectOpen(true),
         icon: <Plus className="h-4 w-4" />,
         variant: "default",
-        size: "sm"
-      }
+        size: "sm",
+      },
     ]);
 
     // Don't override the header content during loading - let the default title show
-    setHeaderCustomContent(null);
+    setHeaderCustomContent(
+      <div className="text-lg font-medium ">Vault</div>
+    );
 
     return () => {
       setHeaderActions([]);
@@ -68,133 +72,167 @@ export default function Projects() {
   }, [setHeaderActions, setHeaderCustomContent]);
 
   useEffect(() => {
-    fetchProjects()
-  }, [])
+    fetchProjects();
+  }, []);
 
   const fetchProjects = async () => {
     try {
-      setLoading(true)
-      const response = await getProjects()
-      console.log('API Response:', response);
-      console.log('First project:', response.results[0]);
-      console.log('First project ID field:', response.results[0]?.id);
-      console.log('First project UUID field:', response.results[0]?.uuid);
-      console.log('First project project_id field:', response.results[0]?.project_id);
-      console.log('First project project_uuid field:', response.results[0]?.project_uuid);
-      
-      setProjects(response.results.map(project => ({
-        ...project,
-        icon: getProjectIcon(project.name ?? ''),
-        color: getProjectColor(project.name ?? ''),
-        starred: false,
-        tags: [],
-        lastUpdated: `Updated ${ project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`,
-        teamSize: 1,
-        chatCount: 0,
-        chatIcon: MessageSquare
-      })))
+      setLoading(true);
+      const response = await getProjects();
+      console.log("API Response:", response);
+      console.log("First project:", response.results[0]);
+      console.log("First project ID field:", response.results[0]?.id);
+      console.log("First project UUID field:", response.results[0]?.uuid);
+      console.log(
+        "First project project_id field:",
+        response.results[0]?.project_id
+      );
+      console.log(
+        "First project project_uuid field:",
+        response.results[0]?.project_uuid
+      );
+
+      setProjects(
+        response.results.map((project) => ({
+          ...project,
+          icon: getProjectIcon(project.name ?? ""),
+          color: getProjectColor(project.name ?? ""),
+          starred: false,
+          tags: [],
+          lastUpdated: `Updated ${
+            project.updated_at && formatDateVariants.dateAgo(project.updated_at)
+          }`,
+          teamSize: 1,
+          chatCount: 0,
+          chatIcon: MessageSquare,
+        }))
+      );
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load projects. Please try again later.",
-        variant: "destructive"
-      })
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCreateProject = async (name: string, description: string) => {
     try {
       const newProject = await createProject({
         name,
         description: description,
-        owner: auth.user?.id
-      })
-      
-      setProjects(prevProjects => [...prevProjects, {
-        ...newProject,
-        icon: getProjectIcon(newProject.name ?? ''),
-        color: getProjectColor(newProject.name ?? ''),
-        starred: false,
-        tags: [],
-        lastUpdated: `Updated ${newProject.updated_at && formatDateVariants.dateAgo(newProject.updated_at)}`,
-        teamSize: 1,
-        chatCount: 0,
-        chatIcon: MessageSquare
-      }])
+        owner: auth.user?.id,
+      });
+
+      setProjects((prevProjects) => [
+        ...prevProjects,
+        {
+          ...newProject,
+          icon: getProjectIcon(newProject.name ?? ""),
+          color: getProjectColor(newProject.name ?? ""),
+          starred: false,
+          tags: [],
+          lastUpdated: `Updated ${
+            newProject.updated_at &&
+            formatDateVariants.dateAgo(newProject.updated_at)
+          }`,
+          teamSize: 1,
+          chatCount: 0,
+          chatIcon: MessageSquare,
+        },
+      ]);
 
       toast({
         title: "Success",
-        description: "Project created successfully"
-      })
+        description: "Project created successfully",
+      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create project. Please try again later.",
-        variant: "destructive"
-      })
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   // Handle project deletion without page refresh
   const handleProjectDeleted = useCallback((projectId: string) => {
-    setProjects(prevProjects => prevProjects.filter(project => {
-      const id = getProjectId(project);
-      return id !== projectId;
-    }));
+    setProjects((prevProjects) =>
+      prevProjects.filter((project) => {
+        const id = getProjectId(project);
+        return id !== projectId;
+      })
+    );
   }, []);
 
   // Handle project renaming without page refresh
-  const handleProjectRenamed = useCallback((projectId: string, newName: string) => {
-    setProjects(prevProjects => prevProjects.map(project => {
-      const id = getProjectId(project);
-      if (id === projectId) {
-        return {
-          ...project,
-          name: newName,
-          lastUpdated: `Updated ${project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`
-        };
-      }
-      return project;
-    }));
-  }, []);
+  const handleProjectRenamed = useCallback(
+    (projectId: string, newName: string) => {
+      setProjects((prevProjects) =>
+        prevProjects.map((project) => {
+          const id = getProjectId(project);
+          if (id === projectId) {
+            return {
+              ...project,
+              name: newName,
+              lastUpdated: `Updated ${
+                project.updated_at &&
+                formatDateVariants.dateAgo(project.updated_at)
+              }`,
+            };
+          }
+          return project;
+        })
+      );
+    },
+    []
+  );
 
   const getProjectIcon = (name: string) => {
-    const icons = [Database, Globe, BarChart, Code, Zap, FileText]
+    const icons = [Database, Globe, BarChart, Code, Zap, FileText];
     // Use deterministic selection based on name hash to avoid hydration mismatch
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       const char = name.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
-    return icons[Math.abs(hash) % icons.length]
-  }
+    return icons[Math.abs(hash) % icons.length];
+  };
 
   const getProjectColor = (name: string) => {
-    const colors = ["bg-blue-50", "bg-purple-50", "bg-green-50", "bg-yellow-50", "bg-red-50", "bg-indigo-50"]
+    const colors = [
+      "bg-blue-50",
+      "bg-purple-50",
+      "bg-green-50",
+      "bg-yellow-50",
+      "bg-red-50",
+      "bg-indigo-50",
+    ];
     // Use deterministic selection based on name hash to avoid hydration mismatch
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       const char = name.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
-    return colors[Math.abs(hash) % colors.length]
-  }
-
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   // Extract unique tags from projects
-  const allTags = Array.from(new Set(projects.flatMap((project) => project.tags || [])))
+  const allTags = Array.from(
+    new Set(projects.flatMap((project) => project.tags || []))
+  );
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tag))
+      setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
-      setSelectedTags([...selectedTags, tag])
+      setSelectedTags([...selectedTags, tag]);
     }
-  }
+  };
 
   // Filter projects based on search query and selected tags
   const filteredProjects = useMemo(() => {
@@ -202,23 +240,29 @@ export default function Projects() {
       // Filter by search query
       const matchesSearch =
         project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (project.tags && project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+        project.description
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        (project.tags &&
+          project.tags.some((tag) =>
+            tag.toLowerCase().includes(searchQuery.toLowerCase())
+          ));
 
       // Filter by selected tags
-      const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
+      const matchesTags =
+        selectedTags.length === 0 ||
+        (project.tags &&
+          selectedTags.every((tag) => project.tags?.includes(tag)));
 
       // Filter by view mode
       const matchesViewMode =
         (viewMode === "starred" && project.starred) ||
         (viewMode === "user" && project.owner === auth.user?.id) ||
-        (viewMode === "userProjects" && project.owner !== auth.user?.id)
+        (viewMode === "userProjects" && project.owner !== auth.user?.id);
 
-      return matchesSearch && matchesTags && matchesViewMode
-    })
-  }, [projects, searchQuery, selectedTags, viewMode, auth.user?.id])
-
-
+      return matchesSearch && matchesTags && matchesViewMode;
+    });
+  }, [projects, searchQuery, selectedTags, viewMode, auth.user?.id]);
 
   // Otherwise, show the projects list
   return (
@@ -228,11 +272,11 @@ export default function Projects() {
       {/* Search and filters */}
       <div className="p-4 border-b">
         <div className="flex gap-2 mb-4">
-          <SearchInput 
-          placeholder="Search projects..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+          <SearchInput
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
           {/* <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Project
@@ -298,9 +342,11 @@ export default function Projects() {
           <EmptyState
             icon={<FileText className="h-8 w-8 text-muted-foreground" />}
             title="No projects found"
-            description={searchQuery || selectedTags.length > 0
-              ? "Try adjusting your search or filters"
-              : "Create your first project to get started"}
+            description={
+              searchQuery || selectedTags.length > 0
+                ? "Try adjusting your search or filters"
+                : "Create your first project to get started"
+            }
             action={
               <Button onClick={() => setCreateProjectOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -312,21 +358,28 @@ export default function Projects() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => {
-              console.log('Raw project object:', project);
-              console.log('Project.id:', project.id);
-              console.log('Project.uuid:', project.uuid);
-              console.log('Project.project_id:', project.project_id);
-              console.log('Project.project_uuid:', project.project_uuid);
-              
+              console.log("Raw project object:", project);
+              console.log("Project.id:", project.id);
+              console.log("Project.uuid:", project.uuid);
+              console.log("Project.project_id:", project.project_id);
+              console.log("Project.project_uuid:", project.project_uuid);
+
               const projectId = getProjectId(project);
-              console.log('getProjectId result:', projectId);
-              console.log('Project:', project.name, 'Project ID:', projectId, 'Full project object:', project);
-              
+              console.log("getProjectId result:", projectId);
+              console.log(
+                "Project:",
+                project.name,
+                "Project ID:",
+                projectId,
+                "Full project object:",
+                project
+              );
+
               if (!projectId) {
-                console.error('No project ID found in:', project);
+                console.error("No project ID found in:", project);
                 return null;
               }
-              
+
               return (
                 <ProjectCard
                   key={projectId}
@@ -351,5 +404,5 @@ export default function Projects() {
         onCreateProject={handleCreateProject}
       />
     </div>
-  )
+  );
 }
