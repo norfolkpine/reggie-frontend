@@ -33,10 +33,10 @@ import SearchInput from "@/components/ui/search-input"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
-export default function Vaults() {
+export default function Projects() {
   const { toast } = useToast()
   const { setHeaderActions, setHeaderCustomContent } = useHeader()
-  const [vaults, setProjects] = useState<Project[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -47,10 +47,10 @@ export default function Vaults() {
 
   // Set header actions and custom content
   useEffect(() => {
-    // Set the "New Vault" button as a header action
+    // Set the "New Project" button as a header action
     setHeaderActions([
       {
-        label: "New Vault",
+        label: "New Project",
         onClick: () => setCreateProjectOpen(true),
         icon: <Plus className="h-4 w-4" />,
         variant: "default",
@@ -76,19 +76,19 @@ export default function Vaults() {
       setLoading(true)
       const response = await getProjects()
       console.log('API Response:', response);
-      console.log('First vault:', response.results[0]);
-      console.log('First vault ID field:', response.results[0]?.id);
-      console.log('First vault UUID field:', response.results[0]?.uuid);
-      console.log('First vault project_id field:', response.results[0]?.project_id);
-      console.log('First vault project_uuid field:', response.results[0]?.project_uuid);
+      console.log('First project:', response.results[0]);
+      console.log('First project ID field:', response.results[0]?.id);
+      console.log('First project UUID field:', response.results[0]?.uuid);
+      console.log('First project project_id field:', response.results[0]?.project_id);
+      console.log('First project project_uuid field:', response.results[0]?.project_uuid);
       
-      setProjects(response.results.map(vault => ({
-        ...vault,
-        icon: getProjectIcon(vault.name ?? ''),
-        color: getProjectColor(vault.name ?? ''),
+      setProjects(response.results.map(project => ({
+        ...project,
+        icon: getProjectIcon(project.name ?? ''),
+        color: getProjectColor(project.name ?? ''),
         starred: false,
         tags: [],
-        lastUpdated: `Updated ${ vault.updated_at && formatDateVariants.dateAgo(vault.updated_at)}`,
+        lastUpdated: `Updated ${ project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`,
         teamSize: 1,
         chatCount: 0,
         chatIcon: MessageSquare
@@ -96,7 +96,7 @@ export default function Vaults() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to load vaults. Please try again later.",
+        description: "Failed to load projects. Please try again later.",
         variant: "destructive"
       })
     } finally {
@@ -126,37 +126,37 @@ export default function Vaults() {
 
       toast({
         title: "Success",
-        description: "Vault created successfully"
+        description: "Project created successfully"
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create vault. Please try again later.",
+        description: "Failed to create project. Please try again later.",
         variant: "destructive"
       })
     }
   }
 
-  // Handle vault deletion without page refresh
+  // Handle project deletion without page refresh
   const handleProjectDeleted = useCallback((projectId: string) => {
-    setProjects(prevProjects => prevProjects.filter(vault => {
-      const id = getProjectId(vault);
+    setProjects(prevProjects => prevProjects.filter(project => {
+      const id = getProjectId(project);
       return id !== projectId;
     }));
   }, []);
 
-  // Handle vault renaming without page refresh
+  // Handle project renaming without page refresh
   const handleProjectRenamed = useCallback((projectId: string, newName: string) => {
-    setProjects(prevProjects => prevProjects.map(vault => {
-      const id = getProjectId(vault);
+    setProjects(prevProjects => prevProjects.map(project => {
+      const id = getProjectId(project);
       if (id === projectId) {
         return {
-          ...vault,
+          ...project,
           name: newName,
-          lastUpdated: `Updated ${vault.updated_at && formatDateVariants.dateAgo(vault.updated_at)}`
+          lastUpdated: `Updated ${project.updated_at && formatDateVariants.dateAgo(project.updated_at)}`
         };
       }
-      return vault;
+      return project;
     }));
   }, []);
 
@@ -185,8 +185,8 @@ export default function Vaults() {
   }
 
 
-  // Extract unique tags from vaults
-  const allTags = Array.from(new Set(vaults.flatMap((vault) => vault.tags || [])))
+  // Extract unique tags from projects
+  const allTags = Array.from(new Set(projects.flatMap((project) => project.tags || [])))
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -196,31 +196,31 @@ export default function Vaults() {
     }
   }
 
-  // Filter vaults based on search query and selected tags
+  // Filter projects based on search query and selected tags
   const filteredProjects = useMemo(() => {
-    return vaults.filter((vault) => {
+    return projects.filter((project) => {
       // Filter by search query
       const matchesSearch =
-        vault.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        vault.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (vault.tags && vault.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+        project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.tags && project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())))
 
       // Filter by selected tags
-      const matchesTags = selectedTags.length === 0 || (vault.tags && selectedTags.every((tag) => vault.tags?.includes(tag)))
+      const matchesTags = selectedTags.length === 0 || (project.tags && selectedTags.every((tag) => project.tags?.includes(tag)))
 
       // Filter by view mode
       const matchesViewMode =
-        (viewMode === "starred" && vault.starred) ||
-        (viewMode === "user" && vault.owner === auth.user?.id) ||
-        (viewMode === "userProjects" && vault.owner !== auth.user?.id)
+        (viewMode === "starred" && project.starred) ||
+        (viewMode === "user" && project.owner === auth.user?.id) ||
+        (viewMode === "userProjects" && project.owner !== auth.user?.id)
 
       return matchesSearch && matchesTags && matchesViewMode
     })
-  }, [vaults, searchQuery, selectedTags, viewMode, auth.user?.id])
+  }, [projects, searchQuery, selectedTags, viewMode, auth.user?.id])
 
 
 
-  // Otherwise, show the vaults list
+  // Otherwise, show the projects list
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header removed - now handled by layout */}
@@ -229,13 +229,13 @@ export default function Vaults() {
       <div className="p-4 border-b">
         <div className="flex gap-2 mb-4">
           <SearchInput 
-          placeholder="Search vaults..."
+          placeholder="Search projects..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
           {/* <Button onClick={() => setCreateProjectOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Vault
+            New Project
           </Button> */}
         </div>
 
@@ -267,7 +267,7 @@ export default function Vaults() {
             onClick={() => setViewMode("user")}
             className="rounded-none flex items-center gap-1"
           >
-            <Folder className="h-3.5 w-3.5" /> All Vaults
+            <Folder className="h-3.5 w-3.5" /> All Projects
           </Button>
           {auth.user?.is_superuser && (
             <Button
@@ -276,7 +276,7 @@ export default function Vaults() {
               onClick={() => setViewMode("userProjects")}
               className="rounded-none flex items-center gap-1"
             >
-              <User className="h-3.5 w-3.5" /> User Vaults
+              <User className="h-3.5 w-3.5" /> User Projects
             </Button>
           )}
           <Button
@@ -297,42 +297,42 @@ export default function Vaults() {
         ) : filteredProjects.length === 0 ? (
           <EmptyState
             icon={<FileText className="h-8 w-8 text-muted-foreground" />}
-            title="No vaults found"
+            title="No projects found"
             description={searchQuery || selectedTags.length > 0
               ? "Try adjusting your search or filters"
-              : "Create your first vault to get started"}
+              : "Create your first project to get started"}
             action={
               <Button onClick={() => setCreateProjectOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                New Vault
+                New Project
               </Button>
             }
             onRefresh={fetchProjects}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects.map((vault) => {
-              console.log('Raw vault object:', vault);
-              console.log('Vault.id:', vault.id);
-              console.log('Vault.uuid:', vault.uuid);
-              console.log('Vault.project_id:', vault.project_id);
-              console.log('Vault.project_uuid:', vault.project_uuid);
+            {filteredProjects.map((project) => {
+              console.log('Raw project object:', project);
+              console.log('Project.id:', project.id);
+              console.log('Project.uuid:', project.uuid);
+              console.log('Project.project_id:', project.project_id);
+              console.log('Project.project_uuid:', project.project_uuid);
               
-              const projectId = getProjectId(vault);
+              const projectId = getProjectId(project);
               console.log('getProjectId result:', projectId);
-              console.log('Vault:', vault.name, 'Vault ID:', projectId, 'Full vault object:', vault);
+              console.log('Project:', project.name, 'Project ID:', projectId, 'Full project object:', project);
               
               if (!projectId) {
-                console.error('No vault ID found in:', vault);
+                console.error('No project ID found in:', project);
                 return null;
               }
               
               return (
                 <ProjectCard
                   key={projectId}
-                  project={vault}
+                  project={project}
                   onSelect={(projectName) => {
-                    // Navigate to the vault page
+                    // Navigate to the project page
                     // window.location.href = `/vault/${projectId}`;
                     router.push(`/vault/${projectId}`);
                   }}

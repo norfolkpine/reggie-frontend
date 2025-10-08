@@ -33,7 +33,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Vault name</DialogTitle>
+          <DialogTitle>Project name</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -44,16 +44,16 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
               autoFocus
             />
              <Input
-              placeholder="Add a description for your vault"
+              placeholder="Add a description for your project"
               value={projectDesc}
               onChange={(e) => setProjectDesc(e.target.value)}
             />
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <HelpCircle className="h-5 w-5 shrink-0" />
               <div>
-                <div className="font-medium text-foreground">What&apos;s a vault?</div>
+                <div className="font-medium text-foreground">What&apos;s a project?</div>
                 <div>
-                  Vaults keep chats, files, and custom instructions in one place. Use them for ongoing work, or just
+                  Projects keep chats, files, and custom instructions in one place. Use them for ongoing work, or just
                   to keep things tidy.
                 </div>
               </div>
@@ -64,7 +64,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
               Cancel
             </Button>
             <Button type="submit" disabled={!projectName.trim()}>
-              Create vault
+              Create project
             </Button>
           </DialogFooter>
         </form>
