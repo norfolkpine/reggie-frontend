@@ -20,8 +20,9 @@ import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/contexts/auth-context'
-import { updateAllauthUser } from '@/api/auth'
+import { updateAllauthUser, getProviderAccounts, disconnectProviderAccount, redirectToProvider, ProviderAccount } from '@/api/auth'
 import { AllauthUserUpdate } from '@/types/api'
+import { IconBrandGoogle } from '@tabler/icons-react'
 
 const profileFormSchema = z.object({
   first_name: z
@@ -56,10 +57,17 @@ export default function ProfileForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
+  const [providers, setProviders] = useState<ProviderAccount[] | null>(null)
+  const [loadingProviders, setLoadingProviders] = useState(false)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     mode: 'onChange',
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      username: '',
+    }
   })
 
   // Initialize form with auth context user data
@@ -68,10 +76,51 @@ export default function ProfileForm() {
       form.reset({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        username: user.username || '',
+        username: '',
       })
     }
   }, [user, form])
+
+  // Load connected provider accounts
+  useEffect(() => {
+    async function fetchProviders() {
+      try {
+        setLoadingProviders(true)
+        const resp = await getProviderAccounts()
+        setProviders(resp.data || [])
+      } catch (e) {
+        console.error('Failed to load connected accounts', e)
+      } finally {
+        setLoadingProviders(false)
+      }
+    }
+    fetchProviders()
+  }, [])
+
+  function onConnectGoogle() {
+    // Start provider connect flow; callback same as login callback path
+    redirectToProvider('google', '/account/provider/callback', 'connect')
+  }
+
+  async function onDisconnectGoogle(acc: ProviderAccount) {
+    try {
+      await disconnectProviderAccount('google', acc.uid)
+      setProviders((prev) => (prev || []).filter(p => !(p.provider.id === 'google' && p.uid === acc.uid)))
+      toast({ title: 'Disconnected', description: 'Google account disconnected.' })
+    } catch (e: any) {
+      console.error('Failed to disconnect Google', e)
+      const firstError = Array.isArray(e?.errors) && e.errors.length ? e.errors[0] : null
+      const isNoPassword = firstError?.code === 'no_password'
+      const description = firstError?.message
+        || (typeof e?.message === 'string' ? e.message : null)
+        || 'Failed to disconnect Google.'
+      toast({
+        title: 'Error',
+        description: isNoPassword ? `${description} Please set a password before disconnecting this provider.` : description,
+        variant: 'destructive'
+      })
+    }
+  }
 
   async function onSubmit(data: ProfileFormValues) {
     try {
@@ -134,6 +183,43 @@ export default function ProfileForm() {
         <div className='space-y-4'>
           <div className='text-sm text-gray-600'>
             <strong>Email:</strong> {user?.email || 'Not available'}
+          </div>
+          <div className='mt-6'>
+            <div className='font-medium mb-2'>Connected accounts</div>
+            <div className='border rounded-md p-3 space-y-2'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='flex items-center gap-2'>
+                    <IconBrandGoogle className='h-4 w-4' />
+                    <div className='text-sm font-medium'>Google</div>
+                  </div>
+                  <div className='text-xs text-gray-500'>Use Google to sign in</div>
+                </div>
+                <div>
+                  {loadingProviders
+                    ? <span className='text-sm text-gray-500'>Loading…</span>
+                    : (() => {
+                        const googleAcc = (providers || []).find(p => p.provider.id === 'google')
+                        if (googleAcc) {
+                          return (
+                            <div className='flex items-center gap-3'>
+                              <span className='text-sm text-gray-600'>{googleAcc.display}</span>
+                              <Button type='button' variant='outline' onClick={() => onDisconnectGoogle(googleAcc)}>
+                                Disconnect
+                              </Button>
+                            </div>
+                          )
+                        }
+                        return (
+                          <Button type='button' onClick={onConnectGoogle}>
+                            Connect
+                          </Button>
+                        )
+                      })()
+                  }
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         

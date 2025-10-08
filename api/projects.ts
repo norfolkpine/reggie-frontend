@@ -11,7 +11,6 @@ export const getProjects = async (page: number = 1) => {
     console.log('Projects list response:', response);
     return response as PaginatedProjectList;
   } catch (error) {
-    console.error('Error fetching projects list:', error);
     throw error;
   }
 };

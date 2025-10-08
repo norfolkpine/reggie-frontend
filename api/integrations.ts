@@ -48,14 +48,25 @@ interface Connection {
 }
 
 export const getIntegrations = async (page: number = 1) => {
-  const response = await api.get('/integrations/apps/', {
+  const response = await api.get('/integrations/integrations', {
     params: { page: page.toString() }
   });
-  return response as Integration[];
+  
+  // Transform the response data to match the Integration interface
+  const data = response as any;
+  const integrations = data.data || data.results || data;
+  
+  return integrations.map((integration: any) => ({
+    key: integration.unique_key,
+    title: integration.display_name,
+    description: `Provider: ${integration.provider}`,
+    icon_url: integration.logo,
+    is_connected: false, // This will be updated based on connections
+  })) as Integration[];
 };
 
 export const getConnections = async (page: number = 1) => {
-  const response = await api.get('/integrations/conections/', {
+  const response = await api.get('/integrations/connections/', {
     params: { page: page.toString() }
   });
   return response as NangoConnection[];
