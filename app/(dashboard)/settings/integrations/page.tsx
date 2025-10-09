@@ -559,7 +559,6 @@ export default function IntegrationsSettingsPage() {
               </div>
               <div>
                 <h2 className="mb-1 font-semibold">{app.title}</h2>
-                <p className="line-clamp-2 text-gray-500">{app.description}</p>
               </div>
             </li>
           ))}
