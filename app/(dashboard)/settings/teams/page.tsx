@@ -11,6 +11,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +38,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { createTeam } from '@/api/teams'
 
 export default function SettingsTeams() {
   const [activeTeam, setActiveTeam] = React.useState<Team | null>(() =>
@@ -36,10 +46,17 @@ export default function SettingsTeams() {
   )
   const [teams, setTeams] = React.useState<Team[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
+  const [isCreating, setIsCreating] = React.useState(false)
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
 
   const { register, handleSubmit, reset, setValue, watch } = useForm()
+  const createTeamForm = useForm({
+    defaultValues: {
+      name: ''
+    }
+  })
 
   const fetchTeams = React.useCallback(async () => {
     if (!isAuthenticated) return
@@ -106,6 +123,41 @@ export default function SettingsTeams() {
     }
   }
 
+  const onCreateTeam = async (data: { name: string }) => {
+    setIsCreating(true)
+    try {
+      const newTeam = await createTeam({
+        name: data.name
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Team created successfully.',
+      })
+
+      createTeamForm.reset()
+      setIsCreateModalOpen(false)
+
+      // Refresh teams to include the new team
+      fetchTeams()
+
+      // Set the new team as active
+      setActiveTeam(newTeam)
+      teamStorage.setActiveTeam(newTeam)
+    } catch (err) {
+      const { message } = handleApiError(err)
+      toast({
+        title: 'Error',
+        description: message || 'Failed to create team. Please try again.',
+        variant: 'destructive',
+      })
+      console.error('Failed to create team:', err)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+
   // Get current team's members and invitations from the team data
   const currentMembers = activeTeam?.members || []
   const currentInvitations = activeTeam?.invitations || []
@@ -138,7 +190,7 @@ export default function SettingsTeams() {
 
   return (
     <ContentSection title='Team Settings' desc='Manage your teams'>
-      <>
+      <div>
         {teams.length > 1 && (
           <Card className='mb-4'>
             <CardHeader>
@@ -173,9 +225,14 @@ export default function SettingsTeams() {
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
           {/* Left Column - Teams List */}
           <div className='space-y-4'>
-            <div>
-              <h2 className='text-xl font-semibold'>Teams</h2>
-              <p className='text-sm text-gray-600'>Select a team to manage its members</p>
+            <div className='flex items-center justify-between'>
+              <div>
+                <h2 className='text-xl font-semibold'>Teams</h2>
+                <p className='text-sm text-gray-600'>Select a team to manage its members</p>
+              </div>
+              <Button onClick={() => setIsCreateModalOpen(true)}>
+                Create Team
+              </Button>
             </div>
             
             <div className='space-y-3'>
@@ -400,7 +457,46 @@ export default function SettingsTeams() {
             )}
           </div>
         </div>
-      </>
+
+        {/* Create Team Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className='sm:max-w-[425px]'>
+          <DialogHeader>
+            <DialogTitle>Create New Team</DialogTitle>
+            <DialogDescription>
+              Create a new team to organize your projects and collaborators.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={createTeamForm.handleSubmit(onCreateTeam)}>
+            <div className='grid gap-4 py-4'>
+              <div className='grid grid-cols-4 items-center gap-4'>
+                <Label htmlFor='name' className='text-right'>
+                  Name
+                </Label>
+                <Input
+                  id='name'
+                  {...createTeamForm.register('name', { required: 'Team name is required' })}
+                  className='col-span-3'
+                  placeholder='Enter team name'
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type='submit' disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Team'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      </div>
     </ContentSection>
   )
 }

@@ -1,29 +1,44 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface CreateFolderDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCreateFolder: (name: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreateFolder: (name: string) => void;
 }
 
-export function CreateFolderDialog({ open, onOpenChange, onCreateFolder }: CreateFolderDialogProps) {
-  const [folderName, setFolderName] = useState("")
+export function CreateFolderDialog({
+  open,
+  onOpenChange,
+  onCreateFolder,
+}: CreateFolderDialogProps) {
+  const [folderName, setFolderName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (folderName.trim()) {
-      onCreateFolder(folderName)
-      setFolderName("New Folder")
-      onOpenChange(false)
+      onCreateFolder(folderName);
+      onOpenChange(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    if (open) {
+      setFolderName("");
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,7 +56,11 @@ export function CreateFolderDialog({ open, onOpenChange, onCreateFolder }: Creat
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={!folderName.trim()}>
@@ -51,5 +70,5 @@ export function CreateFolderDialog({ open, onOpenChange, onCreateFolder }: Creat
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

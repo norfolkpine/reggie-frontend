@@ -49,7 +49,7 @@ const MainContentWrapper = React.memo(({
     }
 
     return (
-      <div className={`sticky top-0 z-50 transition-all duration-150 ease-out ${
+      <div className={`sticky top-0 z-20 transition-all duration-150 ease-out ${
         isScrolled 
           ? 'shadow-md backdrop-blur-md bg-background/80' 
           : 'bg-background'
@@ -80,7 +80,7 @@ const MainContentWrapper = React.memo(({
     >
       <div className="h-full overflow-auto" ref={scrollContainerRef}>
         {renderHeader()}
-        <div className="min-h-[calc(100vh-8rem)]">
+        <div className="min-h-[calc(100vh-8rem)] z-10">
           {children}
         </div>
       </div>
