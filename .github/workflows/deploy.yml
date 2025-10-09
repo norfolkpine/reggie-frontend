@@ -120,6 +120,11 @@ jobs:
             mkdir -p ~/frontend
             cd ~/frontend
             
+            # Verify we're in the correct directory
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
+            
             # Create docker-compose.yml with correct image URL
             cat > docker-compose.yml << EOF
             version: '3.8'
@@ -141,7 +146,39 @@ jobs:
               echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env.frontend
             fi
             
+            # Verify docker-compose.yml was created correctly
+            echo "Verifying docker-compose.yml:"
+            cat docker-compose.yml
+            echo "Current directory: $(pwd)"
+            echo "Files in current directory:"
+            ls -la
+            
             # No need to update image - it's already correct in docker-compose.yml
+
+            echo "Authenticating with Artifact Registry..."
+            
+            # Get access token from VM's service account via metadata service
+            ACCESS_TOKEN=$(curl -s -H 'Metadata-Flavor: Google' \
+              'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' \
+              | jq -r '.access_token')
+            
+            if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+              echo "Failed to get access token from metadata service"
+              exit 1
+            fi
+            
+            echo "Access token obtained"
+            
+            # Authenticate Docker with Artifact Registry using the access token
+            echo "$ACCESS_TOKEN" | sudo docker login -u _dcgcloud_token \
+              --password-stdin australia-southeast1-docker.pkg.dev
+            
+            if [ $? -eq 0 ]; then
+              echo "Docker authentication successful"
+            else
+              echo "Docker authentication failed"
+              exit 1
+            fi
             
             # Authenticate with GCP (if not already done)
             if [ ! -f gcp-key.json ]; then
@@ -151,6 +188,21 @@ jobs:
             fi
             
             # Deploy with optimized commands
+            # Ensure we're in the correct directory before running docker-compose
+            echo "Final directory check before deployment:"
+            echo "Current directory: $(pwd)"
+            echo "Checking for docker-compose.yml:"
+            if [ -f docker-compose.yml ]; then
+              echo "✓ docker-compose.yml found"
+              echo "Contents:"
+              cat docker-compose.yml
+            else
+              echo "✗ docker-compose.yml not found!"
+              echo "Directory contents:"
+              ls -la
+              exit 1
+            fi
+            
             echo "Pulling latest image..."
             sudo docker-compose pull --quiet
             

@@ -26,6 +26,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { AuthErrorResponse } from '@/types/api'
+import { redirectToProvider } from '@/api/auth'
 
 type UserAuthFormProps = HTMLAttributes<HTMLDivElement>
 
@@ -306,6 +307,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className='w-full'
                 type='button'
                 disabled={isLoading}
+                onClick={() => {
+                  // Redirect to Google via allauth headless endpoint
+                  redirectToProvider('google', '/account/provider/callback')
+                }}
               >
                 <IconBrandGoogle className='h-4 w-4' /> Google
               </Button>

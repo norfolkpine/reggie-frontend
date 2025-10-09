@@ -80,18 +80,33 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
   const logout = React.useCallback(async () => {
     try {
       await authApi.logout();
-      
+
       setStatus('LOGGED_OUT');
-      
+
       // Clear all storage data and caches comprehensively
       await clearAllStorage(queryClient || undefined);
-      
+
+      // Explicitly clear React Query cache if available
+      if (queryClient && typeof queryClient.clear === 'function') {
+        queryClient.clear();
+      } else if (queryClient && typeof queryClient.removeQueries === 'function') {
+        // For TanStack Query v4+
+        queryClient.removeQueries();
+      }
+
       flushSync(() => {
         setUser(null);
       });
     } catch (error) {
       // Even if logout API fails, we should still clear local storage
       await clearAllStorage(queryClient || undefined);
+
+      if (queryClient && typeof queryClient.clear === 'function') {
+        queryClient.clear();
+      } else if (queryClient && typeof queryClient.removeQueries === 'function') {
+        queryClient.removeQueries();
+      }
+
       flushSync(() => {
         setUser(null);
       });

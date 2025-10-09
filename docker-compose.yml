@@ -1,12 +1,17 @@
-version: '3.8'
 services:
   frontend:
-    container_name: frontend-app
+    container_name: opie-frontend
     image: ${IMAGE_FRONTEND}
     ports:
       - "5173:3000"
     env_file:
       - .env.frontend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     environment:
       - NODE_ENV=production

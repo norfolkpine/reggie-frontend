@@ -48,14 +48,25 @@ interface Connection {
 }
 
 export const getIntegrations = async (page: number = 1) => {
-  const response = await api.get('/integrations/apps/', {
+  const response = await api.get('/integrations/integrations', {
     params: { page: page.toString() }
   });
-  return response as Integration[];
+  
+  // Transform the response data to match the Integration interface
+  const data = response as any;
+  const integrations = data.data || data.results || data;
+  
+  return integrations.map((integration: any) => ({
+    key: integration.unique_key,
+    title: integration.display_name,
+    description: `Provider: ${integration.provider}`,
+    icon_url: integration.logo,
+    is_connected: false, // This will be updated based on connections
+  })) as Integration[];
 };
 
 export const getConnections = async (page: number = 1) => {
-  const response = await api.get('/integrations/conections/', {
+  const response = await api.get('/integrations/connections/', {
     params: { page: page.toString() }
   });
   return response as NangoConnection[];
@@ -121,14 +132,18 @@ export const createNangoSession = async (integration: string): Promise<string> =
       throw new Error(`Failed to create Nango session: ${data.error}`);
     }
 
-    // Nango returns the token in the response
-    if (!data.token) {
+    // Extract token from the response structure
+    // Handle both nested {data: {token: "..."}} and direct {token: "..."} structures
+    const token = data.data?.token || data.token;
+    
+    if (!token) {
       console.error(`[API] Missing token in response:`, data);
+      console.error(`[API] Response structure:`, JSON.stringify(data, null, 2));
       throw new Error('Invalid session response: missing token');
     }
 
-    console.log(`[API] Session token created successfully: ${data.token.substring(0, 20)}...`);
-    return data.token;
+    console.log(`[API] Session token created successfully: ${token.substring(0, 20)}...`);
+    return token;
   } catch (error) {
     console.error(`[API] Session creation failed:`, error);
     throw error;
