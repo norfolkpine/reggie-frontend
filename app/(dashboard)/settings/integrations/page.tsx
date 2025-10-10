@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   IconAdjustmentsHorizontal,
@@ -23,7 +23,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { BASE_URL } from "@/lib/api-client";
 import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
 import { useToast } from "@/components/ui/use-toast";
-import Nango from '@nangohq/frontend';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,13 +48,12 @@ export default function IntegrationsSettingsPage() {
   const [sort, setSort] = useState("ascending");
   const [appType, setAppType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isRevoking, setIsRevoking] = useState(false);
+  const [revokingKey, setRevokingKey] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<Integration | null>(null);
-  const [nangoSessionToken, setNangoSessionToken] = useState<string | null>(null);
-  const [nangoConnect, setNangoConnect] = useState<any>(null);
-  const [nango, setNango] = useState<Nango | null>(null);
+  const nangoRef = useRef<any>(null);
+  const sessionTokenRef = useRef<string | null>(null);
+  const connectUIRef = useRef<any>(null);
   const [appIntegration, setIntegration] = useState<Integration | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -65,6 +63,7 @@ export default function IntegrationsSettingsPage() {
     queryFn: () => getIntegrations(), 
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
   });
 
   // React Query for connections
@@ -73,6 +72,7 @@ export default function IntegrationsSettingsPage() {
     queryFn: () => getConnections(),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   // Memoized processed integrations with connection status
@@ -82,8 +82,8 @@ export default function IntegrationsSettingsPage() {
     const integrations = Array.isArray(integrationsData) ? integrationsData : (integrationsData as any)?.data || (integrationsData as any)?.results || [];
     const connections = Array.isArray(connectionsData) ? connectionsData : (connectionsData as any)?.data || (connectionsData as any)?.results || [];
 
-    return integrations.map(integration => {
-      const isConnected = connections?.some((connection: NangoConnection) => connection.provider === integration.key);
+    return integrations.map((integration: Integration) => {
+      const isConnected = connections?.some((connection: any) => connection.provider === integration.key || (connection as any).provider_config_key === integration.key);
       return {
         ...integration,
         is_connected: isConnected
@@ -115,233 +115,115 @@ export default function IntegrationsSettingsPage() {
     }
   };
 
+  // Lazy-load Nango, create a single page-scoped session, and pre-create Connect UI
   useEffect(() => {
-    const initNango = async () => {
+    let cancelled = false;
+    const init = async () => {
       try {
-        console.log('[Nango] Starting initialization...');
+        const mod = await import('@nangohq/frontend');
+        if (cancelled) return;
+        const NangoLib = mod.default;
+        nangoRef.current = new NangoLib();
 
-        // Create Nango instance without session token initially
-        const nangoInstance = new Nango();
-        setNango(nangoInstance);
-        console.log('[Nango] Nango instance created');
+        if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
+          console.error('[Nango] Missing NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
+          return;
+        }
 
+        const token = await createNangoSession('connect');
+        if (cancelled || !token) return;
+        sessionTokenRef.current = token;
+
+        const connectUI = nangoRef.current.openConnectUI({
+          apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
+          baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
+          detectClosedAuthWindow: true,
+          onEvent: (event: any) => {
+            try {
+              if (event.type === 'connect') {
+                const payload = event.payload || {};
+                const connectionId = payload.connectionId;
+                const actualProvider = (payload as any).provider ?? payload.providerConfigKey;
+                if (!actualProvider || !connectionId) {
+                  toast({ title: 'Connection Error', description: 'Invalid connection data received. Please try again.', variant: 'destructive' });
+                  return;
+                }
+                toast({ title: 'Connection Successful', description: `Successfully connected to ${appIntegration?.title ?? actualProvider}` });
+                saveNangoConnection({ provider: actualProvider, connectionId } as any)
+                  .catch(() => {})
+                  .finally(() => {
+                    queryClient.invalidateQueries({ queryKey: ['connections'] });
+                  });
+              }
+            } catch (e) {
+              console.error('[Nango] Error handling event:', e);
+            }
+          },
+        });
+        connectUI.setSessionToken(token);
+        connectUIRef.current = connectUI;
       } catch (error) {
         console.error('[Nango] Initialization error:', error);
-        console.error('[Nango] Error details:', error instanceof Error ? error.message : String(error));
       }
     };
-    initNango();
-  }, [toast]);
 
-  const initializeConnectUI = async (integration: Integration) => {
-    // Prevent multiple simultaneous initializations
-    if (isInitializing) {
-      console.log('[Nango] Connect UI is already being initialized, skipping...');
-      return null;
+    if (typeof window !== 'undefined') {
+      const ric = (window as any).requestIdleCallback;
+      if (typeof ric === 'function') {
+        ric(init, { timeout: 1500 });
+      } else {
+        setTimeout(init, 300);
+      }
     }
 
-    if (nangoConnect) {
-      console.log('[Nango] Using existing Connect UI instance');
-      return nangoConnect;
-    }
+    return () => { cancelled = true; };
+  }, [toast, queryClient, appIntegration?.title]);
 
-    setIsInitializing(true);
 
-    if (!nango) {
-      console.error('[Nango] Cannot initialize Connect UI: missing nango instance');
-      setIsInitializing(false);
-      return null;
-    }
-
-    // Create session token for this specific integration
-    let sessionToken;
+  const ensureConnectUI = async () => {
+    if (connectUIRef.current) return connectUIRef.current;
     try {
-      console.log(`[Nango] Creating session token for integration: ${integration.key}`);
-      sessionToken = await createNangoSession(integration.key);
-      console.log(`[Nango] Session token received:`, sessionToken);
-      console.log(`[Nango] Session token type:`, typeof sessionToken);
-      console.log(`[Nango] Session token length:`, sessionToken?.length);
-      setNangoSessionToken(sessionToken);
-      console.log(`[Nango] Session token created successfully`);
-    } catch (error) {
-      console.error('[Nango] Failed to create session token:', error);
-      setIsInitializing(false);
-      toast({
-        title: "Session Error",
-        description: "Failed to create connection session. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    console.log('[Nango] Initializing new Connect UI...');
-
-    try {
+      const mod = await import('@nangohq/frontend');
+      const NangoLib = mod.default;
+      if (!nangoRef.current) nangoRef.current = new NangoLib();
       if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
-        console.error('[Nango] Missing required environment variables: NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
-        toast({
-          title: "Configuration Error",
-          description: "Nango configuration is missing. Please contact support.",
-          variant: "destructive",
-        });
+        toast({ title: 'Configuration Error', description: 'Nango configuration is missing. Please contact support.', variant: 'destructive' });
         return null;
       }
-
-      const connectUI = nango.openConnectUI({
+      if (!sessionTokenRef.current) {
+        sessionTokenRef.current = await createNangoSession('connect');
+      }
+      const connectUI = nangoRef.current.openConnectUI({
         apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
         baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
-      
-        detectClosedAuthWindow: true, // Enable popup close detection as fallback
-        onEvent: (event) => {
-          console.log('[Nango] Connect UI event:', event);
+        detectClosedAuthWindow: true,
+        onEvent: (event: any) => {
           try {
             if (event.type === 'connect') {
-              const eventData = event.payload || {};
-              console.log('[Nango] Event data structure:', { payload: event.payload });
-
-              const { connectionId, providerConfigKey } = eventData;
-              // Use providerConfigKey as the provider identifier if provider is not present
-              const actualProvider = (eventData as any).provider ?? providerConfigKey;
-
+              const payload = event.payload || {};
+              const connectionId = payload.connectionId;
+              const actualProvider = (payload as any).provider ?? payload.providerConfigKey;
               if (!actualProvider || !connectionId) {
-                console.error('[Nango] Missing required connection data:', { actualProvider, connectionId });
-                toast({
-                  title: "Connection Error",
-                  description: "Invalid connection data received. Please try again.",
-                  variant: "destructive",
-                });
+                toast({ title: 'Connection Error', description: 'Invalid connection data received. Please try again.', variant: 'destructive' });
                 return;
               }
-
-              console.log(`[Nango] Successfully connected to ${actualProvider} with connection ID: ${connectionId}`);
-
-              // Show success toast
-              toast({
-                title: "Connection Successful",
-                description: `Successfully connected to ${integration.title}`,
-              });
-
-              // Save the connection to database
-              console.log('[Nango] Saving connection to database...', { provider: actualProvider, connectionId });
-
-              const               handleConnectionSave = async () => {
-                console.log('[Nango] Waiting for webhook processing...');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                try {
-                  console.log('[Nango] Attempting to save connection:', {
-                    provider: actualProvider,
-                    connectionId
-                  });
-
-                  try {
-                    const connectionData = {
-                      provider: actualProvider,
-                      connectionId: connectionId || undefined
-                    };
-
-                    const saveResponse = await saveNangoConnection(connectionData);
-
-                    if (saveResponse && typeof saveResponse === 'object') {
-                      const saveData = saveResponse as any;
-
-                      if (!saveData.id) {
-                        if (!saveData.error?.includes('duplicate')) {
-                          console.error('[Nango] Failed to save connection:', saveData);
-                        }
-                      } else {
-                        console.log('[Nango] Save request completed:', saveData);
-                        // Invalidate and refetch connections to update UI
-                        queryClient.invalidateQueries({ queryKey: ['connections'] });
-                      }
-                    }
-                  } catch (error) {
-                    console.log('[Nango] Save request failed, but webhook may have saved it:', error);
-                  }
-
-                } catch (error) {
-                  console.error('[Nango] ❌ Error in save/verify process:', error);
-                }
-              };
-
-              handleConnectionSave();
-
-              setNangoConnect(null);
-            } else if (event.type === 'close') {
-              console.log('[Nango] Connect UI closed');
-              
-              // Force cleanup of any remaining DOM elements
-              setTimeout(() => {
-                console.log('[Nango] Cleaning up leftover DOM elements...');
-                
-                // Remove all possible Connect UI elements
-                const selectors = [
-                  'iframe[src*="connect"]',
-                  'iframe[src*="opie.sh"]',
-                  '[data-nango-connect]',
-                  '.nango-connect',
-                  '#nango-connect',
-                  '.modal-overlay',
-                  '.modal-backdrop',
-                  '[role="dialog"]',
-                  '.connect-ui-modal',
-                  '.nango-modal'
-                ];
-                
-                selectors.forEach(selector => {
-                  const elements = document.querySelectorAll(selector);
-                  elements.forEach(element => {
-                    console.log(`[Nango] Removing: ${selector}`);
-                    element.remove();
-                  });
+              toast({ title: 'Connection Successful', description: `Successfully connected to ${appIntegration?.title ?? actualProvider}` });
+              saveNangoConnection({ provider: actualProvider, connectionId } as any)
+                .catch(() => {})
+                .finally(() => {
+                  queryClient.invalidateQueries({ queryKey: ['connections'] });
                 });
-                
-                // Restore page interactions
-                document.body.style.pointerEvents = '';
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                
-                // Remove any blocking styles from all elements
-                const allElements = document.querySelectorAll('*');
-                allElements.forEach(element => {
-                  if (element instanceof HTMLElement) {
-                    element.style.pointerEvents = '';
-                    element.style.userSelect = '';
-                    element.style.position = '';
-                  }
-                });
-                
-                console.log('[Nango] Cleanup completed');
-              }, 100);
             }
-          } catch (error) {
-            console.error('[Nango] Error handling event:', error);
-            console.error('[Nango] Event that caused error:', event);
+          } catch (e) {
+            console.error('[Nango] Error handling event:', e);
           }
-        }
+        },
       });
-
-      console.log("connectUI", connectUI);
-      console.log(`[Nango] Setting session token: ${sessionToken}`);
-      console.log(`[Nango] Session token is truthy:`, !!sessionToken);
-      console.log(`[Nango] Session token value:`, sessionToken);
-      
-      if (sessionToken) {
-        console.log(`[Nango] About to set session token on Connect UI`);
-        connectUI.setSessionToken(sessionToken);
-        setNangoConnect(connectUI);
-        console.log(`[Nango] Connect UI initialized and ready`);
-      } else {
-        console.error('[Nango] Session token is null, cannot set session token');
-        console.error('[Nango] Session token value:', sessionToken);
-        return null;
-      }
-
-      setIsInitializing(false);
+      connectUI.setSessionToken(sessionTokenRef.current);
+      connectUIRef.current = connectUI;
       return connectUI;
-    } catch (error) {
-      console.error('[Nango] Error initializing Connect UI:', error);
-      setIsInitializing(false);
+    } catch (e) {
+      console.error('[Nango] Failed to ensure Connect UI:', e);
       return null;
     }
   };
@@ -349,100 +231,44 @@ export default function IntegrationsSettingsPage() {
   const handleConnect = async (integration: Integration) => {
     setIntegration(integration);
     try {
-      console.log(`[Nango] Attempting to connect to ${integration.title} with provider ID: ${integration.key}`);
-      console.log(`[Nango] Nango instance:`, nango);
-      console.log(`[Nango] API URL:`, process.env.NEXT_PUBLIC_NANGO_API_URL);
-      console.log(`[Nango] Base URL:`, process.env.NEXT_PUBLIC_NANGO_BASE_URL);
-
-      if (!nango) {
-        console.error('[Nango] Cannot connect: missing nango instance');
-        console.error('[Nango] Nango instance exists:', !!nango);
-        toast({
-          title: "Connection Error",
-          description: "Unable to initialize connection. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const connectUI = await initializeConnectUI(integration);
+      const connectUI = connectUIRef.current || (await ensureConnectUI());
       if (!connectUI) {
-        console.error('[Nango] Connect UI initialization failed');
-        toast({
-          title: "Connection Error",
-          description: "Failed to initialize connection UI. Please try again.",
-          variant: "destructive",
-        });
+        toast({ title: 'Connection Error', description: 'Failed to initialize connection UI. Please try again.', variant: 'destructive' });
         return;
       }
-
-      const providerId = integration.key;
-      console.log(`[Nango] Opening Connect UI for ${providerId}`);
-
-      // Use a small delay to ensure the UI is ready
-      setTimeout(() => {
-        try {
-          console.log(`[Nango] About to call connectUI.open(${providerId})`);
-          connectUI.open(providerId);
-          console.log(`[Nango] connectUI.open() called successfully`);
-        } catch (error) {
-          console.error(`[Nango] Error opening Connect UI for ${providerId}:`, error);
-          toast({
-            title: "Connection Error",
-            description: "Failed to open connection dialog. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }, 100);
-
+      connectUI.open(integration.key);
     } catch (err) {
       console.error('Nango connect error:', err);
-      toast({
-        title: "Connection Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: 'Connection Error', description: 'An unexpected error occurred. Please try again.', variant: 'destructive' });
     }
   };
 
   const handleRevokeAccess = async (app: Integration) => {
+    setRevokingKey(app.key);
+    const prev = queryClient.getQueryData(['connections']);
+    queryClient.setQueryData(['connections'], (old: any) => {
+      const list = Array.isArray(old) ? old : old?.data || old?.results || [];
+      return list.filter((c: any) => c.provider !== app.key && (c as any).provider_config_key !== app.key);
+    });
     try {
-      setIsRevoking(true);
-      // await revokeGoogleDriveAccess();
-      const revoke_provider = app.key;
-      await revokeAccess(revoke_provider);
-      toast({
-        title: "Connection revoked",
-        description: `${app.title} has been disconnected successfully.`,
-      });
-      // Invalidate and refetch connections to update UI
+      await revokeAccess(app.key);
+      toast({ title: 'Connection revoked', description: `${app.title} has been disconnected successfully.` });
       queryClient.invalidateQueries({ queryKey: ['connections'] });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to revoke access. Please try again.",
-        variant: "destructive",
-      });
+      queryClient.setQueryData(['connections'], prev);
+      toast({ title: 'Error', description: 'Failed to revoke access. Please try again.', variant: 'destructive' });
       console.error(error);
     } finally {
-      setIsRevoking(false);
+      setRevokingKey(null);
     }
   }
 
-  const filteredApps = apps
-    .sort((a, b) =>
-      sort === "ascending"
-        ? a.title.localeCompare(b.title)
-        : b.title.localeCompare(a.title)
-    )
-    .filter((app) =>
-      appType === "connected"
-        ? app.is_connected
-        : appType === "notConnected"
-        ? !app.is_connected
-        : true
-    )
-    .filter((app) => app.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredApps = useMemo(() => {
+    return [...apps]
+      .sort((a, b) => (sort === "ascending" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)))
+      .filter((app: Integration) => (appType === "connected" ? app.is_connected : appType === "notConnected" ? !app.is_connected : true))
+      .filter((app: Integration) => app.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [apps, sort, appType, searchTerm]);
 
   return (
     <ContentSection
@@ -542,9 +368,9 @@ export default function IntegrationsSettingsPage() {
                       variant="destructive"
                       size="sm"
                       onClick={() => handleRevokeAccess(app)}
-                      disabled={isRevoking}
+                      disabled={revokingKey === app.key}
                     >
-                      {isRevoking ? "Revoking..." : "Revoke"}
+                      {revokingKey === app.key ? "Revoking..." : "Revoke"}
                     </Button>
                   </div>
                 ) : (
