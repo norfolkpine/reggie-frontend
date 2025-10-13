@@ -186,8 +186,8 @@ export default function ChatsComponent() {
       const session = await createChatSession({ agent_id: agentId });
       const newSessionId = session.session_id;
       
-      // Update URL immediately with the new session ID
-      const newPath = `/chat/${newSessionId}${agentId ? `?agentId=${agentId}` : ''}`;
+      // Update URL immediately with the new session ID (no agentId in path)
+      const newPath = `/chat/${newSessionId}`;
       router.replace(newPath);
       
       // Update selectedChat state to reflect the new session ID
@@ -234,9 +234,9 @@ export default function ChatsComponent() {
           clearTimeout(urlUpdateTimeoutRef.current);
         }
         
-        // Set new timeout for URL update
+        // Set new timeout for URL update (no agentId in path)
         urlUpdateTimeoutRef.current = setTimeout(() => {
-          const newPath = `/chat/${newSessionId}${agentId ? `?agentId=${agentId}` : ''}`;
+          const newPath = `/chat/${newSessionId}`;
           router.replace(newPath);
           urlUpdateTimeoutRef.current = null;
         }, 3000); // 3 second delay to ensure message processing is complete
