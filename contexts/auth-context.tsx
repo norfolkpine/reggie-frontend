@@ -72,11 +72,6 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
     router.push('/sign-in');
   }, [router]);
 
-  // Set the auth context reference in the API client
-  React.useEffect(() => {
-    setAuthContext({ handleTokenExpiration });
-  }, [handleTokenExpiration]);
-
   const logout = React.useCallback(async () => {
     try {
       await authApi.logout();
@@ -112,6 +107,11 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       });
     }
   }, [queryClient]);
+
+  // Set the auth context reference in the API client
+  React.useEffect(() => {
+    setAuthContext({ handleTokenExpiration, logout });
+  }, [handleTokenExpiration, logout]);
 
   const login = async (credentials: Login) => {
     try {

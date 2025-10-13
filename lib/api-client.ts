@@ -56,6 +56,7 @@ interface RequestConfig extends RequestInit {
 
 interface AuthContext {
   handleTokenExpiration: () => void;
+  logout: () => Promise<void>;
 }
 
 // Auth context management with better encapsulation
@@ -210,7 +211,13 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
       // Handle authentication/authorization errors
       const context = authManager.getAuthContext();
       if (context) {
-        context.handleTokenExpiration();
+        if (response.status === 401) {
+          // For 401, call logout for proper cleanup
+          context.logout();
+        } else {
+          // For 403, just handle token expiration
+          context.handleTokenExpiration();
+        }
       } else {
         // Fallback if auth context is not available - clear storage but don't hard redirect
         if (typeof window !== 'undefined') {
