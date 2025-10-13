@@ -136,7 +136,7 @@ export function AgentCard({ agent, onDelete, onEdit }: AgentCardProps) {
       <CardContent className="p-4 pt-0">
         <div className="flex flex-wrap gap-2 mt-2">
           {/* {agent.instructions.slice(0, 3).map((instruction, index) => ( */}
-          <Badge variant="outline" className="bg-white">
+          <Badge variant="outline" className="bg-slate-300">
             {agent.instructions?.title || agent.instructions?.category || 'No category'}
           </Badge>
           {/* ))} */}

@@ -26,7 +26,7 @@ export function PromptSuggestions({
             {label} 🚀
           </h2>
         </div>
-        <p className="text-gray-500 text-lg font-sans">
+        <p className="text-muted-foreground text-lg font-sans">
           Click on any suggestion below to get started
         </p>
       </motion.div>
@@ -55,7 +55,7 @@ export function PromptSuggestions({
             className="group relative flex items-center justify-between w-full p-4 rounded-xl border border-opie-purple-medium bg-gradient-to-r from-opie-purple-light to-opie-teal-light hover:border-opie-purple-dark hover:shadow-md hover:shadow-opie-purple-medium transition-all duration-300 text-left min-h-[60px]"
           >
             <div className="flex-1 pr-4">
-              <p className="text-gray-800 font-sans font-medium text-base leading-relaxed transition-colors group-hover:text-opie-purple">
+              <p className="text-foreground font-sans font-medium text-base leading-relaxed transition-colors group-hover:text-opie-purple">
                 {suggestion}
               </p>
             </div>
@@ -77,7 +77,7 @@ export function PromptSuggestions({
         transition={{ duration: 0.6, delay: 0.8 }}
         className="text-center"
       >
-        <p className="text-sm text-gray-400 font-sans">
+        <p className="text-sm text-muted-foreground font-sans">
           Or type your own question in the input below
         </p>
       </motion.div>
