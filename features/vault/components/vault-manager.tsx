@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Settings, Edit, Sparkles } from "lucide-react";
 import { useHeader } from "@/contexts/header-context";
 import { useRightSection } from "@/hooks/use-right-section";
+import { useDragDropContext } from "@/contexts/drag-drop-context";
 // Files tab manages AI panel context itself
 import { InstructionsDialog } from "./instructions-dialog";
 import { RenameDialog } from "./rename-dialog";
@@ -25,6 +26,7 @@ export function VaultManager() {
   const { toast } = useToast();
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
   const { showRightSection, rightSection, toggleRightSection } = useRightSection();
+  const { setDragDropOptions, clearDragDropOptions } = useDragDropContext();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
@@ -47,8 +49,6 @@ export function VaultManager() {
     breadcrumbs: { id: number; name: string }[];
   }>({ currentFolderId: 0, breadcrumbs: [] });
 
-  // Drag and drop state for file uploads
-  const [isDragOver, setIsDragOver] = useState(false);
 
   const filesTabRef = useRef<{
     getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
@@ -80,36 +80,23 @@ export function VaultManager() {
     }, 100);
   }, []); // No dependencies to avoid infinite loops
 
-  // Drag and drop handlers for file uploads (only active when on files tab)
-  const handleFileDragOver = useCallback((e: React.DragEvent) => {
-    if (activeTab !== 'files') return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, [activeTab]);
-
-  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
-    if (activeTab !== 'files') return;
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set isDragOver to false if we're leaving the container entirely
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
+  // Set up drag and drop options when activeTab changes
+  useEffect(() => {
+    if (activeTab === 'files') {
+      setDragDropOptions({
+        enabled: true,
+        acceptedTypes: ['application/pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', 'image/png', 'image/jpeg', 'image/jpg'],
+        maxFileSize: 50 * 1024 * 1024, // 50MB
+        maxFiles: 10,
+        onFilesDrop: async (files: File[]) => {
+          // Call the FilesTab's handleFilesDrop method
+          await filesTabRef.current?.handleFilesDrop(files);
+        }
+      });
+    } else {
+      clearDragDropOptions();
     }
-  }, [activeTab]);
-
-  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
-    if (activeTab !== 'files') return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length === 0) return;
-
-    // Call the FilesTab's handleFilesDrop method
-    await filesTabRef.current?.handleFilesDrop(droppedFiles);
-  }, [activeTab]);
+  }, [activeTab, setDragDropOptions, clearDragDropOptions]);
 
   // Memoize AI panel context to prevent unnecessary re-renders
   const aiPanelContext = React.useMemo(() => ({
@@ -327,19 +314,7 @@ export function VaultManager() {
 
       <div 
         className="flex-1 overflow-auto p-4 mt-1 relative"
-        onDragOver={handleFileDragOver}
-        onDragLeave={handleFileDragLeave}
-        onDrop={handleFileDrop}
       >
-        {/* Drag overlay - only show when files tab is active */}
-        {isDragOver && activeTab === 'files' && (
-          <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
-            <div className="text-center">
-              <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
-              <p className="text-muted-foreground mt-2">Supported formats: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG, JPEG</p>
-            </div>
-          </div>
-        )}
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />

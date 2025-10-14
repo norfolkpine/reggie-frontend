@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect, ReactNode, memo, useMemo } fr
 import { GripVertical, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useDragDropFiles, DragDropFilesOptions } from "@/hooks/use-drag-drop-files"
 
 /**
  * ResizableContent Component
@@ -41,6 +42,8 @@ interface ResizableContentProps {
   leftSectionContent?: ReactNode
   mobileMode?: "drawer" | "overlay" // Mode for mobile: drawer slides in, overlay covers
   onMobileClose?: () => void // Callback when closing on mobile
+  // Drag and drop file options
+  dragDropOptions?: DragDropFilesOptions
 }
 
 // Memoized left section to prevent re-renders
@@ -171,13 +174,17 @@ export const ResizableContent = memo(function ResizableContent({
   rightSectionContent,
   leftSectionContent,
   mobileMode = "drawer",
-  onMobileClose
+  onMobileClose,
+  dragDropOptions
 }: ResizableContentProps) {
   const [leftWidth, setLeftWidth] = useState(65) // percentage
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isDraggingRef = useRef(false)
   const isMobile = useMediaQuery("(max-width: 1024px)")
+
+  // Drag and drop functionality
+  const { isDragOver, dragHandlers, error } = useDragDropFiles(dragDropOptions)
 
   const handleMouseDown = useCallback(() => {
     setIsDragging(true)
@@ -229,7 +236,34 @@ export const ResizableContent = memo(function ResizableContent({
 
   // Single layout for all scenarios - no conditional rendering to reduce re-renders
   return (
-    <div ref={containerRef} className="h-full bg-background relative overflow-hidden">
+    <div 
+      ref={containerRef} 
+      className={cn(
+        "h-full bg-background relative overflow-hidden",
+        isDragOver && "ring-2 ring-primary ring-offset-2"
+      )}
+      {...dragHandlers}
+    >
+      {/* Drag overlay - shows when files are being dragged over */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
+          <div className="text-center">
+            <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
+            <p className="text-muted-foreground mt-2">Supported formats: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG, JPEG</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error overlay - shows validation errors */}
+      {error && (
+        <div className="absolute inset-0 bg-destructive/10 border-4 border-dotted border-destructive rounded-lg flex items-center justify-center z-50 pointer-events-none">
+          <div className="text-center">
+            <p className="text-2xl font-semibold text-destructive">Invalid files</p>
+            <p className="text-muted-foreground mt-2">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Left Section - Always rendered, full width on mobile */}
       <LeftSection width={!isMobile && showRightSection ? leftWidth : 100}>
         {leftSectionContent}

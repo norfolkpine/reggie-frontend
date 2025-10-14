@@ -114,7 +114,7 @@ const navigationItems: NavigationItem[] = [
   },
   { name: "Workflows", icon: Workflow, url: "/workflow" },
   { type: "divider" }, 
-  { name: "Library", icon: BookOpen, url: "/library" },
+  // { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
   { type: "divider" },
   // SuperUser/Staff Only. Future feature: Allow and restrict for Enterprise users
