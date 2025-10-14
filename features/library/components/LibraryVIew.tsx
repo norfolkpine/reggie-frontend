@@ -27,7 +27,7 @@ export function LibraryView({
 
   // Memoized header content
   const headerContent = useMemo(() => (
-    <div className="text-lg font-medium text-gray-900">
+    <div className="text-lg font-medium">
       Australian Corporate & Tax Library
     </div>
   ), []);
