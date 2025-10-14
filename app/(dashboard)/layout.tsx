@@ -11,6 +11,7 @@ import { MobileNavProvider } from "@/contexts/mobile-nav-context";
 import { MobileHeader, MobileSidebarDrawer } from "@/components/sidebar/index";
 import { useResponsiveStore } from "@/stores/useResponsiveStore";
 import { RightSectionProvider, useRightSection } from "@/hooks/use-right-section";
+import { DragDropProvider, useDragDropContext } from "@/contexts/drag-drop-context";
 import { cn } from "@/lib/utils";
 
 // Memoize the main content wrapper to prevent re-renders when only right section changes
@@ -159,6 +160,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // Memoize right section content
   const rightSectionContent = React.useMemo(() => rightSection?.component, [rightSection?.component]);
 
+  // Get drag drop options from context
+  const { dragDropOptions } = useDragDropContext();
+
   return (
     <ResizableContent
       showRightSection={!!rightSection}
@@ -166,6 +170,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       rightSectionContent={rightSectionContent}
       mobileMode="drawer"
       onMobileClose={hideRightSection}
+      dragDropOptions={dragDropOptions || undefined}
     />
   );
 }
@@ -233,7 +238,9 @@ export default function RootLayout({
       <GlobalPanelProvider>
         <SidebarProvider>
           <MobileNavProvider>
-            <SidebarLayout>{children}</SidebarLayout>
+            <DragDropProvider>
+              <SidebarLayout>{children}</SidebarLayout>
+            </DragDropProvider>
           </MobileNavProvider>
         </SidebarProvider>
       </GlobalPanelProvider>
