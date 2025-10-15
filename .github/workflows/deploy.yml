@@ -111,9 +111,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
           script: |
-            # Set variables
-            PROJECT_ID=bh-opie
-            IMAGE_NAME_FRONTEND=opie-frontend
+            # Set variables from environment
+            PROJECT_ID=$PROJECT_ID
+            IMAGE_NAME_FRONTEND=$IMAGE_NAME_FRONTEND
             IMAGE_FRONTEND=australia-southeast1-docker.pkg.dev/${PROJECT_ID}/containers/${IMAGE_NAME_FRONTEND}:latest
             
             # Create frontend directory if it doesn't exist
