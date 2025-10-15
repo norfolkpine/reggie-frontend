@@ -112,9 +112,12 @@ jobs:
           timeout: 10m
           script: |
             # Set variables from environment
-            PROJECT_ID=$PROJECT_ID
-            IMAGE_NAME_FRONTEND=$IMAGE_NAME_FRONTEND
+            PROJECT_ID=${{ env.PROJECT_ID }}
+            IMAGE_NAME_FRONTEND=${{ env.IMAGE_NAME_FRONTEND }}
             IMAGE_FRONTEND=australia-southeast1-docker.pkg.dev/${PROJECT_ID}/containers/${IMAGE_NAME_FRONTEND}:latest
+            
+            # Debug: Show the constructed image name
+            echo "Constructed image name: $IMAGE_FRONTEND"
             
             # Create frontend directory if it doesn't exist
             mkdir -p ~/frontend
@@ -216,6 +219,3 @@ jobs:
             sudo docker image prune -f
             
             echo "Deployment completed successfully!"
-        env:
-          PROJECT_ID: ${{ env.PROJECT_ID }}
-          IMAGE_NAME_FRONTEND: ${{ env.IMAGE_NAME_FRONTEND }}
