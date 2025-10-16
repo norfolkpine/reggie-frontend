@@ -352,7 +352,7 @@ export const FilesTab = React.forwardRef<{
     if (requestedNavigation !== null && requestedNavigation !== undefined) {
       handleBreadcrumbClick(requestedNavigation);
     }
-  }, [requestedNavigation, handleBreadcrumbClick]);
+  }, [requestedNavigation]); // Removed handleBreadcrumbClick from dependencies to prevent infinite loop
 
   const handleCreateFolder = async (name: string) => {
     try {

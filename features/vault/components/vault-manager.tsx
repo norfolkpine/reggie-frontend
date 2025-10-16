@@ -169,7 +169,7 @@ export function VaultManager() {
         <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base lg:text-lg font-medium overflow-x-auto max-w-full scrollbar-thin">
           {/* Vault link */}
           <span
-            className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
+            className="hover:text-foreground font-medium cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
             onClick={() => router.push("/vault")}
           >
             Vault
@@ -216,7 +216,7 @@ export function VaultManager() {
                     key={folder.id} 
                     className={`flex items-center flex-shrink-0 min-w-0 ${!shouldShowOnMobile ? 'hidden sm:flex' : 'flex'}`}
                   >
-                    <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5 sm:mx-1 flex-shrink-0">/</span>
+                    <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5 sm:mx-1 flex-shrink-0 mr-1">/</span>
                     <button
                       onClick={() => navigateToFolder(folder.id)}
                       className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
