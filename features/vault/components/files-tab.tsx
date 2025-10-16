@@ -5,9 +5,10 @@ import { FilesTabContent } from "./files-tab-content";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { useRightSection } from "@/hooks/use-right-section";
+import { usePagination } from "@/hooks/use-pagination";
 import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
 import { isSafeUrl } from "@/lib/utils/url";
-import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, updateVaultFile, moveVaultFiles } from "@/api/vault";
+import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, updateVaultFile, moveVaultFiles, VaultFilesResponse } from "@/api/vault";
 import { VaultFile } from "../types/vault";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { RenameDialog } from "./rename-dialog";
@@ -46,11 +47,6 @@ export const FilesTab = React.forwardRef<{
   const [showAllFiles, setShowAllFiles] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20); // For infinite scroll
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [allFiles, setAllFiles] = useState<VaultFile[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState(0);
   const [folderBreadcrumbs, setFolderBreadcrumbs] = useState<{ id: number; name: string }[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -59,15 +55,41 @@ export const FilesTab = React.forwardRef<{
   const [dragOverFolderId, setDragOverFolderId] = useState<number | null>(null);
   const [files, setFiles] = useState<UploadingFile[]>([]);
 
-  // Infinite scroll refs
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [fileToRename, setFileToRename] = useState<VaultFile | null>(null);
   const [newFileName, setNewFileName] = useState("");
   const [isRenamingFile, setIsRenamingFile] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+
+  // Pagination hook
+  const {
+    data: allFiles,
+    isLoading,
+    isLoadingMore,
+    hasNextPage,
+    loadMoreRef,
+    refresh: refreshFiles,
+    reset: resetPagination,
+  } = usePagination<VaultFile>({
+    fetchFn: async (page, pageSize, search, folderId) => {
+      const response = await getVaultFilesByProject(
+        projectId,
+        page,
+        pageSize,
+        search,
+        folderId
+      );
+      return response;
+    },
+    pageSize: 20,
+    mode: 'infinite',
+    getItemId: (file) => file.id,
+    onError: (error) => {
+      console.error('Error fetching vault files:', error);
+      toast({ title: "Error", description: "Failed to load vault files", variant: "destructive" });
+    },
+    dependencies: [searchQuery, currentFolderId],
+  });
 
   // Initialize context state with proper initial values
   const [currentContext, setCurrentContext] = useState({
@@ -79,14 +101,6 @@ export const FilesTab = React.forwardRef<{
 
   // AI Panel configuration using right section hook
   const { showRightSection, hideRightSection, rightSection } = useRightSection();
-
-  useEffect(() => {
-    if (currentPage === 1) {
-      fetchFiles();
-    } else {
-      fetchFiles(true);
-    }
-  }, [projectId, currentPage, itemsPerPage, currentFolderId]);
 
   // Initialize breadcrumb ref on mount
   useEffect(() => {
@@ -103,96 +117,25 @@ export const FilesTab = React.forwardRef<{
     });
   }, [projectName, allFiles, currentFolderId, projectId, folderBreadcrumbs]);
 
-
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      if (currentPage !== 1) setCurrentPage(1); else fetchFiles();
-    }, 500);
-    return () => clearTimeout(delay);
-  }, [searchQuery]);
-
-  // Set up intersection observer for infinite scrolling
-  useEffect(() => {
-    if (!searchQuery) {
-      // Don't use infinite scroll when searching
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (
-            entries[0].isIntersecting &&
-            hasNextPage &&
-            !isLoadingMore &&
-            currentPage > 0
-          ) {
-            setCurrentPage((prevPage) => prevPage + 1);
-          }
-        },
-        { threshold: 0.5 }
-      );
-
-      observerRef.current = observer;
-
-      if (loadMoreRef.current) {
-        observer.observe(loadMoreRef.current);
-      }
-
-      return () => {
-        if (observerRef.current) {
-          observerRef.current.disconnect();
-        }
-      };
-    }
-  }, [hasNextPage, isLoadingMore, searchQuery, currentPage]);
-
-  const fetchFiles = async (isLoadingMoreFiles = false) => {
-    try {
-      setIsLoadingMore(isLoadingMoreFiles);
-      const response = await getVaultFilesByProject(
-        projectId,
-        currentPage,
-        itemsPerPage,
-        searchQuery,
-        currentFolderId
-      );
-
-      if (isLoadingMoreFiles) {
-        // Add new files to existing collection
-        const newFiles: VaultFile[] = response.results.map((file: VaultFile) => {
-          if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
-          const mimeType = file.type;
-          const mimeExtension = mimeType ? mimeType : '';
-          const fileExtension = mimeExtension || file.filename || 'unknown';
-          return { ...file, file_type: fileExtension } as VaultFile;
-        });
-        setAllFiles(prev => [...prev, ...newFiles]);
-      } else {
-        // Replace all files
-        const filesWithType: VaultFile[] = response.results.map((file: VaultFile) => {
-          if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
-          const mimeType = file.type;
-          const mimeExtension = mimeType ? mimeType : '';
-          const fileExtension = mimeExtension || file.filename || 'unknown';
-          return { ...file, file_type: fileExtension } as VaultFile;
-        });
-        setAllFiles(filesWithType);
-      }
-
-      setHasNextPage(!!response.next);
-    } catch (error) {
-      console.error('Error fetching vault files:', error);
-      toast({ title: "Error", description: "Failed to load vault files", variant: "destructive" });
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
+  // Process files to add file_type for filtering
+  const processedFiles = useMemo(() => {
+    return allFiles.map((file: VaultFile) => {
+      if (file.is_folder) return { ...file, file_type: 'folder' } as VaultFile;
+      const mimeType = file.type;
+      const mimeExtension = mimeType ? mimeType : '';
+      const fileExtension = mimeExtension || file.filename || 'unknown';
+      return { ...file, file_type: fileExtension } as VaultFile;
+    });
+  }, [allFiles]);
 
   const filteredFiles = useMemo(() => {
-    return allFiles.filter(file => {
+    return processedFiles.filter(file => {
       const fileType = file.file_type || '';
       const matchesType = showAllFiles || (activeFilters.length === 0) || activeFilters.some((filter: string) => fileType.includes(filter));
       const matchesSearch = file.original_filename?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
       return matchesType && matchesSearch;
     });
-  }, [allFiles, showAllFiles, activeFilters, searchQuery]);
+  }, [processedFiles, showAllFiles, activeFilters, searchQuery]);
 
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,11 +168,6 @@ export const FilesTab = React.forwardRef<{
     }
   }, []);
 
-  const handleNextPage = useCallback(() => {
-    if (hasNextPage && !isLoadingMore) {
-      setCurrentPage(prev => prev + 1);
-    }
-  }, [hasNextPage, isLoadingMore]);
 
   const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) setSelectedFiles(filteredFiles.map(file => file.id)); else setSelectedFiles([]);
@@ -249,7 +187,7 @@ export const FilesTab = React.forwardRef<{
       }
       if (successCount > 0) toast({ title: "Success", description: `${successCount} file${successCount !== 1 ? 's' : ''} deleted successfully` });
       if (errorCount > 0) toast({ title: "Error", description: `Failed to delete ${errorCount} file${errorCount !== 1 ? 's' : ''}`, variant: "destructive" });
-      fetchFiles();
+      refreshFiles();
       setSelectedFiles([]);
     } finally {
       setIsDeleting(false);
@@ -365,7 +303,7 @@ export const FilesTab = React.forwardRef<{
       });
       toast({ title: "Success", description: "Folder created successfully" });
       setCreateFolderOpen(false);
-      fetchFiles();
+      refreshFiles();
     } catch (error) {
       toast({ title: "Error", description: "Failed to create folder. Please try again later.", variant: "destructive" });
     }
@@ -405,7 +343,7 @@ export const FilesTab = React.forwardRef<{
     try {
       await moveVaultFiles(draggedFileIds, targetFolderId);
       toast({ title: "Success", description: `Moved ${draggedFileIds.length} item(s) successfully` });
-      fetchFiles(); setSelectedFiles([]);
+      refreshFiles(); setSelectedFiles([]);
     } catch (error) {
       toast({ title: "Error", description: "Failed to move files. Please try again.", variant: "destructive" });
     }
@@ -439,7 +377,7 @@ export const FilesTab = React.forwardRef<{
       toast({ title: "Success", description: `${uploadedFiles.length} file(s) uploaded successfully` });
     }
 
-    fetchFiles();
+    refreshFiles();
   }, []);
 
   const handleFileDownload = (file: VaultFile) => {
@@ -454,9 +392,9 @@ export const FilesTab = React.forwardRef<{
   };
 
   const handleFileDelete = useCallback(async (fileId: number) => {
-    try { await deleteVaultFile(fileId); toast({ title: "Success", description: "File deleted successfully" }); fetchFiles(); setSelectedFiles([]); }
+    try { await deleteVaultFile(fileId); toast({ title: "Success", description: "File deleted successfully" }); refreshFiles(); setSelectedFiles([]); }
     catch (error) { toast({ title: "Error", description: "Failed to delete file", variant: "destructive" }); }
-  }, []);
+  }, [refreshFiles]);
 
   const openRenameDialog = (file: VaultFile) => { setFileToRename(file); setNewFileName(file.original_filename || ''); setRenameFileOpen(true); };
 
@@ -466,7 +404,7 @@ export const FilesTab = React.forwardRef<{
     try {
       await updateVaultFile(fileToRename.id, { original_filename: newFileName.trim() });
       toast({ title: "File renamed", description: `File renamed to '${newFileName.trim()}'.` });
-      setRenameFileOpen(false); setFileToRename(null); setNewFileName(""); fetchFiles();
+      setRenameFileOpen(false); setFileToRename(null); setNewFileName(""); refreshFiles();
     } catch (error) {
       toast({ title: "Error renaming file", description: "Please try again.", variant: "destructive" });
     } finally { setIsRenamingFile(false); }
