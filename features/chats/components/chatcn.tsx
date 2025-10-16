@@ -281,6 +281,13 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     }
   }, [isAgentResponding, messages]);
 
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [messages, isAgentResponding, currentToolCalls, currentReasoningSteps]);
+
   // Additional scroll trigger for message updates
   useEffect(() => {
     if (messages.length > 0) {
@@ -342,7 +349,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
         )}
 
         {!isEmpty && (
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div ref={chatMessagesRef} className="flex-1 overflow-y-auto min-h-0">
             <div className="max-w-3xl mx-auto w-full py-4">
               <MessageList 
                 messages={messages.filter(m => m.role === 'user' || m.role === 'assistant')} 
