@@ -1,6 +1,5 @@
 import { api, BASE_URL, triggerTokenExpiration } from '@/lib/api-client';
 import { File, PaginatedFileList, PatchedFile } from '../types/api';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 import { getCSRFToken } from './utils';
 
 const ENDPOINT = '/opie/api/v1/files/'

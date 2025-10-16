@@ -6,7 +6,7 @@ import * as authApi from "@/api/auth";
 import { flushSync } from "react-dom";
 import { useEffect } from "react";
 import { ensureCSRFToken, setAuthContext } from "@/lib/api-client";
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
+import { USER_KEY } from "../lib/constants";
 import { useRouter } from "next/navigation";
 import { clearAllStorage } from "@/lib/utils/storage-clear";
 import { useQueryClientContext } from "./query-client-context";
@@ -44,33 +44,25 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
     return userStr ? JSON.parse(userStr) : null;
   }
 
-  function getStoredToken(): { access: string | null; refresh: string | null } {
-    return {
-      access: localStorage.getItem(TOKEN_KEY),
-      refresh: localStorage.getItem(REFRESH_TOKEN_KEY),
-    };
-  }
 
   
 
   const handleTokenExpiration = React.useCallback(() => {
-    console.log("Token expired, clearing auth state");
+    console.log("Session expired, clearing auth state");
     
+    // Clear only user data - don't clear query cache (that's for logout)
     flushSync(() => {
       setUser(null);
     });
 
-    if(allowedRoutes.includes(window.location.pathname)){
-      return;
-    }
-
-    if(allowedRoutes.includes(window.location.pathname)){
+    // Don't redirect if already on an allowed route
+    if (allowedRoutes.includes(window.location.pathname)) {
       return;
     }
 
     // Redirect to sign-in page using Next.js router (no page refresh)
     router.push('/sign-in');
-  }, [router]);
+  }, [router, allowedRoutes]);
 
   const logout = React.useCallback(async () => {
     try {
@@ -92,6 +84,9 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       flushSync(() => {
         setUser(null);
       });
+
+      // Redirect to login page after successful logout
+      router.push('/sign-in');
     } catch (error) {
       // Even if logout API fails, we should still clear local storage
       await clearAllStorage(queryClient || undefined);
@@ -105,8 +100,11 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
       flushSync(() => {
         setUser(null);
       });
+
+      // Redirect to login page even if logout API fails
+      router.push('/sign-in');
     }
-  }, [queryClient]);
+  }, [queryClient, router]);
 
   // Set the auth context reference in the API client
   React.useEffect(() => {
@@ -146,19 +144,21 @@ export function AuthProvider({ children, allowedRoutes=[] }: { children: React.R
     async function initializeAuth() {
       console.log("Initializing auth...");
       await ensureCSRFToken();
-        try {
-          const response =await authApi.verifySession();
-          flushSync(() => {
-            setUser(response.data.user);
-          });
-        } catch (error) {
-
-
-          flushSync(() => {
-            setUser(null);
-          });
-
-        }
+      
+      try {
+        // Verify session with backend to ensure cookie is valid
+        const response = await authApi.verifySession();
+        flushSync(() => {
+          setUser(response.data.user);
+        });
+      } catch (error) {
+        // Session invalid or expired - clear user data
+        console.log("Session verification failed:", error);
+        flushSync(() => {
+          setUser(null);
+        });
+      }
+      
       setLoading(false);
     }
 
