@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { TracingLogo } from '@/components/ui/tracing-logo'
 
@@ -10,42 +8,23 @@ interface AuthGuardProps {
   allowedRoutes?: string[]
 }
 
-const AuthGuard = ({ children, allowedRoutes = [] }: AuthGuardProps) => {
-  const { isAuthenticated, loading } = useAuth()
-  const router = useRouter()
+const AuthGuard = ({ children }: AuthGuardProps) => {
+  const { loading } = useAuth()
 
-  useEffect(() => {
-    if (!loading) {
-      const currentPath = window.location.pathname
-      const authRoutes = ['/sign-in', '/sign-up', '/forgot-password', '/otp']
-      const protectedRoutes = ['/agents', '/projects']
-      const publicRoutes = ['/', ...allowedRoutes]
-      
-      const isApiRoute = currentPath.startsWith('/api/')
-      
-      if (isAuthenticated && authRoutes.includes(currentPath)) {
-        router.push('/')
-      } 
-      else if (!isAuthenticated && 
-        !isApiRoute && 
-        !publicRoutes.includes(currentPath) && 
-        !allowedRoutes.includes(currentPath)
-      ) {
-        router.push('/sign-in')
-      }
-    }
-  }, [isAuthenticated, loading, router, allowedRoutes])
-
+  // Only show loading state during initial auth check
+  // Route protection is handled by middleware
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <TracingLogo size={80} duration={3} strokeColor="#513379" />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center space-y-4">
+          <TracingLogo size={60} duration={2} strokeColor="#513379" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     )
   }
 
-  return children
+  return <>{children}</>
 }
-
 
 export default AuthGuard

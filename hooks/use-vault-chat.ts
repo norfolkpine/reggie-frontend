@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createChatSession, getChatSessionMessage, getChatSession } from '@/api/chat-sessions';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 import { BASE_URL } from '@/lib/api-client';
 import { Feedback } from '@/api/chat-sessions';
 import { v4 as uuidv4 } from 'uuid';

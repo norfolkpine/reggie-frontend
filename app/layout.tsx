@@ -2,10 +2,21 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Raleway, Red_Hat_Display } from "next/font/google"
 import "../styles/globals.css"
+
+// Components
 import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "@/components/theme-provider"
+import AuthGuard from "@/components/auth-guard"
+
+// Contexts
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
-import { ThemeProvider } from "@/components/theme-provider"
+import { SearchProvider } from "@/contexts/search-context"
+import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
+import { AiPanelProvider } from "@/contexts/ai-panel-context"
+
+// Providers
+import { AppProvider } from "@/config/AppProvider"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -58,7 +69,6 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          suppressHydrationWarning
           storageKey="theme"
         >
           <AppProvider>
@@ -85,10 +95,4 @@ export default function RootLayout({
 
 
 
-import AuthGuard from "@/components/auth-guard"
-import { SearchProvider } from "@/contexts/search-context"
-import { cn } from "@/lib/utils"
-import { AppProvider } from "@/config/AppProvider"
-import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
-import { AiPanelProvider } from "@/contexts/ai-panel-context"
 

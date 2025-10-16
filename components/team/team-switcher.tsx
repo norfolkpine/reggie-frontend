@@ -26,6 +26,7 @@ import { TeamList } from "./team-list";
 import { UserMenu } from "./user-menu";
 import { UserInfo } from "./user-info";
 import { MenuItem } from "@/types/menu";
+import { PricingModal } from "@/components/pricing/pricing-modal";
 
 const MENU_ITEMS: MenuItem[] = [
   { key: "profile", label: "Profile", shortcut: "⇧⌘P" },
@@ -50,6 +51,7 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
     team: false,
     logoutConfirm: false,
   });
+  const [isPricingModalOpen, setIsPricingModalOpen] = React.useState(false);
 
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -278,12 +280,23 @@ export function TeamSwitcher({ isCollapsed = false }: TeamSwitcherProps) {
               menuItems={MENU_ITEMS}
               onItemSelect={handleMenuItemSelect}
               onLogout={() => setDialogState("logoutConfirm")(true)}
+              onPricingClick={() => setIsPricingModalOpen(true)}
             />
           )}
         </div>
       </DropdownMenuContent>
       {renderDialogs()}
     </DropdownMenu>
+    
+    <PricingModal
+      open={isPricingModalOpen}
+      onOpenChange={setIsPricingModalOpen}
+      onPlanSelect={(planId) => {
+        console.log("Selected plan:", planId);
+        setIsPricingModalOpen(false);
+        // Handle plan selection logic here
+      }}
+    />
     </div>
   );
 }

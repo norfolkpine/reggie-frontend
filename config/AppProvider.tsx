@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 
 import { useCunninghamTheme } from '@/cunningham';
 import { useResponsiveStore } from '@/stores/';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "../lib/constants";
 import { QueryClientProvider as CustomQueryClientProvider, useQueryClientContext } from '@/contexts/query-client-context';
 
 
@@ -45,29 +44,9 @@ function AppProviderContent({ children }: { children: React.ReactNode }) {
     // Set the query client in the context
     setQueryClient(queryClient);
     
-    queryClient.setDefaultOptions({
-      ...defaultOptions,
-      mutations: {
-        onError: (error) => {
-          if (
-            error instanceof Error &&
-            'status' in error &&
-            error.status === 401
-          ) {
-            // Clear auth state and redirect to sign-in
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-            
-            void queryClient.resetQueries({
-              queryKey: [],
-            });
-            void replace('/sign-in');
-          }
-        },
-      },
-    });
-  }, [replace, setQueryClient]);
+    // Remove duplicate 401 handling - let api-client handle all auth errors
+    queryClient.setDefaultOptions(defaultOptions);
+  }, [setQueryClient]);
 
   return (
     <CunninghamProvider theme={theme}>

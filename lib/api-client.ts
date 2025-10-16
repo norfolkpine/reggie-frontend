@@ -1,5 +1,4 @@
 import { getCSRFToken } from "@/api";
-import { TOKEN_KEY } from "../lib/constants";
 
 // Environment-based configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -171,37 +170,9 @@ export async function ensureCSRFToken(): Promise<boolean> {
 
 
 
-// Function to refresh CSRF token when we get a CSRF error
-export async function refreshCSRFToken(): Promise<boolean> {
-  if (isDevelopment) {
-    console.log('Refreshing CSRF token...');
-  }
-  
-  try {
-    // Get a fresh CSRF token from Django Allauth config endpoint
-    const response = await fetch(`${BASE_URL}/_allauth/browser/v1/config`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (response.ok) {
-      const csrfToken = getCSRFToken();
-      if (csrfToken) {
-        if (isDevelopment) {
-          console.log('CSRF token refreshed successfully');
-        }
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    if (isDevelopment) {
-      console.error('Failed to refresh CSRF token:', error);
-    }
-    return false;
-  }
-}
+
+// Request deduplication to prevent multiple concurrent 401 handlers
+const pendingAuthHandlers = new Set<string>();
 
 // Improved response handling with better error management
 async function handleResponse(response: Response, httpMethod?: string): Promise<unknown> {
@@ -211,19 +182,33 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
       // Handle authentication/authorization errors
       const context = authManager.getAuthContext();
       if (context) {
+        // Fix 401/403 logic: 401 = unauthorized (session expired) → logout, 403 = forbidden (CSRF) → retry
         if (response.status === 401) {
-          // For 401, call logout for proper cleanup
-          context.logout();
-        } else {
-          // For 403, just handle token expiration
-          context.handleTokenExpiration();
+          // Session expired - logout and clear all data
+          console.log('401 Unauthorized response received - logging out user and redirecting to login');
+          const handlerKey = 'logout';
+          if (!pendingAuthHandlers.has(handlerKey)) {
+            pendingAuthHandlers.add(handlerKey);
+            context.logout().finally(() => {
+              pendingAuthHandlers.delete(handlerKey);
+            });
+          }
+        } else if (response.status === 403) {
+          // CSRF or permission error - just clear user state, don't logout
+          const handlerKey = 'token-expiration';
+          if (!pendingAuthHandlers.has(handlerKey)) {
+            pendingAuthHandlers.add(handlerKey);
+            context.handleTokenExpiration();
+            pendingAuthHandlers.delete(handlerKey);
+          }
         }
       } else {
-        // Fallback if auth context is not available - clear storage but don't hard redirect
+        // Fallback if auth context is not available - clear storage and redirect
         if (typeof window !== 'undefined') {
-          localStorage.clear();
+          localStorage.removeItem('opie.auth.user');
           console.warn('Auth context not available for authentication error handling');
-          // Don't use window.location.href - let the auth context handle navigation
+          // Redirect to login page as fallback
+          window.location.href = '/sign-in';
         }
       }
     }
@@ -269,10 +254,9 @@ async function handleResponse(response: Response, httpMethod?: string): Promise<
   }
 }
 
-// Enhanced API client with CSRF retry logic
-async function apiClient(endpoint: string, config: RequestConfig = {}, retryCount = 0): Promise<unknown> {
+// Enhanced API client without retry logic
+async function apiClient(endpoint: string, config: RequestConfig = {}): Promise<unknown> {
   const { params, ...requestConfig } = config;
-  const token = localStorage.getItem(TOKEN_KEY);
 
   const url = new URL(`${BASE_URL}${endpoint}`);
   if (params) {
@@ -296,7 +280,6 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
     ...(csrfToken && { "X-CSRFToken": csrfToken }),
     ...(config.headers as Record<string, string>),
   };
@@ -308,50 +291,18 @@ async function apiClient(endpoint: string, config: RequestConfig = {}, retryCoun
   }
 
   try {
+    if (isDevelopment) {
+      console.log(`Making API request to ${endpoint}`);
+    }
+    
     const response = await fetch(url.toString(), {
       ...requestConfig,
       headers,
       credentials: 'include',
     });
 
-    // Check for CSRF errors and retry once with a fresh token
-    if ((response.status === 403 || response.status === 409) && retryCount === 0) {
-      try {
-        const errorData = await response.json();
-        
-        const isCsrfError = (errorData.detail && errorData.detail.includes('CSRF')) || (Array.isArray(errorData.errors) && errorData.errors.some((err: any) => err.message && err.message.includes('CSRF')));
-
-        if (isCsrfError) {
-          if (isDevelopment) {
-            console.log(`CSRF error detected (status ${response.status}):`, errorData);
-            console.log('Current CSRF token:', csrfToken);
-            console.log('Attempting to refresh token...');
-          }
-          
-          // Refresh CSRF token and retry once
-          const refreshed = await refreshCSRFToken();
-          if (refreshed) {
-            if (isDevelopment) {
-              console.log('Token refreshed, retrying request...');
-            }
-            return apiClient(endpoint, config, retryCount + 1);
-          } else {
-            if (isDevelopment) {
-              console.log('Failed to refresh token, trying to get new CSRF token...');
-            }
-            // Try to get a new CSRF token
-            const newToken = await ensureCSRFToken();
-            if (newToken) {
-              if (isDevelopment) {
-                console.log('New CSRF token obtained, retrying request...');
-              }
-              return apiClient(endpoint, config, retryCount + 1);
-            }
-          }
-        }
-      } catch {
-        // If we can't parse the error, continue with normal error handling
-      }
+    if (isDevelopment) {
+      console.log(`API response for ${endpoint}: ${response.status} ${response.statusText}`);
     }
 
     return handleResponse(response, requestConfig.method);

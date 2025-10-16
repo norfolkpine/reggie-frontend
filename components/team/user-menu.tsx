@@ -6,15 +6,24 @@ import { DropdownMenuItem, DropdownMenuGroup, DropdownMenuSeparator, DropdownMen
 import { useRouter } from "next/navigation";
 import { MenuItem } from "@/types/menu";
 
-
 interface UserMenuProps {
   menuItems: MenuItem[];
   onItemSelect: (key: string) => void;
   onLogout: () => void;
+  onPricingClick?: () => void;
 }
 
-export function UserMenu({ menuItems, onItemSelect, onLogout }: UserMenuProps) {
+export function UserMenu({ menuItems, onItemSelect, onLogout, onPricingClick }: UserMenuProps) {
   const router = useRouter();
+
+  const handlePricingClick = (e: Event) => {
+    e.preventDefault();
+    if (onPricingClick) {
+      onPricingClick();
+    } else {
+      router.push("/pricing");
+    }
+  };
 
   return (
     <>
@@ -41,7 +50,7 @@ export function UserMenu({ menuItems, onItemSelect, onLogout }: UserMenuProps) {
       <DropdownMenuSeparator />
       <DropdownMenuItem
         className="cursor-pointer focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground p-3"
-        onSelect={() => router.push("/pricing")}
+        onSelect={handlePricingClick}
       >
         <div className="flex flex-col">
           <span className="font-medium">Upgrade to Premium</span>
