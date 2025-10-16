@@ -5,14 +5,42 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { BarChart, FileText } from 'lucide-react'
+import { FileText, Settings } from 'lucide-react'
+import { PricingModal } from "@/components/pricing/pricing-modal"
+import { PricingPlan } from "@/types/pricing"
 
 export default function SettingsBilling() {
   const [currentPlan, setCurrentPlan] = useState('pro')
   const [spendingLimit, setSpendingLimit] = useState(1000)
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false)
+
+  // Sample plan data - in a real app, this would come from your API
+  const currentPlanData: PricingPlan = {
+    id: 'pro',
+    name: 'Pro',
+    description: 'For solo builders and small teams running workflows in production.',
+    monthlyPrice: 50,
+    yearlyPrice: 50,
+    features: [
+      { name: '3 shared projects', included: true },
+      { name: '20 concurrent executions', included: true },
+      { name: '7 days of insights', included: true },
+      { name: 'Admin roles', included: true },
+      { name: 'Global variables', included: true },
+      { name: 'Workflow history', included: true },
+      { name: 'Execution search', included: true },
+    ],
+    ctaText: 'Current Plan',
+    ctaVariant: 'outline',
+  }
+
+  const handlePlanSelect = (planId: string) => {
+    setCurrentPlan(planId)
+    // Here you would typically make an API call to update the user's plan
+    console.log('Plan selected:', planId)
+  }
 
   // Sample billing history data
   const billingHistory = [
@@ -25,39 +53,32 @@ export default function SettingsBilling() {
     <div className="container mx-auto p-6 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Plans and Usage</CardTitle>
-          <CardDescription>View your current plan and usage details. Adjust your plan as needed.</CardDescription>
+          <CardTitle>Current Plan</CardTitle>
+          <CardDescription>View your current plan details and manage your subscription.</CardDescription>
         </CardHeader>
         <CardContent>
-          <RadioGroup defaultValue={currentPlan} onValueChange={setCurrentPlan} className="grid grid-cols-3 gap-4">
-            <Label
-              htmlFor="basic"
-              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
-            >
-              <RadioGroupItem value="basic" id="basic" className="sr-only" />
-              <BarChart className="mb-3 h-6 w-6" />
-              <span className="text-sm font-medium">Basic</span>
-            </Label>
-            <Label
-              htmlFor="pro"
-              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
-            >
-              <RadioGroupItem value="pro" id="pro" className="sr-only" />
-              <BarChart className="mb-3 h-6 w-6" />
-              <span className="text-sm font-medium">Pro</span>
-            </Label>
-            <Label
-              htmlFor="enterprise"
-              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
-            >
-              <RadioGroupItem value="enterprise" id="enterprise" className="sr-only" />
-              <BarChart className="mb-3 h-6 w-6" />
-              <span className="text-sm font-medium">Enterprise</span>
-            </Label>
-          </RadioGroup>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Settings className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">{currentPlanData.name}</h3>
+                <p className="text-sm font-medium text-primary">
+                  ${currentPlanData.monthlyPrice} AUD/month
+                </p>
+              </div>
+            </div>
+            
+          </div>
         </CardContent>
-        <CardFooter>
-          <Button>Update Plan</Button>
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" onClick={() => setIsPricingModalOpen(true)}>
+            Change Plan
+          </Button>
+          <Button variant="outline">
+            Cancel Subscription
+          </Button>
         </CardFooter>
       </Card>
 
@@ -145,6 +166,13 @@ export default function SettingsBilling() {
           </Button>
         </CardFooter>
       </Card>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        open={isPricingModalOpen}
+        onOpenChange={setIsPricingModalOpen}
+        onPlanSelect={handlePlanSelect}
+      />
     </div>
   )
 }
