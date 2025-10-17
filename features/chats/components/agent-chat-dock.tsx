@@ -279,7 +279,7 @@ const AgentChatDock = memo(function AgentChatDock({
   }
 
   return (
-    <div className={`${isMobile ? 'flex flex-col h-full' : 'flex bg-background sticky top-16 self-start h-full'}`}>
+    <div className={`${isMobile ? 'flex flex-col h-full' : 'flex bg-background sticky top-16 self-start h-full w-96'}`}>
       {/* Left Sidebar with Icons - hidden on mobile */}
       {!isMobile && (
         <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible">
@@ -319,7 +319,7 @@ const AgentChatDock = memo(function AgentChatDock({
 
       {/* Main Panel */}
       {activeTab && (
-        <div className={`${isMobile ? 'w-full flex-1' : 'w-96'} bg-card ${!isMobile ? 'border-r border-border' : ''} flex flex-col`}>
+        <div className={`${isMobile ? 'w-full flex-1' : 'w-64'} bg-card ${!isMobile ? 'border-r border-border' : ''} flex flex-col`}>
           {/* Header */}
           <div className="flex items-center justify-between p-2 border-b border-border">
             <div className="flex items-center gap-2">
