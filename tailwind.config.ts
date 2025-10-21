@@ -179,6 +179,10 @@ const config = {
   		}
   	}
   },
+  safelist: [
+    'w-[256px]',
+    'w-[320px]',
+  ],
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config
 
