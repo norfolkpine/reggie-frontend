@@ -8,6 +8,7 @@ import {
   IconBrandFacebook,
   IconBrandGithub,
   IconBrandGoogle,
+  IconBrandWindows,
   IconMail,
   IconCheck,
 } from "@tabler/icons-react";
@@ -313,7 +314,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-2">
               <Button
                 variant="outline"
                 className="w-full"
@@ -325,6 +326,19 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 }}
               >
                 <IconBrandGoogle className="h-4 w-4" /> Google
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                type="button"
+                disabled={isLoading}
+                onClick={() => {
+                  console.log("Microsoft sign-up clicked");
+                  // Redirect to Microsoft using allauth headless endpoint
+                  redirectToProvider('microsoft', '/account/provider/callback')
+                }}
+              >
+                <IconBrandWindows className="h-4 w-4" /> Microsoft
               </Button>
               <LinkButton
                 variant="outline"

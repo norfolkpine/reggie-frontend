@@ -4,7 +4,7 @@ import { HTMLAttributes, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IconBrandFacebook, IconBrandGithub, IconBrandGoogle, IconMail } from '@tabler/icons-react'
+import { IconBrandFacebook, IconBrandWindows, IconBrandGoogle, IconMail } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -301,7 +301,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               </div>
             </div>
 
-            <div className='flex items-center gap-2'>
+            <div className='flex flex-col items-center gap-2'>
               <Button
                 variant='outline'
                 className='w-full'
@@ -313,6 +313,18 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 }}
               >
                 <IconBrandGoogle className='h-4 w-4' /> Google
+              </Button>
+              <Button
+                variant='outline'
+                className='w-full'
+                type='button'
+                disabled={isLoading}
+                onClick={() => {
+                  // Redirect to Microsoft via allauth headless endpoint
+                  redirectToProvider('microsoft', '/account/provider/callback')
+                }}
+              >
+                <IconBrandWindows className='h-4 w-4' /> Microsoft
               </Button>
               <LinkButton
                 variant='outline'
