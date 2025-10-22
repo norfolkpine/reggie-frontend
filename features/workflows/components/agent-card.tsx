@@ -68,14 +68,14 @@ export function AgentCard({ agent }: AgentCardProps) {
           onClick={async () => {
             try {
               // You can customize the agent_code if needed, fallback to 'gpt-4o' if not present
-              const agent_code = (agent.model ? agent.model.toString() : "gpt-4o");
-              const session = await createChatSession({
-                title: `New chat with ${agent.name}`,
-                agent_id: agent.agent_id,
-                agent_code,
-              });
+              // const agent_code = (agent.model ? agent.model.toString() : "gpt-4o");
+              // const session = await createChatSession({
+              //   title: `New chat with ${agent.name}`,
+              //   agent_id: agent.agent_id,
+              //   agent_code,
+              // });
               refresh();
-              router.push(`/chat/${session.session_id}?agentId=${agent.agent_id}`);
+              // router.push(`/chat/${session.session_id}?agentId=${agent.agent_id}`);
             } catch (e) {
               // Optionally handle error, e.g., toast
               alert("Failed to start chat session. Please try again.");
@@ -85,7 +85,7 @@ export function AgentCard({ agent }: AgentCardProps) {
           size="sm"
           className="gap-1"
         >
-          Chat now <ArrowRight className="h-4 w-4" />
+          Test now <ArrowRight className="h-4 w-4" />
         </Button>
       </CardFooter>
     </Card>

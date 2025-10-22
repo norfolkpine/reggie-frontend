@@ -1,7 +1,16 @@
 "use client"
 
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useHeader } from "@/contexts/header-context";
+import { useRouter } from "next/navigation";
 import {
   Background,
   ReactFlow,
@@ -35,21 +44,63 @@ import {
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu"
 
-function BeginNode({ data }: NodeProps) {
+function StartNode({ data }: NodeProps) {
   return (
-    <div className="py-2 pr-4 pl-4 rounded-sm bg-white min-w-[250px] flex items-center justify-between gap-4 relative">
-      <div className="flex items-center gap-3">
-        <div className="w-[25px] h-[25px] bg-black rounded flex items-center justify-center">
-          <Home size={16} />
+    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[100px] flex items-center justify-center gap-2 relative">
+      <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center">
+        <Home size={12} />
+      </div>
+      <span className='text-xs font-semibold'>{data.label}</span>
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+      />
+    </div>
+  );
+}
+
+function AgentNode({ data }: NodeProps) {
+  return (
+    <div className="rounded-lg bg-white border-2 shadow-sm w-[200px] relative">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+      />
+      <div className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center">
+            <Bot size={14} />
+          </div>
+          <span className='text-xs font-semibold'>{data.type || 'Agent'}</span>
         </div>
-        <span className='text-base text-sm font-semibold'>{data.label}</span>
+        <div className="space-y-1.5">
+          <Select>
+            <SelectTrigger className="h-7 text-xs w-full">
+              <SelectValue placeholder="Knowledge Base" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="kb1">Knowledge Base 1</SelectItem>
+              <SelectItem value="kb2">Knowledge Base 2</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select>
+            <SelectTrigger className="h-7 text-xs w-full">
+              <SelectValue placeholder="Select Tools" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tool1">Tool 1</SelectItem>
+              <SelectItem value="tool2">Tool 2</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <Handle
         type="source"
         position={Position.Right}
-        className="bg-black w-[25px] h-[25px] flex items-center justify-center"
-      >
-      </Handle>
+        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+      />
     </div>
   );
 }
@@ -103,7 +154,8 @@ function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
 }
 
 const nodeTypes = {
-  beginNode: BeginNode,
+  startNode: StartNode,
+  agentNode: AgentNode,
 };
 
 const edgeTypes = {
@@ -112,13 +164,48 @@ const edgeTypes = {
 
 const initialNodes: Node[] = [
   {
-    id: 'begin-node',
-    type: 'beginNode',
-    position: { x: 250, y: 100 },
-    data: { label: 'Begin' },
+    id: 'start-node',
+    type: 'startNode',
+    position: { x: 250, y: 200 },
+    data: { label: 'Start' },
   },
 ];
 const initialEdges: Edge[] = [];
+
+// Sidebar node categories
+const nodeCategories = [
+  {
+    title: 'Core',
+    nodes: [
+      { type: 'agentNode', label: 'Agent', icon: Bot },
+      { type: 'default', label: 'End', icon: Home},
+      { type: 'default', label: 'Note', icon: MessageSquare},
+    ]
+  },
+  // {
+  //   title: 'Tools',
+  //   nodes: [
+  //     { type: 'default', label: 'File search', icon: Database, bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },
+  //     { type: 'default', label: 'Guardrails', icon: Clock, bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },
+  //     { type: 'default', label: 'MCP', icon: Workflow, bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },
+  //   ]
+  // },
+  // {
+  //   title: 'Logic',
+  //   nodes: [
+  //     { type: 'default', label: 'If / else', icon: Workflow, bgColor: 'bg-orange-100', textColor: 'text-orange-600' },
+  //     { type: 'default', label: 'While', icon: Clock, bgColor: 'bg-orange-100', textColor: 'text-orange-600' },
+  //     { type: 'default', label: 'User approval', icon: MessageSquare, bgColor: 'bg-orange-100', textColor: 'text-orange-600' },
+  //   ]
+  // },
+  // {
+  //   title: 'Data',
+  //   nodes: [
+  //     { type: 'default', label: 'Transform', icon: Workflow, bgColor: 'bg-purple-100', textColor: 'text-purple-600' },
+  //     { type: 'default', label: 'Set state', icon: Database, bgColor: 'bg-purple-100', textColor: 'text-purple-600' },
+  //   ]
+  // }
+];
 
 function WorkflowEditor() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -127,6 +214,27 @@ function WorkflowEditor() {
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const connectingNodeId = useRef<string | null>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const { setHeaderCustomContent } = useHeader();
+  const router = useRouter();
+
+  useEffect(() => {
+    setHeaderCustomContent(
+      <div className="flex items-center gap-2 text-sm sm:text-base lg:text-lg font-medium">
+        <span
+          className="hover:text-foreground cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground"
+          onClick={() => router.push("/workflow")}
+        >
+          Workflows
+        </span>
+        <span className="text-muted-foreground dark:text-muted-foreground/60">/</span>
+        <span className="text-foreground font-medium">Create Workflow</span>
+      </div>
+    );
+
+    return () => {
+      setHeaderCustomContent(null);
+    };
+  }, [setHeaderCustomContent, router]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -155,7 +263,7 @@ function WorkflowEditor() {
   );
 
   const onEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: Edge) => {
+    (event: React.MouseEvent, _edge: Edge) => {
       event.preventDefault();
       event.stopPropagation();
     },
@@ -170,18 +278,18 @@ function WorkflowEditor() {
   );
 
   const handleAddNode = useCallback(
-    (type: string) => {
-      const id = `${type}-${Date.now()}`;
-      const position = screenToFlowPosition({
+    (nodeType: string, label: string, position?: { x: number; y: number }) => {
+      const id = `${label.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+      const nodePosition = position || screenToFlowPosition({
         x: menuPosition.x,
         y: menuPosition.y,
       });
 
       const newNode: Node = {
         id,
-        type: 'default',
-        position,
-        data: { label: type },
+        type: nodeType,
+        position: nodePosition,
+        data: { label, type: label },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -203,94 +311,89 @@ function WorkflowEditor() {
     [menuPosition, screenToFlowPosition, setNodes, setEdges]
   );
 
+  const onDragStart = (event: React.DragEvent, nodeType: string, label: string) => {
+    event.dataTransfer.setData('application/reactflow', JSON.stringify({ nodeType, label }));
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const data = event.dataTransfer.getData('application/reactflow');
+      if (!data) return;
+
+      const { nodeType, label } = JSON.parse(data);
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      handleAddNode(nodeType, label, position);
+    },
+    [screenToFlowPosition, handleAddNode]
+  );
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
   return (
-    <div className="h-[89vh] w-full" style={{height: '89vh', width: '100%'}}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onConnectStart={onConnectStart}
-        onConnectEnd={onConnectEnd}
-        onEdgeClick={onEdgeClick}
-        onEdgesDelete={onEdgesDelete}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={{
-          type: 'deletable',
-        }}
-        fitView
-      >
-        <Background bgColor='#e6e5e5ff' variant={BackgroundVariant.Dots} />
-        <Controls />
-      </ReactFlow>
+    <div className="flex h-[calc(100vh-4rem)] w-full">
+      {/* Sidebar */}
+      <div className="w-48 bg-gray-50 border-r border-gray-200 overflow-y-auto flex-shrink-0">
+        {nodeCategories.map((category, idx) => (
+          <div key={idx} className="mb-4">
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+              {category.title}
+            </div>
+            <div className="space-y-1 px-2">
+              {category.nodes.map((node, nodeIdx) => {
+                const Icon = node.icon;
+                return (
+                  <div
+                    key={nodeIdx}
+                    draggable
+                    onDragStart={(e) => onDragStart(e, node.type, node.label)}
+                    className="flex items-center gap-2 px-2 py-2 text-sm cursor-move hover:bg-gray-100 rounded transition-colors"
+                  >
+                    <div className={`w-6 h-6 ${node.bgColor} rounded flex items-center justify-center flex-shrink-0`}>
+                      <Icon size={14} className={node.textColor} />
+                    </div>
+                    <span className="text-sm">{node.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {menuOpen && (
-        <div
-          className="fixed bg-white rounded-lg shadow-lg border p-2 min-w-[200px] z-50"
-          style={{
-            left: `${menuPosition.x}px`,
-            top: `${menuPosition.y}px`,
+      {/* Canvas */}
+      <div className="flex-1 relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onEdgeClick={onEdgeClick}
+          onEdgesDelete={onEdgesDelete}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{
+            type: 'bezier',
           }}
+          // defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          fitView
         >
-          <div className="text-sm font-medium px-2 py-1.5 text-gray-500">Next step</div>
-
-          <div className="space-y-1 mt-2">
-            <div className="text-xs font-semibold px-2 py-1 text-gray-700">Foundation</div>
-            <button
-              onClick={() => handleAddNode('Agent')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-            >
-              <Bot size={16} />
-              Agent
-            </button>
-            <button
-              onClick={() => handleAddNode('Retrieval')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-            >
-              <Database size={16} />
-              Retrieval
-            </button>
-          </div>
-
-          <div className="space-y-1 mt-3">
-            <div className="text-xs font-semibold px-2 py-1 text-gray-700">Dialogue</div>
-            <button
-              onClick={() => handleAddNode('Message')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-            >
-              <MessageSquare size={16} />
-              Message
-            </button>
-            <button
-              onClick={() => handleAddNode('Await Response')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-            >
-              <MessageSquare size={16} />
-              Await Response
-            </button>
-          </div>
-
-          <div className="space-y-1 mt-3">
-            <div className="text-xs font-semibold px-2 py-1 text-gray-700">Flow</div>
-            <button
-              onClick={() => handleAddNode('Delay')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-            >
-              <Clock size={16} />
-              Delay
-            </button>
-          </div>
-        </div>
-      )}
-
-      {menuOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
+          <Background bgColor='#fafafa' variant={BackgroundVariant.Dots} gap={16} size={1} />
+          <Controls />
+        </ReactFlow>
+      </div>
     </div>
   );
 }
