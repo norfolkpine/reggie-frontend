@@ -49,11 +49,13 @@ export function VaultManager() {
     breadcrumbs: { id: number; name: string }[];
   }>({ currentFolderId: 0, breadcrumbs: [] });
 
+  const [dragOverBreadcrumbId, setDragOverBreadcrumbId] = useState<number | null>(null);
 
   const filesTabRef = useRef<{
     getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
     navigateToFolder: (folderId: number) => void;
     handleFilesDrop: (files: File[]) => Promise<void>;
+    handleDrop: (e: React.DragEvent, targetFolderId: number) => Promise<void>;
   }>(null);
 
   // Update breadcrumb data from FilesTab
@@ -79,6 +81,30 @@ export function VaultManager() {
       updateBreadcrumbDataRef.current();
     }, 100);
   }, []); // No dependencies to avoid infinite loops
+
+  const handleBreadcrumbDragOver = useCallback((e: React.DragEvent, folderId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverBreadcrumbId(folderId);
+  }, []);
+
+  const handleBreadcrumbDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setDragOverBreadcrumbId(null);
+    }
+  }, []);
+
+  const handleBreadcrumbDrop = useCallback(async (e: React.DragEvent, targetFolderId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverBreadcrumbId(null);
+
+    await filesTabRef.current?.handleDrop(e, targetFolderId);
+  }, []);
 
   // Set up drag and drop options when activeTab changes
   useEffect(() => {
@@ -180,7 +206,12 @@ export function VaultManager() {
           <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             <button
               onClick={() => navigateToFolder(0)}
-              className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+              onDragOver={(e) => handleBreadcrumbDragOver(e, 0)}
+              onDragLeave={handleBreadcrumbDragLeave}
+              onDrop={(e) => handleBreadcrumbDrop(e, 0)}
+              className={`text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none ${
+                dragOverBreadcrumbId === 0 ? 'bg-blue-100 dark:bg-blue-900/30 rounded px-1' : ''
+              }`}
               title={project.name}
             >
               {project.name}
@@ -212,14 +243,19 @@ export function VaultManager() {
                 const shouldShowOnMobile = breadcrumbData.breadcrumbs.length <= 2 || isLastBreadcrumb;
                 
                 return (
-                  <div 
-                    key={folder.id} 
+                  <div
+                    key={folder.id}
                     className={`flex items-center flex-shrink-0 min-w-0 ${!shouldShowOnMobile ? 'hidden sm:flex' : 'flex'}`}
                   >
                     <span className="text-muted-foreground dark:text-muted-foreground/60 mx-0.5 sm:mx-1 flex-shrink-0 mr-1">/</span>
                     <button
                       onClick={() => navigateToFolder(folder.id)}
-                      className="text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none"
+                      onDragOver={(e) => handleBreadcrumbDragOver(e, folder.id)}
+                      onDragLeave={handleBreadcrumbDragLeave}
+                      onDrop={(e) => handleBreadcrumbDrop(e, folder.id)}
+                      className={`text-foreground font-medium hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none ${
+                        dragOverBreadcrumbId === folder.id ? 'bg-blue-100 dark:bg-blue-900/30 rounded px-1' : ''
+                      }`}
                       title={folder.name}
                     >
                       {folder.name}

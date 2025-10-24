@@ -31,6 +31,7 @@ export const FilesTab = React.forwardRef<{
   getBreadcrumbData: () => { currentFolderId: number; breadcrumbs: { id: number; name: string }[] };
   navigateToFolder: (folderId: number) => void;
   handleFilesDrop: (files: File[]) => Promise<void>;
+  handleDrop: (e: React.DragEvent, targetFolderId: number) => Promise<void>;
 }, FilesTabProps>(({ projectId, projectName, teamId, requestedNavigation, onBreadcrumbChange }, ref) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -278,13 +279,6 @@ export const FilesTab = React.forwardRef<{
     handleFileUpload(uploadedFiles, failedFiles);
   }, [files, user, projectId, currentFolderId, teamId, toast]);
 
-  // Expose methods to parent component
-  useImperativeHandle(ref, () => ({
-    getBreadcrumbData: () => breadcrumbRef.current,
-    navigateToFolder: handleBreadcrumbClick,
-    handleFilesDrop: processFilesDrop,
-  }), [handleBreadcrumbClick, processFilesDrop]);
-
   // Handle navigation requests from parent (breadcrumb clicks)
   useEffect(() => {
     if (requestedNavigation !== null && requestedNavigation !== undefined) {
@@ -348,7 +342,7 @@ export const FilesTab = React.forwardRef<{
       toast({ title: "Error", description: "Failed to move files. Please try again.", variant: "destructive" });
     }
     setDraggedFiles([]);
-  }, [draggedFiles, allFiles]);
+  }, [draggedFiles, allFiles, toast, refreshFiles]);
 
   const handleFileUpload = useCallback(async (uploadedFiles: any[], failedFiles?: { file: File; error: string }[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -409,6 +403,14 @@ export const FilesTab = React.forwardRef<{
       toast({ title: "Error renaming file", description: "Please try again.", variant: "destructive" });
     } finally { setIsRenamingFile(false); }
   };
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getBreadcrumbData: () => breadcrumbRef.current,
+    navigateToFolder: handleBreadcrumbClick,
+    handleFilesDrop: processFilesDrop,
+    handleDrop: handleDrop,
+  }), [handleBreadcrumbClick, processFilesDrop, handleDrop]);
 
   return (
     <>
