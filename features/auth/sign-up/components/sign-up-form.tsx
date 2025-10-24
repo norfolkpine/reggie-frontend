@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { ErrorList, ApiError } from "@/components/ui/error-list";
 import { useRouter } from "next/navigation";
-import { register } from "@/api/auth";
+import { register, logout } from "@/api/auth";
 import { handleApiError } from "@/lib/utils/handle-api-error";
 import { LinkButton } from "@/components/link-button";
 import { useToast } from "@/components/ui/use-toast";
@@ -86,6 +86,8 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
         password1: data.password2,
         password: data.password1,
       });
+
+      await logout();
 
       toast({
         title: "Success",
