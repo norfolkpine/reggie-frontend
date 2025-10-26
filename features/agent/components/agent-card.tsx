@@ -146,7 +146,7 @@ export function AgentCard({ agent, onDelete, onEdit }: AgentCardProps) {
         {/* Remove Edit and Delete buttons, keep Chat now */}
         <span />
         <Button
-          onClick={e => e.stopPropagation()}
+          onClick={handleStartChat}
           variant="ghost"
           size="sm"
           className="gap-1"
