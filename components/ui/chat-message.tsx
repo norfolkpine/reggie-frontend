@@ -27,6 +27,10 @@ const chatBubbleVariants = cva(
         true: "bg-primary text-primary-foreground sm:max-w-[70%]",
         false: "bg-muted text-foreground w-full",
       },
+      isError: {
+        true: "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-200",
+        false: "",
+      },
       animation: {
         none: "",
         slide: "duration-300 animate-in fade-in-0",
@@ -138,6 +142,7 @@ export interface Message {
   toolCalls?: ToolCall[]
   reasoningSteps?: ReasoningStep[]
   references?: ReferencesData[]
+  isError?: boolean
 }
 
 export interface ToolCall {
@@ -179,6 +184,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   toolCalls,
   reasoningSteps,
   references,
+  isError = false,
 }) => {
   const files = useMemo(() => {
     if (!experimental_attachments) return [];
@@ -233,8 +239,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </div>
         ) : null}
 
-        <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-          <div className="[&_a]:text-blue-300 [&_a]:hover:text-blue-100 [&_a]:underline [&_a]:underline-offset-4">
+        <div className={cn(chatBubbleVariants({ isUser, isError, animation }))}>
+          <div className={isError ? "" : "[&_a]:text-blue-300 [&_a]:hover:text-blue-100 [&_a]:underline [&_a]:underline-offset-4"}>
             <MarkdownRenderer>{content}</MarkdownRenderer>
           </div>
         </div>
@@ -271,14 +277,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         parts.map((part, index) => {
           if (part.type === "text") {
             return (
-              <div
+                <div
                 className={cn(
                   "flex flex-col w-full",
                   isUser ? "items-end" : "items-start"
                 )}
                 key={`text-${index}`}
               >
-                <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+                <div className={cn(chatBubbleVariants({ isUser, isError, animation }))}>
                   <MarkdownRenderer>{part.text}</MarkdownRenderer>
                   {actions ? (
                     <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
@@ -315,7 +321,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       ) : (
         // Main content message
         <div className={cn("flex flex-col w-full", isUser ? "items-end" : "items-start")}> 
-          <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+          <div className={cn(chatBubbleVariants({ isUser, isError, animation }))}>
             <MarkdownRenderer>{content}</MarkdownRenderer>
             {actions ? (
               <div className="absolute -bottom-8 right-2 flex space-x-1 rounded-lg border bg-background p-0.5 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100 shadow-sm z-20">
