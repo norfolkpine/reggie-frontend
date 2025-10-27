@@ -180,7 +180,7 @@ export default function IntegrationsSettingsPage() {
   }, [toast, queryClient, appIntegration?.title]);
 
 
-  const ensureConnectUI = async () => {
+  const ensureConnectUI = async (integration: Integration) => {
     if (connectUIRef.current) return connectUIRef.current;
     try {
       const mod = await import('@nangohq/frontend');
@@ -191,7 +191,7 @@ export default function IntegrationsSettingsPage() {
         return null;
       }
       if (!sessionTokenRef.current) {
-        sessionTokenRef.current = await createNangoSession('connect');
+        sessionTokenRef.current = await createNangoSession(integration.key);
       }
       const connectUI = nangoRef.current.openConnectUI({
         apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
@@ -231,7 +231,7 @@ export default function IntegrationsSettingsPage() {
   const handleConnect = async (integration: Integration) => {
     setIntegration(integration);
     try {
-      const connectUI = connectUIRef.current || (await ensureConnectUI());
+      const connectUI = connectUIRef.current || (await ensureConnectUI(integration));
       if (!connectUI) {
         toast({ title: 'Connection Error', description: 'Failed to initialize connection UI. Please try again.', variant: 'destructive' });
         return;
