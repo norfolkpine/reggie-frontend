@@ -19,6 +19,7 @@ interface Message {
   reasoningSteps?: ReasoningStep[];
   experimental_attachments?: { name: string; contentType: string; url: string }[];
   references?: ReferencesData[];
+  isError?: boolean;
 }
 
 interface ReasoningStep {
@@ -397,6 +398,46 @@ export function useVaultChat({
             try {
               const parsedData = JSON.parse(dataContent);
 
+              // Handle stream errors
+              if (parsedData.error) {
+                // console.error('Stream error:', parsedData.error);
+                // setError(parsedData.error);
+                setIsAgentResponding(false);
+                
+                // Add error message to chat
+                setMessages(prevMessages => {
+                  const newMessages = [...prevMessages];
+                  const lastIndex = newMessages.length - 1;
+                  if (lastIndex >= 0 && newMessages[lastIndex].role === 'user') {
+                    newMessages.push({ 
+                      id: uuidv4(), 
+                      role: 'assistant', 
+                      content: parsedData.error,
+                      isError: true
+                    });
+                  } else if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && !newMessages[lastIndex].content.trim()) {
+                    newMessages[lastIndex] = {
+                      ...newMessages[lastIndex],
+                      content: parsedData.error,
+                      isError: true
+                    };
+                  }
+                  return newMessages;
+                });
+                
+                // Log error for debugging
+                // captureChatError(new Error(parsedData.error), { 
+                //   action: 'streamError',
+                //   agentId: agentId,
+                //   sessionId: tempSessionId,
+                //   errorMessage: parsedData.error,
+                //   apiResponse: parsedData,
+                //   component: 'vault-chat'
+                // });
+                
+                return; // Exit the streaming loop
+              }
+
               if (parsedData.debug) {
                 setCurrentDebugMessage(JSON.stringify(parsedData.debug, null, 2));
                 if (debugMessageTimeoutRef.current) clearTimeout(debugMessageTimeoutRef.current);
@@ -557,10 +598,15 @@ export function useVaultChat({
             newMessages.push({
               id: uuidv4(),
               role: 'assistant',
-              content: 'Sorry, there was an error processing your vault request.'
+              content: 'Sorry, there was an error processing your vault request.',
+              isError: true
             });
           } else if (newMessages[lastIndex].role === 'assistant' && newMessages[lastIndex].content === '') {
-            newMessages[lastIndex].content = 'Sorry, there was an error processing your vault request.';
+            newMessages[lastIndex] = {
+              ...newMessages[lastIndex],
+              content: 'Sorry, there was an error processing your vault request.',
+              isError: true
+            };
           }
           return newMessages;
         });

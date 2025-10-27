@@ -70,7 +70,7 @@ const MainContentWrapper = React.memo(({
     <div 
       className={cn(
         backgroundClass,
-        "border shadow-sm  overflow-hidden mx-2 mb-2 transition-all duration-150 ease-out",
+        "sm:border shadow-sm  overflow-hidden sm:mx-2 mb-2 transition-all duration-150 ease-out",
         isScrolled ? "-mt-2 h-[calc(100%+2px)]" : "mt-2",
         !isScrolled && "h-[calc(100%-1rem)]"
       )}

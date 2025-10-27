@@ -224,12 +224,12 @@ export function CreateAgentDialog({ open, onOpenChange, agent_id, onSuccess }: C
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-    	<DialogContent className="sm:max-w-[600px] max-h-[500px] overflow-auto">
+    	<DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-auto px-4 sm:px-6">
         <DialogHeader>
         <DialogTitle>{agentId ? "Edit Agent" : "Create Agent"}</DialogTitle>
         </DialogHeader>
 					<Form {...form}>
-						<form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+						<form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 sm:space-y-6">
 
 							{/* <div className="flex-1 max-h-[500px] overflow-auto pl-2 pr-2"> */}
 								<FormField
