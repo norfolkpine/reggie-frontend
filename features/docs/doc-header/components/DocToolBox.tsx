@@ -22,7 +22,6 @@ import {
   ModalSelectVersion,
 } from '@/features/docs/doc-versioning';
 import { useResponsiveStore } from '@/stores';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface DocToolBoxProps {
   doc: Doc;
@@ -160,8 +159,11 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
               <Pin className="h-4 w-4 mr-2" />
               {doc.is_favorite ? t('Unpin') : t('Pin')}
             </DropdownMenuItem>
-            {isDesktop && doc.abilities.versions_list && (
-              <DropdownMenuItem onClick={() => setIsSelectHistoryOpen(true)}>
+            {doc.abilities.versions_list && (
+              <DropdownMenuItem onClick={() => {
+                console.log('open history dialog');
+                setIsSelectHistoryOpen(true)
+              }}>
                 <History className="h-4 w-4 mr-2" />
                 {t('Version history')}
               </DropdownMenuItem>
@@ -198,14 +200,7 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
         onClose={() => setIsModalRemoveOpen(false)} 
       />
 
-      <Dialog open={isSelectHistoryOpen} onOpenChange={setIsSelectHistoryOpen}>
-        <DialogContent className="p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{t('Document History')}</DialogTitle>
-          </DialogHeader>
-          <ModalSelectVersion onClose={() => setIsSelectHistoryOpen(false)} doc={doc} />
-        </DialogContent>
-      </Dialog>
+<ModalSelectVersion onClose={() => setIsSelectHistoryOpen(false)} doc={doc} open={isSelectHistoryOpen} />;
     </div>
   );
 };
