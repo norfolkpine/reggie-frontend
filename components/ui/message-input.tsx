@@ -118,7 +118,10 @@ export function MessageInput({
     const items = event.clipboardData?.items
     if (!items) return
 
-    const text = event.clipboardData.getData("text")
+    // Prefer plain text; fall back to HTML (stripped) and generic text
+    const plainText = event.clipboardData.getData("text/plain")
+    const htmlText = event.clipboardData.getData("text/html")
+    const text = plainText || (htmlText ? htmlToText(htmlText) : "") || event.clipboardData.getData("text")
     
     // Check if there are files in the clipboard
     const files = Array.from(items)
@@ -397,6 +400,12 @@ function showFileUploadDialog() {
       resolve(null)
     }
   })
+}
+
+function htmlToText(html: string): string {
+  const container = document.createElement("div")
+  container.innerHTML = html
+  return container.textContent || container.innerText || ""
 }
 
 function TranscribingOverlay() {
