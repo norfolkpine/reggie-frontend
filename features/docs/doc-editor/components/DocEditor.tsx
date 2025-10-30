@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { Loader, Loader2, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { TextErrors } from '@/components/text-errors';
@@ -17,20 +17,23 @@ import { useResponsiveStore } from '@/stores';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { BlockNoteEditor, BlockNoteEditorVersion } from './BlockNoteEditor';
+import { DocEditorSkeleton } from './DocEditorSkeleton';
 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
 import { useHeader } from '@/contexts/header-context';
-import { ArrowLeft } from 'lucide-react';
+import { APIError } from '@/api/APIError';
 
 interface DocEditorProps {
-  doc: Doc;
+  doc?: Doc;
   versionId?: Versions['version_id'];
   isNew?: boolean;
+  isError?: boolean;
+  error?: APIError | null;
 }
 
-export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => {
+export const DocEditor = ({ doc = undefined, versionId, isNew = false, isError = false, error = null }: DocEditorProps) => {
   let isModalOpen = false;
   try {
     const { showModal, hideModal } = useModal();
@@ -49,27 +52,56 @@ export const DocEditor = ({ doc, versionId, isNew = false }: DocEditorProps) => 
   const router = useRouter();
   const { setHeaderActions, setHeaderCustomContent } = useHeader();
 
-  // Set header actions when component mounts
+  // Set header breadcrumb navigation
   useEffect(() => {
-    setHeaderActions([
-      {
-        label: "Back to Documents",
-        onClick: () => router.push('/documents'),
-        variant: "ghost",
-        size: "sm",
-        icon: <ArrowLeft className="h-4 w-4" />
-      }
-    ]);
+    // Clear header actions since breadcrumb provides navigation
+    setHeaderActions([]);
 
-    // Set custom header content
-    setHeaderCustomContent(<h1 className="text-xl font-medium">Document Editor</h1>);
+    // Set breadcrumb navigation
+    setHeaderCustomContent(
+      <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base lg:text-lg font-medium overflow-x-auto max-w-full scrollbar-thin">
+        {/* Documents link */}
+        <span
+          className="hover:text-foreground font-medium cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
+          onClick={() => router.push('/documents')}
+        >
+          Documents
+        </span>
+        <span className="text-muted-foreground dark:text-muted-foreground/60 flex-shrink-0">/</span>
 
-    // Cleanup header actions when component unmounts
+        {/* Document title */}
+        <span
+          className="text-foreground font-medium truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none flex-shrink-0"
+          title={doc?.title || 'Untitled'}
+        >
+          {doc?.title || 'Untitled'}
+        </span>
+      </div>
+    );
+
+    // Cleanup header when component unmounts
     return () => {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, router]);
+  }, [setHeaderActions, setHeaderCustomContent, router, doc?.title]);
+
+  if(isError && error) {
+    return (
+      <div className="m-8">
+        <TextErrors
+          causes={error.cause}
+          icon={error.status === 502 ? <WifiOff /> : undefined}
+        />
+      </div>
+    );
+  }
+
+  if (!doc) {
+    return (
+      <DocEditorSkeleton />
+    );
+  }
 
   if (!provider) return null;
 

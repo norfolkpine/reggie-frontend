@@ -120,25 +120,11 @@ const DocPage = ({ id }: DocProps) => {
       return null;
     }
 
-    return (
-      <div className="m-8">
-        <TextErrors
-          causes={error.cause}
-          icon={error.status === 502 ? <WifiOff /> : undefined}
-        />
-      </div>
-    );
   }
 
-  if (!doc) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader />
-      </div>
-    );
-  }
 
-  return <DocEditor doc={doc} />;
+
+  return <DocEditor doc={doc} isError={isError} error={error} />;
 };
 
 const Page: NextPageWithLayout = () => {

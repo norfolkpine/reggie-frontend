@@ -200,7 +200,7 @@ export const DocToolBox = ({ doc }: DocToolBoxProps) => {
         onClose={() => setIsModalRemoveOpen(false)} 
       />
 
-<ModalSelectVersion onClose={() => setIsSelectHistoryOpen(false)} doc={doc} open={isSelectHistoryOpen} />;
+<ModalSelectVersion onClose={() => setIsSelectHistoryOpen(false)} doc={doc} open={isSelectHistoryOpen} />
     </div>
   );
 };
