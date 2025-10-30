@@ -673,6 +673,128 @@ export interface PlatformApiKeyGenerated {
   expires_at?: string;
 }
 
+// Workflow Types
+export interface WorkflowPermission {
+  id: string;
+  workflow: number;
+  team: number;
+  role: "viewer" | "editor" | "owner";
+  created_at: string;
+  created_by: number | null;
+}
+
+export interface Workflow {
+  id: number;
+  name: string;
+  description: string | null;
+  created_by: number | null;
+  team: number | null;
+  permissions: WorkflowPermission[];
+  definition: {
+    agent_ids?: string[];
+    tool_ids?: number[];
+    [key: string]: any;
+  };
+  trigger_type: string | null;
+  trigger_config: {
+    [key: string]: any;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedWorkflowList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Workflow[];
+}
+
+export interface PatchedWorkflow extends Partial<Workflow> {}
+
+export interface WorkflowRun {
+  id: number;
+  workflow: number;
+  status: "running" | "completed" | "failed";
+  started_at: string;
+  completed_at: string | null;
+  input_data: {
+    [key: string]: any;
+  };
+  output_data: {
+    [key: string]: any;
+  };
+  state: {
+    [key: string]: any;
+  };
+  run_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedWorkflowRunList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: WorkflowRun[];
+}
+
+export interface PatchedWorkflowRun extends Partial<WorkflowRun> {}
+
+export interface WorkflowNode {
+  id: number;
+  workflow: number;
+  name: string;
+  node_type: string;
+  position_x: number;
+  position_y: number;
+  config: {
+    [key: string]: any;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowNodesResponse {
+  count: number;
+  nodes: WorkflowNode[];
+}
+
+export interface PaginatedWorkflowNodeList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: WorkflowNode[];
+}
+
+export interface PatchedWorkflowNode extends Partial<WorkflowNode> {}
+
+export interface WorkflowEdge {
+  id: number;
+  workflow: number;
+  source_node: number;
+  target_node: number;
+  config: {
+    [key: string]: any;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowEdgesResponse {
+  count: number;
+  edges: WorkflowEdge[];
+}
+
+export interface PaginatedWorkflowEdgeList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: WorkflowEdge[];
+}
+
+export interface PatchedWorkflowEdge extends Partial<WorkflowEdge> {}
+
 // Helper function to get project ID from various possible fields
 export const getProjectId = (project: Project): string | undefined => {
   // Prioritize UUID fields over the id field

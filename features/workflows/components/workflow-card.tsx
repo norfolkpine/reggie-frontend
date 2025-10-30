@@ -10,21 +10,94 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, ArrowRight, LucideIcon } from "lucide-react";
+import { Star, ArrowRight, Workflow as WorkflowIcon, Play } from "lucide-react";
 
-import { Agent } from "@/types/api";
+import { Agent, Workflow } from "@/types/api";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { createChatSession } from "@/api/chat-sessions";
 import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
 
-interface AgentCardProps {
-  agent: Agent;
+interface WorkflowCardProps {
+  agent?: Agent;
+  workflow?: Workflow;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
   const router = useRouter();
   const { refresh } = useChatSessionContext();
+
+  if (workflow) {
+    return (
+      <Card
+        className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50 cursor-pointer"
+        onClick={() => router.push(`/workflow/create?id=${workflow.id}`)}
+      >
+        <CardHeader className="p-4 pb-2">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-white">
+                <WorkflowIcon className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-lg">{workflow.name}</CardTitle>
+            </div>
+            {workflow.permissions && workflow.permissions.length > 0 && (
+              <Badge
+                variant="default"
+                className="bg-primary/10 text-primary border-primary/20"
+              >
+                Shared
+              </Badge>
+            )}
+          </div>
+          <CardDescription className="mt-2">
+            {workflow.description || "No description provided"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="flex flex-wrap gap-2 mt-2">
+            {workflow.trigger_type && (
+              <Badge variant="outline" className="bg-white">
+                Trigger: {workflow.trigger_type}
+              </Badge>
+            )}
+            {workflow.definition?.agent_ids && workflow.definition.agent_ids.length > 0 && (
+              <Badge variant="outline" className="bg-white">
+                {workflow.definition.agent_ids.length} Agent{workflow.definition.agent_ids.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter className="p-2 bg-white/80 flex justify-between">
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/workflow/create?id=${workflow.id}`);
+            }}
+            variant="outline"
+            size="sm"
+            className="gap-1"
+          >
+            Edit
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Run workflow:', workflow.id);
+            }}
+            variant="ghost"
+            size="sm"
+            className="gap-1"
+          >
+            Run <Play className="h-4 w-4" />
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  if (!agent) {
+    return null;
+  }
+
   return (
     <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50">
       <CardHeader className="p-4 pb-2">

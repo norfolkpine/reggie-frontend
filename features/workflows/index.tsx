@@ -1,20 +1,21 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentList } from "./components/agent-list";
-import { Clock, Plus } from "lucide-react"
-import { Agent, Instruction, ExpectedOutput } from "@/types/api"
+import { WorkflowList } from "./components/workflow-list";
+import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useHeader } from "@/contexts/header-context"
 import { SearchFilter } from "./components/search-filter"
+import { useWorkflows } from "./hooks/useWorkflows"
 
 export default function ExploreWorkflows() {
   const { setHeaderActions, setHeaderCustomContent } = useHeader()
   const [searchQuery, setSearchQuery] = useState("")
-  
+  const { workflows, isLoading } = useWorkflows()
+
   const router = useRouter()
-  
+
   const headerActions = useMemo(() => [
     {
       label: "Create Workflow",
@@ -24,32 +25,14 @@ export default function ExploreWorkflows() {
       size: "sm" as const
     }
   ], [router]);
-  const filteredAgents: Agent[] = [
-    {
-        id: 1,
-        instructions: {} as Instruction,
-        expected_output: {} as ExpectedOutput,
-        name: "Workflow Agent 1",
-        description: "Description for workflow agent 1",
-        unique_code: "workflow_agent_1",
-        agent_id: "agent_1",
-        session_table: "session_table_1",
-        search_knowledge: true,
-        add_datetime_to_instructions: true,
-        show_tool_calls: true,
-        markdown_enabled: true,
-        debug_mode: true,
-        num_history_responses: 3,
-        is_global: true,
-        created_at: "2024-01-01T00:00:00Z",
-        updated_at: "2024-01-01T00:00:00Z",
-        user: 10,
-        model: 3,
-        knowledge_base: "string",
-        team: 1,
-        subscriptions: [],
-    }
-  ];
+
+  const filteredWorkflows = useMemo(() => {
+    if (!searchQuery) return workflows;
+    return workflows.filter(workflow =>
+      workflow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      workflow.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [workflows, searchQuery]);
 
   useEffect(() => {
     setHeaderActions(headerActions);
@@ -75,9 +58,10 @@ export default function ExploreWorkflows() {
             setSearchQuery={setSearchQuery}
           />
           <div className="flex-1 overflow-auto p-4">
-            <AgentList
+            <WorkflowList
               title="All Workflows"
-              agents={filteredAgents}
+              workflows={filteredWorkflows}
+              isLoading={isLoading}
             />
           </div>
         </TabsContent>
