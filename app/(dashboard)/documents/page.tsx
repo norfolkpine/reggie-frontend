@@ -51,6 +51,17 @@ export default function DocumentListPage() {
       }
     ]);
 
+    setHeaderCustomContent(
+      <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base lg:text-lg font-medium overflow-x-auto max-w-full scrollbar-thin">
+        <span
+          className="hover:text-foreground font-medium cursor-pointer text-muted-foreground dark:hover:text-foreground dark:text-muted-foreground whitespace-nowrap flex-shrink-0"
+          onClick={() => router.push('/documents')}
+        >
+          Documents
+        </span>
+      </div>
+    );
+
     // Cleanup when component unmounts
     return () => {
       setHeaderActions([]);

@@ -20,9 +20,10 @@ import { Button } from "@/components/ui/button";
 type ModalSelectVersionProps = {
   doc: Doc;
   onClose: () => void;
+  open: boolean;
 };
 
-export const ModalSelectVersion = ({ onClose, doc }: ModalSelectVersionProps) => {
+export const ModalSelectVersion = ({ onClose, doc, open }: ModalSelectVersionProps) => {
   const { t } = useTranslation();
   const [selectedVersionId, setSelectedVersionId] = useState<Versions["version_id"] | undefined>();
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
@@ -31,7 +32,7 @@ export const ModalSelectVersion = ({ onClose, doc }: ModalSelectVersionProps) =>
   return (
     <>
       <Dialog
-        open={true}
+        open={open}
         onOpenChange={(open) => {
           if (!open) onClose();
         }}
