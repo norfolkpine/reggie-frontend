@@ -18,6 +18,7 @@ import {
   Link,
   Edit,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,8 @@ interface FileTableProps {
   onDragOver?: (event: DragEvent, folderId?: number) => void;
   onDragLeave?: (event: DragEvent) => void;
   onDrop?: (event: DragEvent, targetFolderId: number) => void;
+  isTrashMode?: boolean;
+  onFileRestore?: (fileId: number) => void;
 }
 
 const STATUS_STYLES: Record<
@@ -146,6 +149,8 @@ export function FileTable({
   onDragOver,
   onDragLeave,
   onDrop,
+  isTrashMode = false,
+  onFileRestore,
 }: FileTableProps) {
   const { toast } = useToast();
 
@@ -338,29 +343,49 @@ export function FileTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onFilePreview(file)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onFileDownload(file)}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleCopyLink(file)}>
-                    <Link className="mr-2 h-4 w-4" />
-                    Copy Link
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onFileRename(file)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => onFileDelete(file.id)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
+                  {isTrashMode ? (
+                    <>
+                      {onFileRestore && (
+                        <DropdownMenuItem onClick={() => onFileRestore(file.id)}>
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Restore
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => onFileDelete(file.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Permanently
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={() => onFilePreview(file)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Preview
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onFileDownload(file)}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleCopyLink(file)}>
+                        <Link className="mr-2 h-4 w-4" />
+                        Copy Link
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onFileRename(file)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => onFileDelete(file.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -370,10 +395,12 @@ export function FileTable({
     ],
     [
       handleCopyLink,
+      isTrashMode,
       onFileDelete,
       onFileDownload,
       onFilePreview,
       onFileRename,
+      onFileRestore,
       onFolderClick,
       onSelectAll,
       onSelectFile,

@@ -38,6 +38,22 @@ export async function getVaultFilesByProject(
   return response as VaultFilesResponse;
 }
 
+export async function getTrashFilesByProject(
+  projectId: string,
+  page: number = 1,
+  pageSize: number = 10,
+  search: string = ''
+): Promise<VaultFilesResponse> {
+  let url = `/opie/api/v1/vault-files/trash/?project_uuid=${projectId}&page=${page}&page_size=${pageSize}`;
+  
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  
+  const response = await api.get(url);
+  return response as VaultFilesResponse;
+}
+
 export async function uploadFiles({
   file,
   project_uuid,
@@ -99,6 +115,24 @@ export async function deleteVaultFile(fileId: number): Promise<void> {
   } catch (error) {
     const { message } = handleApiError(error);
     throw new Error(message || 'Failed to delete file');
+  }
+}
+
+export async function permanentDeleteVaultFile(fileId: number): Promise<void> {
+  try {
+    await api.delete(`/opie/api/v1/vault-files/${fileId}/permanent-delete/`);
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to permanently delete file');
+  }
+}
+
+export async function restoreVaultFile(fileId: number): Promise<void> {
+  try {
+    await api.post(`/opie/api/v1/vault-files/${fileId}/restore/`);
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to restore file');
   }
 }
 

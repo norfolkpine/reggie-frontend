@@ -79,7 +79,6 @@ export function usePagination<T>({
       }
 
       const response = await fetchFn(page, pageSize, ...args);
-      
       if (isLoadMore) {
         // Append new data for infinite scroll, avoiding duplicates
         setData(prev => {
