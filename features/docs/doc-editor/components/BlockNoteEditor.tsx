@@ -10,6 +10,7 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { HocuspocusProvider } from '@hocuspocus/provider';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'next-themes';
 import * as Y from 'yjs';
 
 import { Doc } from '@/features/docs/doc-management';
@@ -56,6 +57,11 @@ export const BlockNoteEditor = ({
   const { user } = useAuth();
   const { setEditor } = useEditorStore();
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  
+  // Get theme, defaulting to 'light' if not yet resolved (during hydration)
+  const blockNoteTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
+  
 
   const readOnly = !doc.abilities.partial_update;
   useSaveDoc(doc.id, provider.document, !readOnly);
@@ -156,7 +162,7 @@ export const BlockNoteEditor = ({
               formattingToolbar={false}
               slashMenu={false}
               editable={!readOnly}
-              theme="light"
+              theme={blockNoteTheme}
               className={styles.editorContainer}
             >
               <BlockNoteSuggestionMenu />
@@ -180,6 +186,11 @@ export const BlockNoteEditorVersion = ({
 }: BlockNoteEditorVersionProps) => {
   const readOnly = true;
   const { setEditor } = useEditorStore();
+  const { resolvedTheme } = useTheme();
+  
+  // Get theme, defaulting to 'light' if not yet resolved (during hydration)
+  const blockNoteTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
+  
   const editor = useCreateBlockNote(
     {
       collaboration: {
@@ -205,7 +216,11 @@ export const BlockNoteEditorVersion = ({
 
   return (
     <div className={`pointer-events-none --docs--editor-container`}>
-      <BlockNoteView editor={editor} editable={!readOnly} theme="light" />
+      <BlockNoteView 
+        editor={editor} 
+        editable={!readOnly} 
+        theme={blockNoteTheme} 
+      />
     </div>
   );
 };
