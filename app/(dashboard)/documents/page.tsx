@@ -144,9 +144,8 @@ export default function DocumentListPage() {
       <div className="flex-1 overflow-auto p-4">
         <div className="space-y-8">
           {/* Recent Documents Section */}
-          <section className="bg-card rounded-lg shadow-sm">
-            <div className="p-6">
-              {isLoading ? (
+          <section className="">
+          {isLoading ? (
                 <div className="flex justify-center items-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
@@ -178,7 +177,6 @@ export default function DocumentListPage() {
                   )}
                 </>
               )}
-            </div>
           </section>
         </div>
       </div>
