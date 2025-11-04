@@ -75,10 +75,7 @@ export const shareWorkflow = async (
  */
 export const runWorkflow = async (
   id: number,
-  data: {
-    message: string;
-    agent_ids?: string[];
-    tool_ids?: number[];
+  data?: {
     session_id?: string;
     execution_mode?: 'sequential' | 'parallel';
   }
@@ -88,7 +85,7 @@ export const runWorkflow = async (
   result?: any;
   error?: string;
 }> => {
-  const response = await api.post(`/opie/api/v1/workflows/${id}/run/`, data);
+  const response = await api.post(`/opie/api/v1/workflows/${id}/run/`, data || {});
   return response as {
     workflow_run_id: number;
     status: string;

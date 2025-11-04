@@ -10,11 +10,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, ArrowRight, Workflow as WorkflowIcon, Play } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Star, ArrowRight, Workflow as WorkflowIcon, Play, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 import { Agent, Workflow } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
+import { runWorkflow } from "@/api/workflows";
 
 interface WorkflowCardProps {
   agent?: Agent;
@@ -24,6 +27,37 @@ interface WorkflowCardProps {
 export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
   const router = useRouter();
   const { refresh } = useChatSessionContext();
+  const { toast } = useToast();
+
+  const [isRunning, setIsRunning] = useState(false);
+
+  const handleRunWorkflow = async () => {
+    if (!workflow) {
+      return;
+    }
+
+    setIsRunning(true);
+    try {
+      // No message needed - uses inputMessage from node config
+      const result = await runWorkflow(workflow.id);
+
+      toast({
+        title: "Workflow Executed Successfully",
+        description: `Status: ${result.status}`,
+      });
+
+      // Optionally show result in a modal or navigate to results page
+      console.log('Workflow result:', result);
+    } catch (error: any) {
+      toast({
+        title: "Workflow Execution Failed",
+        description: error?.message || "An error occurred while running the workflow",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   if (workflow) {
     return (
@@ -81,13 +115,23 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Run workflow:', workflow.id);
+              handleRunWorkflow();
             }}
             variant="ghost"
             size="sm"
             className="gap-1"
+            disabled={isRunning}
           >
-            Run <Play className="h-4 w-4" />
+            {isRunning ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running
+              </>
+            ) : (
+              <>
+                Run <Play className="h-4 w-4" />
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

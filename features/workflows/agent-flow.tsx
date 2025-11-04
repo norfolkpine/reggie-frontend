@@ -27,6 +27,9 @@ import {
   deleteWorkflowNode,
   deleteWorkflowEdge,
 } from "@/api/workflows";
+import { getAllModelProviders } from "@/api/agent-providers";
+import { getKnowledgeBases } from "@/api/knowledge-bases";
+import { getTools } from "@/api/tools";
 import { useSearchParams } from 'next/navigation';
 
 import {
@@ -264,17 +267,6 @@ const edgeTypes = {
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
-// Available tools list
-const availableTools = [
-  { value: "web-search", label: "Web Search" },
-  { value: "calculator", label: "Calculator" },
-  { value: "file-reader", label: "File Reader" },
-  { value: "api-caller", label: "API Caller" },
-  { value: "database-query", label: "Database Query" },
-  { value: "image-generator", label: "Image Generator" },
-  { value: "code-interpreter", label: "Code Interpreter" },
-];
-
 // Sidebar node categories
 const nodeCategories = [
   {
@@ -303,12 +295,34 @@ function WorkflowEditor() {
   const [showWorkflowDialog, setShowWorkflowDialog] = useState(false);
   const [workflowId, setWorkflowId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [modelProviders, setModelProviders] = useState<any[]>([]);
+  const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
+  const [availableTools, setAvailableTools] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string>('');
   const { screenToFlowPosition } = useReactFlow();
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
+  const loadData = async () => {
+    const providersData = await getAllModelProviders();
+    const knowledgeBasesData = await getKnowledgeBases();
+    // const toolsData = await getTools();
+
+    console.log('providersData:', providersData);
+    console.log('knowledgeBasesData:', knowledgeBasesData);
+    // console.log('toolsData:', toolsData);
+
+    setModelProviders(providersData);
+    setKnowledgeBases(knowledgeBasesData?.results);
+    // setAvailableTools(toolsData?.results);
+  };
+
   // Load workflow data if editing
+  useEffect(() => {
+    loadData();
+  }, []);
   useEffect(() => {
     const loadWorkflow = async () => {
       const id = searchParams.get('id');
@@ -323,12 +337,18 @@ function WorkflowEditor() {
 
         // Load nodes
         const nodesData = await getNodesByWorkflow(workflowData.id);
-        const loadedNodes: Node[] = nodesData.nodes.map((node) => ({
-          id: node.id.toString(),
-          type: node.node_type,
-          position: { x: node.position_x, y: node.position_y },
-          data: node.config || { label: node.name, type: node.name },
-        }));
+        const loadedNodes: Node[] = nodesData.nodes.map((node) => {
+          const nodeData = node.config || { label: node.name, type: node.name };
+          return {
+            id: node.id.toString(),
+            type: node.node_type,
+            position: { x: node.position_x, y: node.position_y },
+            data: {
+              ...nodeData,
+              config: nodeData.config || {}
+            },
+          };
+        });
         setNodes(loadedNodes);
 
         // Load edges
@@ -384,8 +404,10 @@ function WorkflowEditor() {
     (_event: React.MouseEvent, node: Node) => {
       setSelectedNode(node);
       setDrawerOpen(true);
-      // Reset tools when switching nodes
-      setSelectedTools([]);
+      // Load node configuration from data
+      setSelectedModel(node.data?.config?.model || '');
+      setSelectedKnowledgeBase(node.data?.config?.knowledgeBase || '');
+      setSelectedTools(node.data?.config?.tools || []);
     },
     []
   );
@@ -396,10 +418,84 @@ function WorkflowEditor() {
   }, []);
 
   const handleToggleTool = (toolValue: string) => {
-    if (selectedTools.includes(toolValue)) {
-      setSelectedTools(selectedTools.filter(t => t !== toolValue));
-    } else {
-      setSelectedTools([...selectedTools, toolValue]);
+    const newTools = selectedTools.includes(toolValue)
+      ? selectedTools.filter(t => t !== toolValue)
+      : [...selectedTools, toolValue];
+
+    setSelectedTools(newTools);
+
+    // Update node data
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { tools: newTools });
+    }
+  };
+
+  const updateNodeConfig = (nodeId: string, configUpdate: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          const updatedConfig = {
+            ...(node.data?.config || {}),
+            ...configUpdate,
+          };
+          console.log('Updating node:', nodeId, 'config:', updatedConfig);
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              config: updatedConfig,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  };
+
+  const handleModelChange = (value: string) => {
+    setSelectedModel(value);
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { model: value });
+    }
+  };
+
+  const handleKnowledgeBaseChange = (value: string) => {
+    setSelectedKnowledgeBase(value);
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { knowledgeBase: value });
+    }
+  };
+
+  const handleInputMessageChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { inputMessage: value });
+    }
+  };
+
+  const handleOutputMessageChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { outputMessage: value });
+    }
+  };
+
+  const handleNoteChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { note: value });
+      // Also update the note in the main data for display on the node
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedNode.id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                note: value,
+              },
+            };
+          }
+          return node;
+        })
+      );
     }
   };
 
@@ -411,7 +507,11 @@ function WorkflowEditor() {
         id,
         type: nodeType,
         position,
-        data: { label, type: label },
+        data: {
+          label,
+          type: label,
+          config: {}
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -508,16 +608,20 @@ function WorkflowEditor() {
       const nodeIdMapping: Record<string, number> = {}; // Map UI node IDs to backend IDs
 
       for (const node of nodes) {
+        const nodeConfig = {
+          ...node.data,
+          originalId: node.id, // Store original UI ID
+        };
+
+        console.log('Saving node:', node.id, 'with config:', nodeConfig);
+
         const createdNode = await createWorkflowNode({
           workflow: currentWorkflowId,
           name: String(node.data.label || node.data.type || 'Node'),
           node_type: node.type || 'agentNode',
           position_x: node.position.x,
           position_y: node.position.y,
-          config: {
-            ...node.data,
-            originalId: node.id, // Store original UI ID
-          },
+          config: nodeConfig,
         });
 
         // Store mapping of UI ID to backend ID
@@ -729,10 +833,12 @@ function WorkflowEditor() {
               <div className="space-y-4">
                 {selectedNode?.type === 'startNode' ? (
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Instructions</label>
+                    <label className="text-sm font-medium mb-2 block">Input Message</label>
                     <Textarea
-                      placeholder="Enter instructions for the workflow start..."
+                      placeholder="Enter the input message..."
                       className="min-h-[200px] resize-none"
+                      defaultValue={selectedNode?.data?.config?.inputMessage || ''}
+                      onChange={(e) => handleInputMessageChange(e.target.value)}
                     />
                   </div>
                 ) : selectedNode?.type === 'stickyNoteNode' ? (
@@ -742,20 +848,51 @@ function WorkflowEditor() {
                       placeholder="Add your note here..."
                       className="min-h-[200px]"
                       defaultValue={selectedNode?.data?.note || ''}
+                      onChange={(e) => handleNoteChange(e.target.value)}
                     />
                   </div>
                 ) : selectedNode?.type === 'agentNode' ? (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="agent-select">Agent</Label>
-                      <Select>
-                        <SelectTrigger id="agent-select">
-                          <SelectValue placeholder="Select an agent" />
+                      <Label htmlFor="model-select">Model Provider</Label>
+                      <Select value={selectedModel} onValueChange={handleModelChange}>
+                        <SelectTrigger id="model-select">
+                          <SelectValue placeholder="Select a model provider" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="agent1">Agent 1</SelectItem>
-                          <SelectItem value="agent2">Agent 2</SelectItem>
-                          <SelectItem value="agent3">Agent 3</SelectItem>
+                          {modelProviders && modelProviders.length > 0 ? (
+                            modelProviders.map((provider: any) => (
+                              <SelectItem key={provider.id} value={provider.id.toString()}>
+                                {provider.model_name || provider.provider || 'Unknown Model'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              No model providers available
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="kb-select">Knowledge Base</Label>
+                      <Select value={selectedKnowledgeBase} onValueChange={handleKnowledgeBaseChange}>
+                        <SelectTrigger id="kb-select">
+                          <SelectValue placeholder="Select a knowledge base" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {knowledgeBases && knowledgeBases.length > 0 ? (
+                            knowledgeBases.map((kb: any) => (
+                              <SelectItem key={kb.id} value={kb.id.toString()}>
+                                {kb.name || 'Unnamed Knowledge Base'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              No knowledge bases available
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -764,19 +901,19 @@ function WorkflowEditor() {
                       <Label>Tools</Label>
                       <div className="border rounded-lg p-3 space-y-2">
                         <div className="max-h-[200px] overflow-y-auto space-y-1">
-                          {selectedTools.map((toolValue) => {
-                            const tool = availableTools.find(t => t.value === toolValue);
+                          {selectedTools.map((toolId) => {
+                            const tool = availableTools.find(t => t.id.toString() === toolId);
                             return (
                               <div
-                                key={toolValue}
+                                key={toolId}
                                 className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
-                                onClick={() => handleToggleTool(toolValue)}
+                                onClick={() => handleToggleTool(toolId)}
                               >
                                 <Checkbox
                                   checked={true}
-                                  onCheckedChange={() => handleToggleTool(toolValue)}
+                                  onCheckedChange={() => handleToggleTool(toolId)}
                                 />
-                                <span className="text-sm">{tool?.label}</span>
+                                <span className="text-sm">{tool?.name}</span>
                               </div>
                             );
                           })}
@@ -806,27 +943,35 @@ function WorkflowEditor() {
                               />
                             </div>
                             <div className="max-h-[300px] overflow-y-auto p-2">
-                              {availableTools
-                                .filter(tool =>
-                                  tool.label.toLowerCase().includes(toolSearchQuery.toLowerCase())
-                                )
-                                .map((tool) => (
-                                  <div
-                                    key={tool.value}
-                                    className="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer"
-                                    onClick={() => handleToggleTool(tool.value)}
-                                  >
-                                    <Checkbox
-                                      checked={selectedTools.includes(tool.value)}
-                                    />
-                                    <span className="text-sm">{tool.label}</span>
-                                  </div>
-                                ))}
-                              {availableTools.filter(tool =>
-                                tool.label.toLowerCase().includes(toolSearchQuery.toLowerCase())
-                              ).length === 0 && (
+                              {availableTools && availableTools.length > 0 ? (
+                                <>
+                                  {availableTools
+                                    .filter(tool =>
+                                      tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
+                                    )
+                                    .map((tool) => (
+                                      <div
+                                        key={tool.id}
+                                        className="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer"
+                                        onClick={() => handleToggleTool(tool.id.toString())}
+                                      >
+                                        <Checkbox
+                                          checked={selectedTools.includes(tool.id.toString())}
+                                        />
+                                        <span className="text-sm">{tool.name}</span>
+                                      </div>
+                                    ))}
+                                  {availableTools.filter(tool =>
+                                    tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
+                                  ).length === 0 && (
+                                    <div className="text-sm text-muted-foreground text-center py-6">
+                                      No tool found.
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
                                 <div className="text-sm text-muted-foreground text-center py-6">
-                                  No tool found.
+                                  No tools available
                                 </div>
                               )}
                             </div>
@@ -835,6 +980,16 @@ function WorkflowEditor() {
                       </div>
                     </div>
                   </>
+                ) : selectedNode?.type === 'endNode' ? (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Output Message</label>
+                    <Textarea
+                      placeholder="Enter the output message..."
+                      className="min-h-[200px] resize-none"
+                      defaultValue={selectedNode?.data?.config?.outputMessage || ''}
+                      onChange={(e) => handleOutputMessageChange(e.target.value)}
+                    />
+                  </div>
                 ) : (
                   <>
                     <div>
