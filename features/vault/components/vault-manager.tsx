@@ -16,6 +16,7 @@ import { RenameDialog } from "./rename-dialog";
 import { FilesTab } from "./files-tab";
 import { ActivityTabContent } from "./activity-tab-content";
 import { SettingsTabContent } from "./settings-tab-content";
+import { TrashTab } from "./trash-tab";
 import { ProjectNotFound } from "./project-not-found";
 import { AskAIButton } from "./ask-ai-button";
 import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
@@ -56,6 +57,11 @@ export function VaultManager() {
     navigateToFolder: (folderId: number) => void;
     handleFilesDrop: (files: File[]) => Promise<void>;
     handleDrop: (e: React.DragEvent, targetFolderId: number) => Promise<void>;
+    refreshFiles: () => void;
+  }>(null);
+
+  const trashTabRef = useRef<{
+    refreshFiles: () => void;
   }>(null);
 
   // Update breadcrumb data from FilesTab
@@ -367,6 +373,7 @@ export function VaultManager() {
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="trash">Trash</TabsTrigger>
             </TabsList>
             <FilesTab
               ref={(ref) => {
@@ -377,6 +384,7 @@ export function VaultManager() {
               teamId={(project?.team as any)?.id}
               requestedNavigation={requestedNavigation}
               onBreadcrumbChange={() => updateBreadcrumbDataRef.current()}
+              onTrashTabRefresh={() => trashTabRef.current?.refreshFiles()}
             />
 
             <ActivityTabContent />
@@ -384,6 +392,15 @@ export function VaultManager() {
             <SettingsTabContent
               description={project?.description}
               projectId={projectId}
+            />
+
+            <TrashTab
+              ref={(ref) => {
+                trashTabRef.current = ref;
+              }}
+              projectId={projectId || ''}
+              projectName={project?.name}
+              onFilesTabRefresh={() => filesTabRef.current?.refreshFiles()}
             />
           </Tabs>
         )}

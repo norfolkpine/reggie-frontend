@@ -19,6 +19,7 @@ interface FilesTabProps {
   teamId?: number;
   requestedNavigation?: number | null;
   onBreadcrumbChange?: () => void;
+  onTrashTabRefresh?: () => void;
 }
 
 interface UploadingFile {
@@ -32,7 +33,8 @@ export const FilesTab = React.forwardRef<{
   navigateToFolder: (folderId: number) => void;
   handleFilesDrop: (files: File[]) => Promise<void>;
   handleDrop: (e: React.DragEvent, targetFolderId: number) => Promise<void>;
-}, FilesTabProps>(({ projectId, projectName, teamId, requestedNavigation, onBreadcrumbChange }, ref) => {
+  refreshFiles: () => void;
+}, FilesTabProps>(({ projectId, projectName, teamId, requestedNavigation, onBreadcrumbChange, onTrashTabRefresh }, ref) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -189,11 +191,12 @@ export const FilesTab = React.forwardRef<{
       if (successCount > 0) toast({ title: "Success", description: `${successCount} file${successCount !== 1 ? 's' : ''} deleted successfully` });
       if (errorCount > 0) toast({ title: "Error", description: `Failed to delete ${errorCount} file${errorCount !== 1 ? 's' : ''}`, variant: "destructive" });
       refreshFiles();
+      onTrashTabRefresh?.();
       setSelectedFiles([]);
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedFiles]);
+  }, [selectedFiles, refreshFiles, onTrashTabRefresh]);
 
   const handleFolderClick = (folder: VaultFile) => {
     if (!folder.is_folder) return;
@@ -386,9 +389,17 @@ export const FilesTab = React.forwardRef<{
   };
 
   const handleFileDelete = useCallback(async (fileId: number) => {
-    try { await deleteVaultFile(fileId); toast({ title: "Success", description: "File deleted successfully" }); refreshFiles(); setSelectedFiles([]); }
-    catch (error) { toast({ title: "Error", description: "Failed to delete file", variant: "destructive" }); }
-  }, [refreshFiles]);
+    try { 
+      await deleteVaultFile(fileId); 
+      toast({ title: "Success", description: "File deleted successfully" }); 
+      refreshFiles(); 
+      onTrashTabRefresh?.();
+      setSelectedFiles([]); 
+    }
+    catch (error) { 
+      toast({ title: "Error", description: "Failed to delete file", variant: "destructive" }); 
+    }
+  }, [refreshFiles, onTrashTabRefresh]);
 
   const openRenameDialog = (file: VaultFile) => { setFileToRename(file); setNewFileName(file.original_filename || ''); setRenameFileOpen(true); };
 
@@ -410,7 +421,8 @@ export const FilesTab = React.forwardRef<{
     navigateToFolder: handleBreadcrumbClick,
     handleFilesDrop: processFilesDrop,
     handleDrop: handleDrop,
-  }), [handleBreadcrumbClick, processFilesDrop, handleDrop]);
+    refreshFiles: refreshFiles,
+  }), [handleBreadcrumbClick, processFilesDrop, handleDrop, refreshFiles]);
 
   return (
     <>
