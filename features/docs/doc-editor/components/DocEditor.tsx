@@ -125,7 +125,7 @@ export const DocEditor = ({ doc = undefined, versionId, isNew = false, isError =
 
         <div className="w-full flex justify-center">
         <div
-          className="--docs--doc-editor-content flex justify-center w-full bg-white"
+          className="--docs--doc-editor-content flex justify-center w-full"
         >
                       {isDesktop && !isVersion && (
               <Box

@@ -36,7 +36,7 @@ export const DocTitleText = ({ title }: DocTitleTextProps) => {
 
   // Previously: text-4xl for desktop, text-2xl for mobile
   return (
-    <h2 className={`${isMobile ? 'text-lg' : 'text-2xl'} text-gray-900`}>
+    <h2 className={`${isMobile ? 'text-lg' : 'text-2xl'}`}>
       {title || untitledDocument}
     </h2>
   );
@@ -97,8 +97,8 @@ const DocTitleInput = ({ doc }: DocTitleProps) => {
         <TooltipTrigger asChild>
           <span
             role="textbox"
-            className={`--docs--doc-title-input min-h-[40px] pr-4 text-gray-900 outline-none cursor-text ${isDesktop ? 'text-2xl' : 'text-lg'}
-              before:content-[attr(data-placeholder)] before:text-gray-400 before:italic before:pointer-events-none
+            className={`--docs--doc-title-input min-h-[40px] pr-4  outline-none cursor-text ${isDesktop ? 'text-2xl' : 'text-lg'}
+              before:content-[attr(data-placeholder)] before:text-gray-400 before:dark:text-white before:italic before:pointer-events-none
               empty:before:content-[attr(data-placeholder)]`}
             contentEditable
             data-placeholder={untitledDocument}

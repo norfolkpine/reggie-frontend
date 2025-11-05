@@ -51,7 +51,7 @@ export function RecentDocuments({ documents, onDeleteDocument }: RecentDocuments
   return (
     <div className="w-full space-y-6">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Documents</h2>
         <div className="flex items-center gap-3">
           <div className="flex rounded-md overflow-hidden border">
@@ -82,7 +82,7 @@ export function RecentDocuments({ documents, onDeleteDocument }: RecentDocuments
           </div>
           <ViewToggle onViewChange={setCurrentView} defaultView="grid" />
         </div>
-      </div>
+      </div> */}
 
       {/* Grid View */}
       {currentView === "grid" ? (

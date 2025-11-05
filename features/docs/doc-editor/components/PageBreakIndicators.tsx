@@ -6,7 +6,7 @@ export const PAGE_HEIGHT = 1369; // px (matches your CSS)
  * Renders dashed lines at every A4 page boundary inside the editor container.
  * Usage: Place as a child of .editorContainer, passing the container's height.
  */
-export function PageBreakIndicators({ containerRef, offsetTop = 0 }: { containerRef: React.RefObject<HTMLDivElement>, offsetTop?: number }) {
+export function PageBreakIndicators({ containerRef, offsetTop = 0 }: { containerRef: React.RefObject<HTMLDivElement | null>, offsetTop?: number }) {
   const [containerHeight, setContainerHeight] = useState(0);
   const [topPadding, setTopPadding] = useState(0);
 
