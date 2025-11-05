@@ -35,7 +35,7 @@ export function MessageList({
   
 
   return (
-    <div className="space-y-4 overflow-visible">
+    <div className="space-y-2 md:space-y-4 overflow-visible">
 
 
       {messages.map((message, index) => {
@@ -58,7 +58,7 @@ export function MessageList({
         <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-4"
+        className="mt-2 md:mt-4"
       >
               <AgentThinking
                 toolCalls={Array.from(currentToolCalls.values())}
