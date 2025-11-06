@@ -6,9 +6,9 @@ import SearchInput from "@/components/ui/search-input";
 interface SearchFilterProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  activeCategory: string;
-  setActiveCategory: (category: string) => void;
-  categories: string[];
+  activeCategory?: string;
+  setActiveCategory?: (category: string) => void;
+  categories?: string[];
 }
 
 export function SearchFilter({
@@ -28,7 +28,7 @@ export function SearchFilter({
       />
 
       <div className="flex flex-wrap gap-2">
-        {categories.map((category) => (
+        {categories?.map((category) => (
           <Button
             key={category}
             variant={activeCategory === category ? "default" : "outline"}
