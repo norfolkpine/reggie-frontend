@@ -18,6 +18,7 @@ import { Agent, Workflow } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
 import { runWorkflow } from "@/api/workflows";
+import { WorkflowResultDialog } from "./workflow-result-dialog";
 
 interface WorkflowCardProps {
   agent?: Agent;
@@ -30,6 +31,12 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
   const { toast } = useToast();
 
   const [isRunning, setIsRunning] = useState(false);
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [workflowResult, setWorkflowResult] = useState<{
+    status: string;
+    result?: string;
+    error?: string;
+  } | null>(null);
 
   const handleRunWorkflow = async () => {
     if (!workflow) {
@@ -38,17 +45,22 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
 
     setIsRunning(true);
     try {
-      // No message needed - uses inputMessage from node config
       const result = await runWorkflow(workflow.id);
+
+      setWorkflowResult(result);
+      setShowResultDialog(true);
 
       toast({
         title: "Workflow Executed Successfully",
         description: `Status: ${result.status}`,
       });
-
-      // Optionally show result in a modal or navigate to results page
-      console.log('Workflow result:', result);
     } catch (error: any) {
+      setWorkflowResult({
+        status: "failed",
+        error: error?.message || "An error occurred while running the workflow",
+      });
+      setShowResultDialog(true);
+
       toast({
         title: "Workflow Execution Failed",
         description: error?.message || "An error occurred while running the workflow",
@@ -61,10 +73,11 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
 
   if (workflow) {
     return (
-      <Card
-        className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50 cursor-pointer"
-        onClick={() => router.push(`/workflow/create?id=${workflow.id}`)}
-      >
+      <>
+        <Card
+          className="overflow-hidden border-2 hover:border-primary/50 transition-colors bg-blue-50 cursor-pointer"
+          onClick={() => router.push(`/workflow/create?id=${workflow.id}`)}
+        >
         <CardHeader className="p-4 pb-2">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
@@ -135,6 +148,14 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
           </Button>
         </CardFooter>
       </Card>
+
+        {/* Workflow Result Dialog */}
+        <WorkflowResultDialog
+          open={showResultDialog}
+          onOpenChange={setShowResultDialog}
+          result={workflowResult}
+        />
+      </>
     );
   }
 

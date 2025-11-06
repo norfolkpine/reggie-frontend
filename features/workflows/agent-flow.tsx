@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import { WorkflowResultDialog } from "./components/workflow-result-dialog";
 import {
   createWorkflow,
   createWorkflowNode,
@@ -26,6 +27,7 @@ import {
   updateWorkflowEdge,
   deleteWorkflowNode,
   deleteWorkflowEdge,
+  runWorkflow,
 } from "@/api/workflows";
 import { getAllModelProviders } from "@/api/agent-providers";
 import { getKnowledgeBases } from "@/api/knowledge-bases";
@@ -57,6 +59,7 @@ import {
   Controls,
   Handle,
   Position,
+  ConnectionMode,
   type Connection,
   type Node,
   type Edge,
@@ -68,7 +71,7 @@ import {
   getStraightPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Home, Bot, MessageSquareText, X, ArrowLeft, Plus, Trash2, StickyNote, Loader2 } from "lucide-react"
+import { Home, Bot, MessageSquareText, X, ArrowLeft, Plus, Trash2, StickyNote, Loader2, Play } from "lucide-react"
 
 function StartNode({ data, id }: NodeProps) {
   const { setNodes } = useReactFlow();
@@ -97,6 +100,7 @@ function StartNode({ data, id }: NodeProps) {
         type="source"
         position={Position.Right}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+        isConnectable={true}
       />
     </div>
   );
@@ -116,6 +120,7 @@ function EndNode({ data, id }: NodeProps) {
         type="target"
         position={Position.Left}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+        isConnectable={true}
       />
 
       <div className="flex items-center justify-between">
@@ -149,6 +154,7 @@ function AgentNode({ data, id }: NodeProps) {
         type="target"
         position={Position.Left}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+        isConnectable={true}
       />
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between">
@@ -164,11 +170,17 @@ function AgentNode({ data, id }: NodeProps) {
             <Trash2 size={12}/>
           </Button>
         </div>
+        {data.config?.name && (
+          <div className="text-xs text-gray-600 font-medium">
+            {data.config.name}
+          </div>
+        )}
       </div>
       <Handle
         type="source"
         position={Position.Right}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+        isConnectable={true}
       />
     </div>
   );
@@ -292,7 +304,14 @@ function WorkflowEditor() {
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestRunning, setIsTestRunning] = useState(false);
   const [showWorkflowDialog, setShowWorkflowDialog] = useState(false);
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [workflowResult, setWorkflowResult] = useState<{
+    status: string;
+    result?: string;
+    error?: string;
+  } | null>(null);
   const [workflowId, setWorkflowId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [modelProviders, setModelProviders] = useState<any[]>([]);
@@ -499,6 +518,33 @@ function WorkflowEditor() {
     }
   };
 
+  const handleInstructionChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { instruction: value });
+    }
+  };
+
+  const handleAgentNameChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { agentName: value, name: value });
+      // Also update the label in the main data for display on the node
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedNode.id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                label: value,
+              },
+            };
+          }
+          return node;
+        })
+      );
+    }
+  };
+
   const handleAddNode = useCallback(
     (nodeType: string, label: string, position: { x: number; y: number }) => {
       const id = `${label.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
@@ -547,6 +593,44 @@ function WorkflowEditor() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const handleTestWorkflow = async () => {
+    if (!workflowId) {
+      toast({
+        title: "Error",
+        description: "Please save the workflow first before testing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestRunning(true);
+    try {
+      const result = await runWorkflow(workflowId);
+
+      setWorkflowResult(result);
+      setShowResultDialog(true);
+
+      toast({
+        title: "Workflow Executed Successfully",
+        description: `Status: ${result.status}`,
+      });
+    } catch (error: any) {
+      setWorkflowResult({
+        status: "failed",
+        error: error?.message || "An error occurred while running the workflow",
+      });
+      setShowResultDialog(true);
+
+      toast({
+        title: "Workflow Execution Failed",
+        description: error?.message || "An error occurred while running the workflow",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestRunning(false);
+    }
+  };
+
   const handleSaveWorkflow = async () => {
     // Validate workflow name
     if (!workflowName.trim()) {
@@ -587,6 +671,29 @@ function WorkflowEditor() {
           trigger_config: {},
         });
         console.log('Workflow updated with ID:', currentWorkflowId);
+
+        // Delete all existing nodes and edges
+        try {
+          // Get existing edges first (must delete before nodes due to foreign key constraints)
+          const existingEdgesData = await getEdgesByWorkflow(currentWorkflowId);
+          if (existingEdgesData?.edges) {
+            for (const edge of existingEdgesData.edges) {
+              await deleteWorkflowEdge(edge.id);
+            }
+            console.log(`Deleted ${existingEdgesData.edges.length} existing edges`);
+          }
+
+          // Get and delete existing nodes
+          const existingNodesData = await getNodesByWorkflow(currentWorkflowId);
+          if (existingNodesData?.nodes) {
+            for (const node of existingNodesData.nodes) {
+              await deleteWorkflowNode(node.id);
+            }
+            console.log(`Deleted ${existingNodesData.nodes.length} existing nodes`);
+          }
+        } catch (deleteError) {
+          console.error('Error deleting existing nodes/edges:', deleteError);
+        }
       } else {
         // Create new workflow
         const workflow = await createWorkflow({
@@ -705,9 +812,20 @@ function WorkflowEditor() {
             variant="outline"
             size="sm"
             className="gap-2 px-4"
-            disabled
+            onClick={handleTestWorkflow}
+            disabled={!workflowId || isTestRunning}
           >
-            Test Workflow
+            {isTestRunning ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Test Workflow
+              </>
+            )}
           </Button>
           <Button
             size="sm"
@@ -799,6 +917,7 @@ function WorkflowEditor() {
             onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            connectionMode={ConnectionMode.Loose}
             defaultEdgeOptions={{
               type: 'bezier',
             }}
@@ -853,6 +972,16 @@ function WorkflowEditor() {
                   </div>
                 ) : selectedNode?.type === 'agentNode' ? (
                   <>
+                    <div className="space-y-2">
+                      <Label htmlFor="agent-name">Agent Name</Label>
+                      <Input
+                        id="agent-name"
+                        placeholder="Enter agent name"
+                        defaultValue={selectedNode?.data?.config.name || ''}
+                        onChange={(e) => handleAgentNameChange(e.target.value)}
+                      />
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="model-select">Model Provider</Label>
                       <Select value={selectedModel} onValueChange={handleModelChange}>
@@ -979,6 +1108,16 @@ function WorkflowEditor() {
                         </Popover>
                       </div>
                     </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Instructions</label>
+                      <Textarea
+                        placeholder="Enter agent instructions..."
+                        className="min-h-[120px]"
+                        defaultValue={selectedNode?.data?.config?.instruction || ''}
+                        onChange={(e) => handleInstructionChange(e.target.value)}
+                      />
+                    </div>
                   </>
                 ) : selectedNode?.type === 'endNode' ? (
                   <div>
@@ -1072,6 +1211,13 @@ function WorkflowEditor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Workflow Result Dialog */}
+      <WorkflowResultDialog
+        open={showResultDialog}
+        onOpenChange={setShowResultDialog}
+        result={workflowResult}
+      />
     </div>
   );
 }
