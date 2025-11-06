@@ -45,7 +45,7 @@ export function PageHeader({
 
   return (
     <div
-      className={`py-2 px-3 flex items-center justify-between w-full ${className} border-b border-border`}
+      className={`py-2 px-3 flex items-center justify-between w-full ${className} border-b border-border z-99`}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
       <>

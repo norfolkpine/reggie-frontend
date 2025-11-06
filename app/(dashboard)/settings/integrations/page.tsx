@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ConnectUI } from '@nangohq/frontend';
+import Nango from '@nangohq/frontend';
 import {
   IconAdjustmentsHorizontal,
   IconSortAscendingLetters,
@@ -16,27 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search } from "@/components/search";
 import { Button } from "@/components/custom/button";
-import { getIntegrations, getNangoIntegrations, NangoConnection, Integration, revokeAccess, saveNangoConnection, getConnections, createNangoSession } from "@/api/integrations";
+import { getIntegrations, Integration, revokeAccess, getConnections, createNangoSession } from "@/api/integrations";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BASE_URL } from "@/lib/api-client";
-import { revokeGoogleDriveAccess, startGoogleDriveAuth } from "@/api/integration-google-drive";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Icons } from "@/components/icons";
 import { isSafeUrl } from "@/lib/utils/url";
-import { Provider } from "@radix-ui/react-toast";
 
 const appText = new Map<string, string>([
   ["all", "All Apps"],
@@ -44,17 +31,137 @@ const appText = new Map<string, string>([
   ["notConnected", "Not Connected"],
 ]);
 
+// Initialize Nango at module level (like sample app)
+const apiURL = process.env.NEXT_PUBLIC_NANGO_API_URL ?? 'https://api.nango.dev';
+const connectUIBaseUrl = process.env.NEXT_PUBLIC_NANGO_BASE_URL ?? 'https://connect.nango.dev';
+const nango = new Nango({ host: apiURL, publicKey: 'empty' });
+
+// Integration item component following sample app pattern
+function IntegrationItem({ integration }: { integration: Integration }) {
+  const connectUI = useRef<ConnectUI | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleConnect = () => {
+    setLoading(true);
+    setError(null);
+
+    connectUI.current = nango.openConnectUI({
+      apiURL,
+      baseURL: connectUIBaseUrl,
+      onEvent: (event) => {
+        if (event.type === 'close') {
+          // Refresh on close so user can see the difference
+          void queryClient.refetchQueries({ queryKey: ['connections'] });
+          setLoading(false);
+        } else if (event.type === 'connect') {
+          // Backend will receive webhook with connection info
+          void queryClient.refetchQueries({ queryKey: ['connections'] });
+          toast({ 
+            title: 'Connection Successful', 
+            description: `Successfully connected to ${integration.title}` 
+          });
+        }
+      },
+    });
+
+    // Defer token creation so iframe can open and display loading screen
+    setTimeout(async () => {
+      try {
+        const token = await createNangoSession(integration.key);
+        connectUI.current!.setSessionToken(token);
+      } catch (err) {
+        console.error('[Nango] Failed to create session:', err);
+        setError('Failed to create connection session');
+        setLoading(false);
+      }
+    }, 10);
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await revokeAccess(integration.key);
+      
+      // Reload connections to update state
+      setTimeout(async () => {
+        await queryClient.refetchQueries({ queryKey: ['connections'] });
+        setLoading(false);
+        toast({ 
+          title: 'Connection revoked', 
+          description: `${integration.title} has been disconnected successfully.` 
+        });
+      }, 10);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to disconnect');
+      setLoading(false);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to revoke access. Please try again.', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  return (
+    <li className="rounded-lg border p-4 hover:shadow-md">
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-muted p-2">
+          {integration.icon_url && isSafeUrl(integration.icon_url) ? (
+            <img src={integration.icon_url} alt="App icon" className="h-8 w-8 object-contain" />
+          ) : (
+            <Icons.media className="h-8 w-8 text-muted-foreground" />
+          )}
+        </div>
+        {error && (
+          <div className="text-xs text-red-400 mb-2">{error}</div>
+        )}
+        {integration.is_connected ? (
+          <div className="flex gap-2">
+            <Button 
+              variant="default" 
+              size="sm" 
+              disabled
+              className="bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 cursor-not-allowed"
+              onClick={(e) => e.preventDefault()}
+            >
+              Connected
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDisconnect}
+              disabled={loading}
+            >
+              {loading ? "Revoking..." : "Revoke"}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleConnect}
+            disabled={loading}
+          >
+            {loading ? "Connecting..." : "Connect"}
+          </Button>
+        )}
+      </div>
+      <div>
+        <h2 className="mb-1 font-semibold">{integration.title}</h2>
+      </div>
+    </li>
+  );
+}
+
 export default function IntegrationsSettingsPage() {
   const [sort, setSort] = useState("ascending");
   const [appType, setAppType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [revokingKey, setRevokingKey] = useState<string | null>(null);
-  const [selectedApp, setSelectedApp] = useState<Integration | null>(null);
-  const nangoRef = useRef<any>(null);
-  const sessionTokenRef = useRef<string | null>(null);
-  const connectUIRef = useRef<any>(null);
-  const [appIntegration, setIntegration] = useState<Integration | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // React Query for integrations
@@ -95,173 +202,14 @@ export default function IntegrationsSettingsPage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        queryClient.invalidateQueries({ queryKey: ['integrations'] });
-        queryClient.invalidateQueries({ queryKey: ['connections'] });
+        queryClient.refetchQueries({ queryKey: ['integrations'] });
+        queryClient.refetchQueries({ queryKey: ['connections'] });
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [queryClient]);
-
-  const handleConnectionApp = async (integration: Integration) => {
-    if (integration.key === 'google_drive' && !integration.is_connected) {
-      try {
-        const redirectUrl = await startGoogleDriveAuth();
-        window.open(redirectUrl, '_blank', 'width=500,height=700');
-      } catch (err) {
-        console.error('Failed to start Google Drive OAuth:', err);
-      }
-    }
-  };
-
-  // Lazy-load Nango, create a single page-scoped session, and pre-create Connect UI
-  useEffect(() => {
-    let cancelled = false;
-    const init = async () => {
-      try {
-        const mod = await import('@nangohq/frontend');
-        if (cancelled) return;
-        const NangoLib = mod.default;
-        nangoRef.current = new NangoLib();
-
-        if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
-          console.error('[Nango] Missing NEXT_PUBLIC_NANGO_API_URL or NEXT_PUBLIC_NANGO_BASE_URL');
-          return;
-        }
-
-        const token = await createNangoSession('connect');
-        if (cancelled || !token) return;
-        sessionTokenRef.current = token;
-
-        const connectUI = nangoRef.current.openConnectUI({
-          apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
-          baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
-          detectClosedAuthWindow: true,
-          onEvent: (event: any) => {
-            try {
-              if (event.type === 'connect') {
-                const payload = event.payload || {};
-                const connectionId = payload.connectionId;
-                const actualProvider = (payload as any).provider ?? payload.providerConfigKey;
-                if (!actualProvider || !connectionId) {
-                  toast({ title: 'Connection Error', description: 'Invalid connection data received. Please try again.', variant: 'destructive' });
-                  return;
-                }
-                toast({ title: 'Connection Successful', description: `Successfully connected to ${appIntegration?.title ?? actualProvider}` });
-                saveNangoConnection({ provider: actualProvider, connectionId } as any)
-                  .catch(() => {})
-                  .finally(() => {
-                    queryClient.invalidateQueries({ queryKey: ['connections'] });
-                  });
-              }
-            } catch (e) {
-              console.error('[Nango] Error handling event:', e);
-            }
-          },
-        });
-        connectUI.setSessionToken(token);
-        connectUIRef.current = connectUI;
-      } catch (error) {
-        console.error('[Nango] Initialization error:', error);
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      const ric = (window as any).requestIdleCallback;
-      if (typeof ric === 'function') {
-        ric(init, { timeout: 1500 });
-      } else {
-        setTimeout(init, 300);
-      }
-    }
-
-    return () => { cancelled = true; };
-  }, [toast, queryClient, appIntegration?.title]);
-
-
-  const ensureConnectUI = async (integration: Integration) => {
-    if (connectUIRef.current) return connectUIRef.current;
-    try {
-      const mod = await import('@nangohq/frontend');
-      const NangoLib = mod.default;
-      if (!nangoRef.current) nangoRef.current = new NangoLib();
-      if (!process.env.NEXT_PUBLIC_NANGO_API_URL || !process.env.NEXT_PUBLIC_NANGO_BASE_URL) {
-        toast({ title: 'Configuration Error', description: 'Nango configuration is missing. Please contact support.', variant: 'destructive' });
-        return null;
-      }
-      if (!sessionTokenRef.current) {
-        sessionTokenRef.current = await createNangoSession(integration.key);
-      }
-      const connectUI = nangoRef.current.openConnectUI({
-        apiURL: process.env.NEXT_PUBLIC_NANGO_API_URL,
-        baseURL: process.env.NEXT_PUBLIC_NANGO_BASE_URL,
-        detectClosedAuthWindow: true,
-        onEvent: (event: any) => {
-          try {
-            if (event.type === 'connect') {
-              const payload = event.payload || {};
-              const connectionId = payload.connectionId;
-              const actualProvider = (payload as any).provider ?? payload.providerConfigKey;
-              if (!actualProvider || !connectionId) {
-                toast({ title: 'Connection Error', description: 'Invalid connection data received. Please try again.', variant: 'destructive' });
-                return;
-              }
-              toast({ title: 'Connection Successful', description: `Successfully connected to ${appIntegration?.title ?? actualProvider}` });
-              saveNangoConnection({ provider: actualProvider, connectionId } as any)
-                .catch(() => {})
-                .finally(() => {
-                  queryClient.invalidateQueries({ queryKey: ['connections'] });
-                });
-            }
-          } catch (e) {
-            console.error('[Nango] Error handling event:', e);
-          }
-        },
-      });
-      connectUI.setSessionToken(sessionTokenRef.current);
-      connectUIRef.current = connectUI;
-      return connectUI;
-    } catch (e) {
-      console.error('[Nango] Failed to ensure Connect UI:', e);
-      return null;
-    }
-  };
-
-  const handleConnect = async (integration: Integration) => {
-    setIntegration(integration);
-    try {
-      const connectUI = connectUIRef.current || (await ensureConnectUI(integration));
-      if (!connectUI) {
-        toast({ title: 'Connection Error', description: 'Failed to initialize connection UI. Please try again.', variant: 'destructive' });
-        return;
-      }
-      connectUI.open(integration.key);
-    } catch (err) {
-      console.error('Nango connect error:', err);
-      toast({ title: 'Connection Error', description: 'An unexpected error occurred. Please try again.', variant: 'destructive' });
-    }
-  };
-
-  const handleRevokeAccess = async (app: Integration) => {
-    setRevokingKey(app.key);
-    const prev = queryClient.getQueryData(['connections']);
-    queryClient.setQueryData(['connections'], (old: any) => {
-      const list = Array.isArray(old) ? old : old?.data || old?.results || [];
-      return list.filter((c: any) => c.provider !== app.key && (c as any).provider_config_key !== app.key);
-    });
-    try {
-      await revokeAccess(app.key);
-      toast({ title: 'Connection revoked', description: `${app.title} has been disconnected successfully.` });
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
-    } catch (error) {
-      queryClient.setQueryData(['connections'], prev);
-      toast({ title: 'Error', description: 'Failed to revoke access. Please try again.', variant: 'destructive' });
-      console.error(error);
-    } finally {
-      setRevokingKey(null);
-    }
-  }
 
   const filteredApps = useMemo(() => {
     return [...apps]
@@ -333,8 +281,8 @@ export default function IntegrationsSettingsPage() {
             <p className="text-red-600 mb-2">Failed to load integrations</p>
             <button
               onClick={() => {
-                queryClient.invalidateQueries({ queryKey: ['integrations'] });
-                queryClient.invalidateQueries({ queryKey: ['connections'] });
+                queryClient.refetchQueries({ queryKey: ['integrations'] });
+                queryClient.refetchQueries({ queryKey: ['connections'] });
               }}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
@@ -345,48 +293,7 @@ export default function IntegrationsSettingsPage() {
       ) : apps.length > 0 ? (
         <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredApps.map((app) => (
-            <li
-              key={app.title}
-              className="rounded-lg border p-4 hover:shadow-md"
-            >
-              <div className="mb-8 flex items-center justify-between">
-                <div
-                  className={`flex size-10 items-center justify-center rounded-lg bg-muted p-2`}
-                >
-                  {app.icon_url && isSafeUrl(app.icon_url) ? (
-                    <img src={app.icon_url} alt="App icon" className="h-8 w-8 object-contain" />
-                  ) : (
-                    <Icons.media className="h-8 w-8 text-muted-foreground" />
-                  )}
-                </div>
-                {app.is_connected ? (
-                  <div className="flex gap-2">
-                    <Button variant="default" size="sm" disabled>
-                      Connected
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRevokeAccess(app)}
-                      disabled={revokingKey === app.key}
-                    >
-                      {revokingKey === app.key ? "Revoking..." : "Revoke"}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleConnect(app)}
-                  >
-                    Connect
-                  </Button>
-                )}
-              </div>
-              <div>
-                <h2 className="mb-1 font-semibold">{app.title}</h2>
-              </div>
-            </li>
+            <IntegrationItem key={app.key} integration={app} />
           ))}
         </ul>
       ) : (

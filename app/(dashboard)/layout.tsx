@@ -50,7 +50,7 @@ const MainContentWrapper = React.memo(({
     }
 
     return (
-      <div className={`sticky top-0 z-20 transition-all duration-150 ease-out ${
+      <div className={`sticky top-0 z-99 transition-all duration-150 ease-out ${
         isScrolled 
           ? 'shadow-md backdrop-blur-md bg-background/80' 
           : 'bg-background'
