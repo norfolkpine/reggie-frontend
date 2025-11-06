@@ -79,7 +79,7 @@ const MainContentWrapper = React.memo(({
         marginTop: isScrolled ? '-2px' : '8px'
       }}
     >
-      <div className="h-full overflow-hidden" ref={scrollContainerRef}>
+      <div className="h-full overflow-auto" ref={scrollContainerRef}>
         {renderHeader()}
         <div className="min-h-[calc(100vh-8rem)] z-10">
           {children}
