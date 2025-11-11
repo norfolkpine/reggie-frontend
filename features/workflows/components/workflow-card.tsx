@@ -11,32 +11,65 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Star, ArrowRight, Workflow as WorkflowIcon, Play, Loader2 } from "lucide-react";
+import { Star, ArrowRight, Workflow as WorkflowIcon, Play, Loader2, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
 import { Agent, Workflow } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useChatSessionContext } from "@/features/chats/ChatSessionContext";
-import { runWorkflow } from "@/api/workflows";
+import { runWorkflow, deleteWorkflow } from "@/api/workflows";
 import { WorkflowResultDialog } from "./workflow-result-dialog";
 
 interface WorkflowCardProps {
   agent?: Agent;
   workflow?: Workflow;
+  onDelete?: (id: number) => void;
+  onEdit?: (id: number) => void;
 }
 
-export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
+export function WorkflowCard({ agent, workflow, onDelete, onEdit }: WorkflowCardProps) {
   const router = useRouter();
   const { refresh } = useChatSessionContext();
   const { toast } = useToast();
 
   const [isRunning, setIsRunning] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [workflowResult, setWorkflowResult] = useState<{
     status: string;
     result?: string;
     error?: string;
   } | null>(null);
+
+  const handleDelete = async () => {
+    if (!workflow) return;
+    if (!window.confirm(`Are you sure you want to delete workflow "${workflow.name}"? This action cannot be undone.`)) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteWorkflow(workflow.id);
+      toast({
+        title: "Workflow deleted",
+        description: `Workflow '${workflow.name}' was deleted successfully.`,
+        variant: "default",
+      });
+      if (onDelete) onDelete(workflow.id);
+    } catch (e) {
+      toast({
+        title: "Error deleting workflow",
+        description: "There was a problem deleting the workflow. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRunWorkflow = async () => {
     if (!workflow) {
@@ -86,14 +119,60 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
               </div>
               <CardTitle className="text-lg">{workflow.name}</CardTitle>
             </div>
-            {workflow.permissions && workflow.permissions.length > 0 && (
-              <Badge
-                variant="default"
-                className="bg-primary/10 text-primary border-primary/20"
-              >
-                Shared
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {workflow.is_template && (
+                <Badge
+                  variant="default"
+                  className="bg-primary/10 text-primary border-primary/20"
+                >
+                  Template
+                </Badge>
+              )}
+              {workflow.permissions && workflow.permissions.length > 0 && (
+                <Badge
+                  variant="default"
+                  className="bg-primary/10 text-primary border-primary/20"
+                >
+                  Shared
+                </Badge>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (onEdit) {
+                        onEdit(workflow.id);
+                      } else {
+                        router.push(`/workflow/create?id=${workflow.id}`);
+                      }
+                    }}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleDelete();
+                    }}
+                    disabled={isDeleting || workflow.is_template}
+                    className="text-destructive focus:text-destructive disabled:text-muted-foreground"
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <CardDescription className="mt-2">
             {workflow.description || "No description provided"}
@@ -113,18 +192,7 @@ export function WorkflowCard({ agent, workflow }: WorkflowCardProps) {
             )}
           </div>
         </CardContent>
-        <CardFooter className="p-2 bg-white/80 flex justify-between">
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/workflow/create?id=${workflow.id}`);
-            }}
-            variant="outline"
-            size="sm"
-            className="gap-1"
-          >
-            Edit
-          </Button>
+        <CardFooter className="p-2 bg-white/80 flex justify-end">
           <Button
             onClick={(e) => {
               e.stopPropagation();
