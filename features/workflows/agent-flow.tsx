@@ -68,6 +68,7 @@ import {
   useReactFlow,
   BaseEdge,
   EdgeLabelRenderer,
+  getBezierPath,
   getStraightPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -100,7 +101,7 @@ function StartNode({ data, id }: NodeProps) {
         type="source"
         position={Position.Right}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
+        isConnectable={1}
       />
     </div>
   );
@@ -120,7 +121,7 @@ function EndNode({ data, id }: NodeProps) {
         type="target"
         position={Position.Left}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
+        isConnectable={1}
       />
 
       <div className="flex items-center justify-between">
@@ -154,7 +155,7 @@ function AgentNode({ data, id }: NodeProps) {
         type="target"
         position={Position.Left}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
+        isConnectable={1}
       />
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between">
@@ -180,7 +181,7 @@ function AgentNode({ data, id }: NodeProps) {
         type="source"
         position={Position.Right}
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
+        isConnectable={1}
       />
     </div>
   );
@@ -218,9 +219,8 @@ function StickyNoteNode({ data, id }: NodeProps) {
 }
 
 function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition }: EdgeProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getStraightPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -238,7 +238,6 @@ function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
       <BaseEdge
         id={id}
         path={edgePath}
-        type="bezier"
       />
       <EdgeLabelRenderer>
         <div
@@ -248,17 +247,13 @@ function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
             pointerEvents: 'all',
           }}
           className="nodrag nopan"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
         >
-          {isHovered && (
-            <button
-              onClick={onEdgeDelete}
-              className="w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white"
-            >
-              <X size={12} />
-            </button>
-          )}
+          <button
+            onClick={onEdgeDelete}
+            className="w-6 h-6 bg-gray-500 hover:bg-gray-600 rounded-full flex items-center justify-center text-gray shadow-md transition-all hover:scale-110"
+          >
+            <X size={14} color='gray'/>
+          </button>
         </div>
       </EdgeLabelRenderer>
     </>
@@ -376,7 +371,7 @@ function WorkflowEditor() {
           id: edge.id.toString(),
           source: edge.source_node.toString(),
           target: edge.target_node.toString(),
-          type: 'smoothstep',
+          type: 'deletable',
         }));
         setEdges(loadedEdges);
 
@@ -400,7 +395,14 @@ function WorkflowEditor() {
   }, [searchParams, setNodes, setEdges, toast]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      setEdges((eds) => {
+        // Remove any existing edge from the source node
+        const filteredEdges = eds.filter((edge) => edge.source !== params.source);
+        // Add the new edge with deletable type
+        return addEdge({ ...params, type: 'deletable' }, filteredEdges);
+      });
+    },
     [setEdges]
   );
 
@@ -919,7 +921,7 @@ function WorkflowEditor() {
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
             defaultEdgeOptions={{
-              type: 'bezier',
+              type: 'deletable',
             }}
             // defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             fitView
