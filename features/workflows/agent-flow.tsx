@@ -310,7 +310,7 @@ function WorkflowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [palettePosition, setPalettePosition] = useState({ x: 100, y: 100 });
+  const [palettePosition, setPalettePosition] = useState({ x: 20, y: 20 });
   const [isDraggingPalette, setIsDraggingPalette] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
