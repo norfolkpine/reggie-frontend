@@ -14,6 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { WorkflowResultDialog } from "./components/workflow-result-dialog";
 import {
   createWorkflow,
@@ -73,6 +79,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Home, Bot, MessageSquareText, X, ArrowLeft, Plus, Trash2, StickyNote, Loader2, Play } from "lucide-react"
+import { ca } from 'date-fns/locale';
 
 function StartNode({ data, id }: NodeProps) {
   const { setNodes } = useReactFlow();
@@ -277,12 +284,22 @@ const initialEdges: Edge[] = [];
 // Sidebar node categories
 const nodeCategories = [
   {
-    title: 'Core',
+    title: 'Input',
     nodes: [
       { type: 'startNode', label: 'Input', icon: Home },
+    ]
+  },
+  {
+    title: 'Core',
+    nodes: [
       { type: 'agentNode', label: 'Agent', icon: Bot },
-      { type: 'endNode', label: 'Output', icon: MessageSquareText},
       { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote},
+    ]
+  },
+  {
+    title: 'Output',
+    nodes: [
+      { type: 'endNode', label: 'Output', icon: MessageSquareText},
     ]
   },
 ];
@@ -293,6 +310,10 @@ function WorkflowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [palettePosition, setPalettePosition] = useState({ x: 20, y: 20 });
+  const [isDraggingPalette, setIsDraggingPalette] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [toolsComboOpen, setToolsComboOpen] = useState(false);
   const [toolSearchQuery, setToolSearchQuery] = useState('');
@@ -595,6 +616,39 @@ function WorkflowEditor() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const handlePaletteMouseDown = (e: React.MouseEvent) => {
+    setIsDraggingPalette(true);
+    setDragOffset({
+      x: e.clientX - palettePosition.x,
+      y: e.clientY - palettePosition.y,
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingPalette) {
+        setPalettePosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y,
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingPalette(false);
+    };
+
+    if (isDraggingPalette) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingPalette, dragOffset]);
+
   const handleTestWorkflow = async () => {
     if (!workflowId) {
       toast({
@@ -843,50 +897,89 @@ function WorkflowEditor() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Palette Sidebar */}
+        {/* Draggable Palette Card */}
         {paletteOpen && (
-          <div className="w-64 bg-gray-50/50 border-r border-gray-200 overflow-y-auto flex-shrink-0">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-700">Components</h3>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setPaletteOpen(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              {nodeCategories.map((category, idx) => (
-                <div key={idx} className="mb-6">
-                  <div className="px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {category.title}
-                  </div>
-                  <div className="space-y-2 mt-2">
-                    {category.nodes.map((node, nodeIdx) => {
-                      const Icon = node.icon;
-                      return (
-                        <div
-                          key={nodeIdx}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, node.type, node.label)}
-                          className="flex items-center gap-3 px-3 py-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 hover:bg-gray-100 hover:shadow-sm transition-all group"
-                        >
-                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center ">
-                            <Icon size={18} className="text-gray-600" />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">{node.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              <div className="mt-8 px-3 py-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs text-blue-600 leading-relaxed">
-                  <span className="font-semibold">Tip:</span> Drag components onto the canvas to build your workflow
-                </p>
+          <div
+            className="absolute bg-white border border-gray-300 rounded-xl shadow-2xl overflow-hidden z-50"
+            style={{
+              left: `${palettePosition.x}px`,
+              top: `${palettePosition.y}px`,
+              width: '350px',
+              maxHeight: '800px',
+            }}
+          >
+            {/* Draggable Header */}
+            <div
+              className="px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-move bg-white cursor-grabbing"
+              onMouseDown={handlePaletteMouseDown}
+            >
+              <h3 className="text-base font-semibold text-gray-800">Add Nodes</h3>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setPaletteOpen(false)}
+                className="h-8 w-8 hover:bg-gray-100"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-4 py-3 border-b border-gray-200">
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto" style={{ maxHeight: '480px' }}>
+              <div className="p-4">
+                {nodeCategories.map((category, idx) => {
+                  const filteredNodes = category.nodes.filter(node =>
+                    node.label.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+
+                  if (filteredNodes.length === 0) return null;
+
+                  return (
+                    <Accordion
+                      type="single"
+                      collapsible
+                      className="w-full"
+                      defaultValue="Input"
+                      key={idx}
+                    >
+                      <AccordionItem value={category.title} className="mb-4 border-none">
+                        <AccordionTrigger className="px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md hover:no-underline">
+                          {category.title}
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-2 mt-2">
+                          {filteredNodes.map((node, nodeIdx) => {
+                            const Icon = node.icon;
+                            return (
+                              <div
+                                key={nodeIdx}
+                                draggable
+                                onDragStart={(e) => onDragStart(e, node.type, node.label)}
+                                className="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 hover:border hover:border-gray-200 rounded-lg cursor-pointer transition-all group"
+                              >
+                                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                  <Icon size={16} className="text-gray-600" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{node.label}</span>
+                                <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 text-lg font-semibold">+</span>
+                              </div>
+                            );
+                          })}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -919,7 +1012,7 @@ function WorkflowEditor() {
             onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            connectionMode={ConnectionMode.Loose}
+            connectionMode={ConnectionMode.Strict}
             defaultEdgeOptions={{
               type: 'deletable',
             }}
