@@ -108,6 +108,7 @@ import {
 } from "lucide-react"
 import { nodeTypes, edgeTypes } from './components/nodes';
 
+
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
