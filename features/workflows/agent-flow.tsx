@@ -1012,7 +1012,7 @@ function WorkflowEditor() {
             onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            connectionMode={ConnectionMode.Loose}
+            connectionMode={ConnectionMode.Strict}
             defaultEdgeOptions={{
               type: 'deletable',
             }}
