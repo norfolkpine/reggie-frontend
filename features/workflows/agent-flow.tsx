@@ -70,7 +70,42 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Home, Bot, MessageSquareText, ArrowLeft, Plus, StickyNote, Loader2, Play, X } from "lucide-react"
+import { 
+  Home, 
+  Bot, 
+  MessageSquareText, 
+  ArrowLeft, 
+  Plus, 
+  StickyNote, 
+  Loader2, 
+  Play, 
+  X,
+  Webhook,
+  Clock,
+  PlayCircle,
+  GitBranch,
+  Route,
+  Split,
+  GitMerge,
+  Repeat,
+  Timer,
+  AlertTriangle,
+  Variable,
+  ArrowRightLeft,
+  Code,
+  Globe,
+  Database,
+  Folder,
+  Bell,
+  Search,
+  ShieldCheck,
+  FileText,
+  Upload,
+  UserCheck,
+  Edit,
+  Workflow as WorkflowIcon,
+  Radio
+} from "lucide-react"
 import { nodeTypes, edgeTypes } from './components/nodes';
 
 const initialNodes: Node[] = [];
@@ -82,19 +117,74 @@ const nodeCategories = [
     title: 'Input',
     nodes: [
       { type: 'startNode', label: 'Input', icon: Home },
+      { type: 'webhookTrigger', label: 'Webhook', icon: Webhook },
+      { type: 'cronTrigger', label: 'Schedule', icon: Clock },
+      { type: 'manualTrigger', label: 'Manual', icon: PlayCircle },
     ]
   },
   {
     title: 'Core',
     nodes: [
       { type: 'agentNode', label: 'Agent', icon: Bot },
-      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote},
+      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote },
     ]
   },
   {
     title: 'Output',
     nodes: [
-      { type: 'endNode', label: 'Output', icon: MessageSquareText},
+      { type: 'endNode', label: 'Output', icon: MessageSquareText },
+    ]
+  },
+  {
+    title: '🔵 Control & Flow',
+    nodes: [
+      { type: 'ifNode', label: 'If', icon: GitBranch },
+      { type: 'switchNode', label: 'Switch', icon: Route },
+      { type: 'parallelSplit', label: 'Split', icon: Split },
+      { type: 'parallelMerge', label: 'Merge', icon: GitMerge },
+      { type: 'loopNode', label: 'Loop', icon: Repeat },
+      { type: 'timerNode', label: 'Timer', icon: Timer },
+      { type: 'errorNode', label: 'Try-Catch', icon: AlertTriangle },
+    ]
+  },
+  {
+    title: '🟣 Data & Transform',
+    nodes: [
+      { type: 'setVariable', label: 'Set Variable', icon: Variable },
+      { type: 'mapTransform', label: 'Map', icon: ArrowRightLeft },
+      { type: 'functionNode', label: 'Function', icon: Code },
+    ]
+  },
+  {
+    title: '🟠 Integrations',
+    nodes: [
+      { type: 'httpRequest', label: 'HTTP Request', icon: Globe },
+      { type: 'databaseQuery', label: 'Database', icon: Database },
+      { type: 'fileStorage', label: 'File Storage', icon: Folder },
+      { type: 'notification', label: 'Notification', icon: Bell },
+    ]
+  },
+  {
+    title: '🧠 AI / Legal',
+    nodes: [
+      { type: 'extractEntities', label: 'Extract Entities', icon: Search },
+      { type: 'complianceCheck', label: 'Compliance Check', icon: ShieldCheck },
+      { type: 'generateSummary', label: 'Generate Summary', icon: FileText },
+      { type: 'documentIngest', label: 'Document Ingest', icon: Upload },
+    ]
+  },
+  {
+    title: '🧍 Human-in-the-Loop',
+    nodes: [
+      { type: 'approvalTask', label: 'Approval', icon: UserCheck },
+      { type: 'dataCorrection', label: 'Data Review', icon: Edit },
+    ]
+  },
+  {
+    title: '⚙️ Temporal / System',
+    nodes: [
+      { type: 'childWorkflow', label: 'Child Workflow', icon: WorkflowIcon },
+      { type: 'signalWait', label: 'Signal Wait', icon: Radio },
     ]
   },
 ];
