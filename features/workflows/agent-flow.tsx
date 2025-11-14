@@ -647,7 +647,7 @@ function WorkflowEditor() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingPalette, dragOffset, palettePosition]);
+  }, [isDraggingPalette, dragOffset]);
 
   const handleTestWorkflow = async () => {
     if (!workflowId) {
