@@ -136,7 +136,7 @@ const nodeCategories = [
     ]
   },
   {
-    title: '🔵 Control & Flow',
+    title: 'Control & Flow',
     nodes: [
       { type: 'ifNode', label: 'If', icon: GitBranch },
       { type: 'switchNode', label: 'Switch', icon: Route },
@@ -148,7 +148,7 @@ const nodeCategories = [
     ]
   },
   {
-    title: '🟣 Data & Transform',
+    title: 'Data & Transform',
     nodes: [
       { type: 'setVariable', label: 'Set Variable', icon: Variable },
       { type: 'mapTransform', label: 'Map', icon: ArrowRightLeft },
@@ -156,7 +156,7 @@ const nodeCategories = [
     ]
   },
   {
-    title: '🟠 Integrations',
+    title: 'Integrations',
     nodes: [
       { type: 'httpRequest', label: 'HTTP Request', icon: Globe },
       { type: 'databaseQuery', label: 'Database', icon: Database },
@@ -165,7 +165,7 @@ const nodeCategories = [
     ]
   },
   {
-    title: '🧠 AI / Legal',
+    title: 'AI / Legal',
     nodes: [
       { type: 'extractEntities', label: 'Extract Entities', icon: Search },
       { type: 'complianceCheck', label: 'Compliance Check', icon: ShieldCheck },
@@ -174,14 +174,14 @@ const nodeCategories = [
     ]
   },
   {
-    title: '🧍 Human-in-the-Loop',
+    title: 'Human-in-the-Loop',
     nodes: [
       { type: 'approvalTask', label: 'Approval', icon: UserCheck },
       { type: 'dataCorrection', label: 'Data Review', icon: Edit },
     ]
   },
   {
-    title: '⚙️ Temporal / System',
+    title: 'Temporal / System',
     nodes: [
       { type: 'childWorkflow', label: 'Child Workflow', icon: WorkflowIcon },
       { type: 'signalWait', label: 'Signal Wait', icon: Radio },

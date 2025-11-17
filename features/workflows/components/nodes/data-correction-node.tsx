@@ -43,7 +43,15 @@ export function DataCorrectionNode({ data, id }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-pink-400 !w-3 !h-3 !border-2 !border-white"
+        id="corrected"
+        className="!bg-green-400 !w-3 !h-3 !border-2 !border-white !top-[30%]"
+        isConnectable={1}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="rejected"
+        className="!bg-red-400 !w-3 !h-3 !border-2 !border-white !top-[70%]"
         isConnectable={1}
       />
     </div>
