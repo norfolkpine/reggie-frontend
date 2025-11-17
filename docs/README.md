@@ -1,6 +1,6 @@
 # Documentation
 
-Welcome to the reggie-frontend documentation. This directory contains comprehensive documentation about the application architecture, development practices, and deployment.
+Welcome to the opie-frontend documentation. This directory contains comprehensive documentation about the application architecture, development practices, and deployment.
 
 ## Overview
 

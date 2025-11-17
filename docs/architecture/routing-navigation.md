@@ -1,6 +1,6 @@
 # Routing and Navigation
 
-This document describes the routing and navigation architecture of the reggie-frontend Next.js application.
+This document describes the routing and navigation architecture of the opie-frontend Next.js application.
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # API Layer
 
-This document describes the API client architecture, data fetching patterns, and error handling in the reggie-frontend application.
+This document describes the API client architecture, data fetching patterns, and error handling in the opie-frontend application.
 
 ## Overview
 

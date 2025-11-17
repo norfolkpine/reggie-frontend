@@ -1,6 +1,6 @@
 # Authentication and Authorization
 
-This document describes the authentication and authorization architecture of the reggie-frontend application.
+This document describes the authentication and authorization architecture of the opie-frontend application.
 
 ## Overview
 

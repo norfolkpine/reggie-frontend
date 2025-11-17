@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  PROJECT_ID: bh-reggie-test
+  PROJECT_ID: bh-opie-test
 
 jobs:
   deploy:

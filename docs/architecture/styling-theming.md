@@ -1,6 +1,6 @@
 # Styling and Theming
 
-This document describes the styling architecture, theming system, and design tokens used in the reggie-frontend application.
+This document describes the styling architecture, theming system, and design tokens used in the opie-frontend application.
 
 ## Overview
 

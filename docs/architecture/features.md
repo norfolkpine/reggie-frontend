@@ -1,6 +1,6 @@
 # Feature Architecture
 
-This document describes the feature-based architecture pattern used in the reggie-frontend application.
+This document describes the feature-based architecture pattern used in the opie-frontend application.
 
 ## Overview
 

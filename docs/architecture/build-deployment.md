@@ -1,6 +1,6 @@
 # Build and Deployment
 
-This document describes the build configuration, deployment process, and infrastructure setup for the reggie-frontend application.
+This document describes the build configuration, deployment process, and infrastructure setup for the opie-frontend application.
 
 ## Overview
 
@@ -180,10 +180,10 @@ CMD ["node", "server.js"]
 
 ```bash
 # Build image
-docker build -t reggie-frontend .
+docker build -t opie-frontend .
 
 # Run container
-docker run -p 3000:3000 reggie-frontend
+docker run -p 3000:3000 opie-frontend
 ```
 
 ### Docker Compose
@@ -225,7 +225,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'reggie-frontend'
+      - 'opie-frontend'
       - '--source'
       - '.'
 ```

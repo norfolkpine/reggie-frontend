@@ -1,10 +1,10 @@
 # Architecture Documentation
 
-This directory contains comprehensive documentation about the reggie-frontend application architecture.
+This directory contains comprehensive documentation about the opie-frontend application architecture.
 
 ## Overview
 
-The reggie-frontend is a Next.js 15 application built with TypeScript, React, and modern web technologies. It follows a feature-based architecture with type-based organization for shared code.
+The opie-frontend is a Next.js 15 application built with TypeScript, React, and modern web technologies. It follows a feature-based architecture with type-based organization for shared code.
 
 ## Documentation Index
 

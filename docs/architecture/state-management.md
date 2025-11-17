@@ -1,6 +1,6 @@
 # State Management
 
-This document describes the state management architecture of the reggie-frontend application, covering Zustand stores, React Query, and React Context.
+This document describes the state management architecture of the opie-frontend application, covering Zustand stores, React Query, and React Context.
 
 ## Overview
 
