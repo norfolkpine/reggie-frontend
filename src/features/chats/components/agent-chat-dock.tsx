@@ -279,7 +279,7 @@ const AgentChatDock = memo(function AgentChatDock({
   }
 
   return (
-    <div className={`${isMobile ? 'flex flex-col h-full' : `flex bg-background sticky top-16 self-start h-full ${activeTab ? '' : 'w-12'}`}`}>
+    <div className={`${isMobile ? 'flex flex-col h-full' : `flex bg-background sticky top-16 self-start h-full ${activeTab ? 'w-96' : 'w-12'}`}`}>
       {/* Left Sidebar with Icons - hidden on mobile */}
       {!isMobile && (
         <div className="w-12 bg-card border-r border-border flex flex-col py-2 overflow-visible flex-shrink-0">
