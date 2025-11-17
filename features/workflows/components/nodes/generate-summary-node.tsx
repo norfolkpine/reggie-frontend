@@ -14,7 +14,7 @@ export function GenerateSummaryNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-indigo-50 border-2 border-indigo-300 shadow-sm w-[200px] relative group">
+    <div className="rounded-lg bg-white border-2 border-gray-200 shadow-sm w-[200px] relative group">
       <Handle
         type="target"
         position={Position.Left}
