@@ -70,15 +70,15 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { 
-  Home, 
-  Bot, 
-  MessageSquareText, 
-  ArrowLeft, 
-  Plus, 
-  StickyNote, 
-  Loader2, 
-  Play, 
+import {
+  Home,
+  Bot,
+  MessageSquareText,
+  ArrowLeft,
+  Plus,
+  StickyNote,
+  Loader2,
+  Play,
   X,
   Webhook,
   Clock,
@@ -106,8 +106,7 @@ import {
   Workflow as WorkflowIcon,
   Radio
 } from "lucide-react"
-import { nodeTypes, edgeTypes } from './components';
-
+import { nodeTypes, edgeTypes } from './components/nodes';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
