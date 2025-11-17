@@ -453,6 +453,30 @@ function WorkflowEditor() {
     }
   };
 
+  const handleConditionChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { condition: value });
+      // Also update the condition in the main data for display on the node
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedNode.id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                config: {
+                  ...node.data.config,
+                  condition: value,
+                },
+              },
+            };
+          }
+          return node;
+        })
+      );
+    }
+  };
+
   const handleAddNode = useCallback(
     (nodeType: string, label: string, position: { x: number; y: number }) => {
       const id = `${label.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
@@ -1105,6 +1129,19 @@ function WorkflowEditor() {
                       defaultValue={selectedNode?.data?.config?.outputMessage || ''}
                       onChange={(e) => handleOutputMessageChange(e.target.value)}
                     />
+                  </div>
+                ) : selectedNode?.type === 'ifNode' ? (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Condition</label>
+                    <Textarea
+                      placeholder="Enter condition (e.g., status === 'approved', amount > 1000, name contains 'test')"
+                      className="min-h-[120px] resize-none"
+                      defaultValue={(selectedNode?.data?.config as any)?.condition || ''}
+                      onChange={(e) => handleConditionChange(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      The condition will be evaluated. If true, flow continues through the green output. If false, flow continues through the red output.
+                    </p>
                   </div>
                 ) : (
                   <>
