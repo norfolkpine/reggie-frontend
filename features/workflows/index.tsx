@@ -12,9 +12,19 @@ import { useWorkflows } from "./hooks/useWorkflows"
 export default function ExploreWorkflows() {
   const { setHeaderActions, setHeaderCustomContent } = useHeader()
   const [searchQuery, setSearchQuery] = useState("")
-  const { workflows, isLoading } = useWorkflows()
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("")
+  const { workflows, isLoading, loadWorkflows } = useWorkflows(false)
+  const { workflows: templates, isLoading: templatesLoading, loadWorkflows: loadTemplates } = useWorkflows(true)
 
   const router = useRouter()
+
+  const handleWorkflowDelete = () => {
+    loadWorkflows();
+  };
+
+  const handleTemplateDelete = () => {
+    loadTemplates();
+  };
 
   const headerActions = useMemo(() => [
     {
@@ -34,6 +44,14 @@ export default function ExploreWorkflows() {
     );
   }, [workflows, searchQuery]);
 
+  const filteredTemplates = useMemo(() => {
+    if (!templateSearchQuery) return templates;
+    return templates.filter(template =>
+      template.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+      template.description?.toLowerCase().includes(templateSearchQuery.toLowerCase())
+    );
+  }, [templates, templateSearchQuery]);
+
   useEffect(() => {
     setHeaderActions(headerActions);
 
@@ -49,7 +67,6 @@ export default function ExploreWorkflows() {
       <Tabs defaultValue="workflows" className="flex-1 flex flex-col">
         <TabsList className="justify-start border-b mt-2">
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
         <TabsContent value="workflows" className="flex-1 flex flex-col">
@@ -62,14 +79,23 @@ export default function ExploreWorkflows() {
               title="All Workflows"
               workflows={filteredWorkflows}
               isLoading={isLoading}
+              onWorkflowDelete={handleWorkflowDelete}
             />
           </div>
         </TabsContent>
-        <TabsContent value="drafts" className="flex-1 overflow-auto p-4">
-          Draft workflows will be shown here.
-        </TabsContent>
-        <TabsContent value="templates" className="flex-1 overflow-auto p-4">
-          Here are some example workflows.
+        <TabsContent value="templates" className="flex-1 flex flex-col">
+          <SearchFilter
+            searchQuery={templateSearchQuery}
+            setSearchQuery={setTemplateSearchQuery}
+          />
+          <div className="flex-1 overflow-auto p-4">
+            <WorkflowList
+              title="Workflow Templates"
+              workflows={filteredTemplates}
+              isLoading={templatesLoading}
+              onWorkflowDelete={handleTemplateDelete}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

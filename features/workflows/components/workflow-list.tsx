@@ -8,9 +8,11 @@ interface WorkflowListProps {
   agents?: Agent[]
   workflows?: Workflow[]
   isLoading?: boolean
+  onWorkflowDelete?: (id: number) => void
+  onWorkflowEdit?: (id: number) => void
 }
 
-export function WorkflowList({ title, agents = [], workflows = [], isLoading }: WorkflowListProps) {
+export function WorkflowList({ title, agents = [], workflows = [], isLoading, onWorkflowDelete, onWorkflowEdit }: WorkflowListProps) {
   const items = workflows.length > 0 ? workflows : agents;
 
   if (isLoading) {
@@ -42,7 +44,13 @@ export function WorkflowList({ title, agents = [], workflows = [], isLoading }: 
       {/* <h2 className="text-lg font-medium mb-4">{title}</h2> */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
-          <WorkflowCard key={item.id} agent={'agent_id' in item ? item : undefined} workflow={'name' in item && !('agent_id' in item) ? item : undefined} />
+          <WorkflowCard
+            key={item.id}
+            agent={'agent_id' in item ? item : undefined}
+            workflow={'name' in item && !('agent_id' in item) ? item : undefined}
+            onDelete={onWorkflowDelete}
+            onEdit={onWorkflowEdit}
+          />
         ))}
       </div>
     </div>

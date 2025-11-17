@@ -23,8 +23,11 @@ import {
 /**
  * List all workflows accessible to the current user
  */
-export const listWorkflows = async (): Promise<PaginatedWorkflowList> => {
-  const response = await api.get('/opie/api/v1/workflows/');
+export const listWorkflows = async (params?: { is_template?: boolean }): Promise<PaginatedWorkflowList> => {
+  const queryParams = params?.is_template !== undefined
+    ? { is_template: params.is_template.toString() }
+    : undefined;
+  const response = await api.get('/opie/api/v1/workflows/', { params: queryParams });
   return response as PaginatedWorkflowList;
 };
 
