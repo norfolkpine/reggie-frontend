@@ -63,220 +63,50 @@ import {
   ReactFlowProvider,
   BackgroundVariant,
   Controls,
-  Handle,
-  Position,
   ConnectionMode,
   type Connection,
   type Node,
   type Edge,
-  type NodeProps,
-  type EdgeProps,
   useReactFlow,
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  getStraightPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Home, Bot, MessageSquareText, X, ArrowLeft, Plus, Trash2, StickyNote, Loader2, Play } from "lucide-react"
-import { ca } from 'date-fns/locale';
-
-function StartNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
-      <div className="flex items-center justify-between">
-        <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-          <Home size={12} />
-          <span className='text-xs font-semibold'>{data.label}</span>
-        </div>
-
-        <Button
-          onClick={onDelete}
-          className="h-5 w-5 bg-red-500 ml-2 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-        >
-          <Trash2 size={12}/>
-        </Button>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={1}
-      />
-    </div>
-  );
-}
-
-function EndNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={1}
-      />
-
-      <div className="flex items-center justify-between">
-        <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-          <MessageSquareText size={12} />
-          <span className='text-xs font-semibold'>{data.label}</span>
-        </div>
-
-        <Button
-          onClick={onDelete}
-          className="h-5 w-5 bg-red-500 ml-2 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-        >
-          <Trash2 size={12}/>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function AgentNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="rounded-lg bg-white border-2 shadow-sm w-[200px] relative group">
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={1}
-      />
-      <div className="p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-            <Bot size={14} />
-            <span className='text-xs font-semibold'>{data.type || 'Agent'}</span>
-          </div>
-
-          <Button
-            onClick={onDelete}
-            className="h-5 w-5 bg-red-500 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-          >
-            <Trash2 size={12}/>
-          </Button>
-        </div>
-        {data.config?.name && (
-          <div className="text-xs text-gray-600 font-medium">
-            {data.config.name}
-          </div>
-        )}
-      </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={1}
-      />
-    </div>
-  );
-}
-
-function StickyNoteNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="rounded-lg bg-yellow-100 border-2 border-yellow-300 shadow-sm w-[200px] min-h-[150px] relative group">
-      <div className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1">
-            <StickyNote size={14} className="text-yellow-700" />
-            <span className='text-xs font-semibold text-yellow-700'>Note</span>
-          </div>
-          <Button
-            onClick={onDelete}
-            className="h-5 w-5 bg-red-500 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-          >
-            <Trash2 size={12}/>
-          </Button>
-        </div>
-        <div className="text-xs text-yellow-800 whitespace-pre-wrap">
-          {data.note || 'Add your note here...'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition }: EdgeProps) {
-  const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-
-  const onEdgeDelete = () => {
-    setEdges((edges) => edges.filter((edge) => edge.id !== id));
-  };
-
-  return (
-    <>
-      <BaseEdge
-        id={id}
-        path={edgePath}
-      />
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
-          }}
-          className="nodrag nopan"
-        >
-          <button
-            onClick={onEdgeDelete}
-            className="w-6 h-6 bg-gray-500 hover:bg-gray-600 rounded-full flex items-center justify-center text-gray shadow-md transition-all hover:scale-110"
-          >
-            <X size={14} color='gray'/>
-          </button>
-        </div>
-      </EdgeLabelRenderer>
-    </>
-  );
-}
-
-const nodeTypes = {
-  startNode: StartNode,
-  endNode: EndNode,
-  agentNode: AgentNode,
-  stickyNoteNode: StickyNoteNode,
-};
-
-const edgeTypes = {
-  deletable: DeletableEdge,
-};
+import { 
+  Home, 
+  Bot, 
+  MessageSquareText, 
+  ArrowLeft, 
+  Plus, 
+  StickyNote, 
+  Loader2, 
+  Play, 
+  X,
+  Webhook,
+  Clock,
+  PlayCircle,
+  GitBranch,
+  Route,
+  Split,
+  GitMerge,
+  Repeat,
+  Timer,
+  AlertTriangle,
+  Variable,
+  ArrowRightLeft,
+  Code,
+  Globe,
+  Database,
+  Folder,
+  Bell,
+  Search,
+  ShieldCheck,
+  FileText,
+  Upload,
+  UserCheck,
+  Edit,
+  Workflow as WorkflowIcon,
+  Radio
+} from "lucide-react"
+import { nodeTypes, edgeTypes } from './components/nodes';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
@@ -287,19 +117,74 @@ const nodeCategories = [
     title: 'Input',
     nodes: [
       { type: 'startNode', label: 'Input', icon: Home },
+      { type: 'webhookTrigger', label: 'Webhook', icon: Webhook },
+      { type: 'cronTrigger', label: 'Schedule', icon: Clock },
+      { type: 'manualTrigger', label: 'Manual', icon: PlayCircle },
     ]
   },
   {
     title: 'Core',
     nodes: [
       { type: 'agentNode', label: 'Agent', icon: Bot },
-      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote},
+      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote },
     ]
   },
   {
     title: 'Output',
     nodes: [
-      { type: 'endNode', label: 'Output', icon: MessageSquareText},
+      { type: 'endNode', label: 'Output', icon: MessageSquareText },
+    ]
+  },
+  {
+    title: '🔵 Control & Flow',
+    nodes: [
+      { type: 'ifNode', label: 'If', icon: GitBranch },
+      { type: 'switchNode', label: 'Switch', icon: Route },
+      { type: 'parallelSplit', label: 'Split', icon: Split },
+      { type: 'parallelMerge', label: 'Merge', icon: GitMerge },
+      { type: 'loopNode', label: 'Loop', icon: Repeat },
+      { type: 'timerNode', label: 'Timer', icon: Timer },
+      { type: 'errorNode', label: 'Try-Catch', icon: AlertTriangle },
+    ]
+  },
+  {
+    title: '🟣 Data & Transform',
+    nodes: [
+      { type: 'setVariable', label: 'Set Variable', icon: Variable },
+      { type: 'mapTransform', label: 'Map', icon: ArrowRightLeft },
+      { type: 'functionNode', label: 'Function', icon: Code },
+    ]
+  },
+  {
+    title: '🟠 Integrations',
+    nodes: [
+      { type: 'httpRequest', label: 'HTTP Request', icon: Globe },
+      { type: 'databaseQuery', label: 'Database', icon: Database },
+      { type: 'fileStorage', label: 'File Storage', icon: Folder },
+      { type: 'notification', label: 'Notification', icon: Bell },
+    ]
+  },
+  {
+    title: '🧠 AI / Legal',
+    nodes: [
+      { type: 'extractEntities', label: 'Extract Entities', icon: Search },
+      { type: 'complianceCheck', label: 'Compliance Check', icon: ShieldCheck },
+      { type: 'generateSummary', label: 'Generate Summary', icon: FileText },
+      { type: 'documentIngest', label: 'Document Ingest', icon: Upload },
+    ]
+  },
+  {
+    title: '🧍 Human-in-the-Loop',
+    nodes: [
+      { type: 'approvalTask', label: 'Approval', icon: UserCheck },
+      { type: 'dataCorrection', label: 'Data Review', icon: Edit },
+    ]
+  },
+  {
+    title: '⚙️ Temporal / System',
+    nodes: [
+      { type: 'childWorkflow', label: 'Child Workflow', icon: WorkflowIcon },
+      { type: 'signalWait', label: 'Signal Wait', icon: Radio },
     ]
   },
 ];
@@ -310,9 +195,9 @@ function WorkflowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [palettePosition, setPalettePosition] = useState({ x: 20, y: 20 });
-  const [isDraggingPalette, setIsDraggingPalette] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // const [palettePosition, setPalettePosition] = useState({ x: 20, y: 80 });
+  // const [isDraggingPalette, setIsDraggingPalette] = useState(false);
+  // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [toolsComboOpen, setToolsComboOpen] = useState(false);
@@ -616,38 +501,38 @@ function WorkflowEditor() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handlePaletteMouseDown = (e: React.MouseEvent) => {
-    setIsDraggingPalette(true);
-    setDragOffset({
-      x: e.clientX - palettePosition.x,
-      y: e.clientY - palettePosition.y,
-    });
-  };
+  // const handlePaletteMouseDown = (e: React.MouseEvent) => {
+  //   setIsDraggingPalette(true);
+  //   setDragOffset({
+  //     x: e.clientX - palettePosition.x,
+  //     y: e.clientY - palettePosition.y,
+  //   });
+  // };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingPalette) {
-        setPalettePosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y,
-        });
-      }
-    };
+  // useEffect(() => {
+  //   const handleMouseMove = (e: MouseEvent) => {
+  //     if (isDraggingPalette) {
+  //       setPalettePosition({
+  //         x: e.clientX - dragOffset.x,
+  //         y: e.clientY - dragOffset.y,
+  //       });
+  //     }
+  //   };
 
-    const handleMouseUp = () => {
-      setIsDraggingPalette(false);
-    };
+  //   const handleMouseUp = () => {
+  //     setIsDraggingPalette(false);
+  //   };
 
-    if (isDraggingPalette) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
+  //   if (isDraggingPalette) {
+  //     document.addEventListener('mousemove', handleMouseMove);
+  //     document.addEventListener('mouseup', handleMouseUp);
+  //   }
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingPalette, dragOffset]);
+  //   return () => {
+  //     document.removeEventListener('mousemove', handleMouseMove);
+  //     document.removeEventListener('mouseup', handleMouseUp);
+  //   };
+  // }, [isDraggingPalette, dragOffset]);
 
   const handleTestWorkflow = async () => {
     if (!workflowId) {
@@ -902,16 +787,14 @@ function WorkflowEditor() {
           <div
             className="absolute bg-white border border-gray-300 rounded-xl shadow-2xl overflow-hidden z-50"
             style={{
-              left: `${palettePosition.x}px`,
-              top: `${palettePosition.y}px`,
+              left: `20px`,
+              top: `80px`,
               width: '350px',
               maxHeight: '800px',
             }}
           >
-            {/* Draggable Header */}
             <div
               className="px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-move bg-white cursor-grabbing"
-              onMouseDown={handlePaletteMouseDown}
             >
               <h3 className="text-base font-semibold text-gray-800">Add Nodes</h3>
               <Button
@@ -919,7 +802,6 @@ function WorkflowEditor() {
                 variant="ghost"
                 onClick={() => setPaletteOpen(false)}
                 className="h-8 w-8 hover:bg-gray-100"
-                onMouseDown={(e) => e.stopPropagation()}
               >
                 <X className="h-4 w-4" />
               </Button>
