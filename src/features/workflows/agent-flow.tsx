@@ -195,9 +195,9 @@ function WorkflowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [palettePosition, setPalettePosition] = useState({ x: 20, y: 20 });
-  const [isDraggingPalette, setIsDraggingPalette] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // const [palettePosition, setPalettePosition] = useState({ x: 20, y: 80 });
+  // const [isDraggingPalette, setIsDraggingPalette] = useState(false);
+  // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [toolsComboOpen, setToolsComboOpen] = useState(false);
@@ -501,38 +501,38 @@ function WorkflowEditor() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handlePaletteMouseDown = (e: React.MouseEvent) => {
-    setIsDraggingPalette(true);
-    setDragOffset({
-      x: e.clientX - palettePosition.x,
-      y: e.clientY - palettePosition.y,
-    });
-  };
+  // const handlePaletteMouseDown = (e: React.MouseEvent) => {
+  //   setIsDraggingPalette(true);
+  //   setDragOffset({
+  //     x: e.clientX - palettePosition.x,
+  //     y: e.clientY - palettePosition.y,
+  //   });
+  // };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingPalette) {
-        setPalettePosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y,
-        });
-      }
-    };
+  // useEffect(() => {
+  //   const handleMouseMove = (e: MouseEvent) => {
+  //     if (isDraggingPalette) {
+  //       setPalettePosition({
+  //         x: e.clientX - dragOffset.x,
+  //         y: e.clientY - dragOffset.y,
+  //       });
+  //     }
+  //   };
 
-    const handleMouseUp = () => {
-      setIsDraggingPalette(false);
-    };
+  //   const handleMouseUp = () => {
+  //     setIsDraggingPalette(false);
+  //   };
 
-    if (isDraggingPalette) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
+  //   if (isDraggingPalette) {
+  //     document.addEventListener('mousemove', handleMouseMove);
+  //     document.addEventListener('mouseup', handleMouseUp);
+  //   }
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingPalette, dragOffset]);
+  //   return () => {
+  //     document.removeEventListener('mousemove', handleMouseMove);
+  //     document.removeEventListener('mouseup', handleMouseUp);
+  //   };
+  // }, [isDraggingPalette, dragOffset]);
 
   const handleTestWorkflow = async () => {
     if (!workflowId) {
@@ -787,16 +787,14 @@ function WorkflowEditor() {
           <div
             className="absolute bg-white border border-gray-300 rounded-xl shadow-2xl overflow-hidden z-50"
             style={{
-              left: `${palettePosition.x}px`,
-              top: `${palettePosition.y}px`,
+              left: `20px`,
+              top: `80px`,
               width: '350px',
               maxHeight: '800px',
             }}
           >
-            {/* Draggable Header */}
             <div
               className="px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-move bg-white cursor-grabbing"
-              onMouseDown={handlePaletteMouseDown}
             >
               <h3 className="text-base font-semibold text-gray-800">Add Nodes</h3>
               <Button
@@ -804,7 +802,6 @@ function WorkflowEditor() {
                 variant="ghost"
                 onClick={() => setPaletteOpen(false)}
                 className="h-8 w-8 hover:bg-gray-100"
-                onMouseDown={(e) => e.stopPropagation()}
               >
                 <X className="h-4 w-4" />
               </Button>
