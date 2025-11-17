@@ -1,0 +1,505 @@
+# opie Frontend - Cursor Rules
+
+## Project Overview
+
+This is a Next.js 15 application built with TypeScript, React 19, and modern web technologies. The project follows a feature-based architecture with type-based organization for shared code.
+
+## Architecture Principles
+
+### 1. Type-Based Organization for Shared Code
+
+Shared, reusable code is organized by **type** (components, hooks, contexts, etc.):
+
+- `src/components/` - All shared UI components
+- `src/hooks/` - All shared React hooks
+- `src/contexts/` - All React context providers
+- `src/lib/` - All utility libraries
+- `src/stores/` - Global Zustand stores
+- `src/api/` - API endpoint wrappers
+- `src/types/` - Shared TypeScript types
+
+### 2. Feature-Based Organization for Domain Logic
+
+Feature-specific code is organized by **domain/feature**:
+
+- `src/features/<feature-name>/` - Self-contained feature modules
+- Each feature can contain: `components/`, `api/`, `hooks/`, `stores/`, `types.ts`, `utils.ts`, `index.ts`
+
+### 3. Separation of Concerns
+
+- **UI Components** → `src/components/` (shared) or `src/features/<feature>/components/` (feature-specific)
+- **Business Logic** → `src/features/<feature>/`
+- **Utilities** → `src/lib/`
+- **Configuration** → `src/config/`
+
+## Code Style and Structure
+
+### TypeScript
+
+- Use TypeScript for all code
+- Prefer `interface` over `type` for object shapes
+- Avoid `any` - use `unknown` or proper types
+- Use strict mode (already enabled in tsconfig.json)
+- Define types in `types.ts` files within features
+- Export types from feature `index.ts` for public API
+
+### Component Patterns
+
+- Use functional components with TypeScript interfaces
+- Prefer named exports for components
+- Use `React.memo()` for performance optimization when appropriate
+- Keep components focused and under 200-300 lines
+- Extract complex logic into custom hooks
+
+**Component Structure:**
+```typescript
+// Component props interface
+interface ComponentProps {
+  // Props definition
+}
+
+// Component implementation
+export function ComponentName({ prop1, prop2 }: ComponentProps) {
+  // Component logic
+  return (
+    // JSX
+  );
+}
+```
+
+### File Naming
+
+- Components: `kebab-case.tsx` (e.g., `doc-editor.tsx`)
+- Hooks: `use-kebab-case.tsx` or `use-kebab-case.ts` (e.g., `use-document.tsx`)
+- Stores: `use-kebab-case.tsx` (e.g., `use-doc-store.tsx`)
+- Types: `types.ts` or `kebab-case.types.ts`
+- Utils: `utils.ts` or `kebab-case.utils.ts`
+
+### Import Organization
+
+1. React and Next.js imports
+2. Third-party library imports
+3. Internal imports (use `@/` alias)
+   - Shared components/hooks/contexts
+   - Feature imports
+   - API imports
+   - Types
+
+**Example:**
+```typescript
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/auth-context';
+import { DocEditor } from '@/features/docs/doc-editor';
+import { getDocuments } from '@/api/documents';
+import type { Document } from '@/features/docs/types';
+```
+
+## State Management
+
+### When to Use What
+
+**Zustand (Client State):**
+- UI state (modals, sidebars, panels)
+- Client-side only data
+- Feature-specific state
+- Real-time collaboration state
+- Global stores in `src/stores/`
+- Feature stores in `src/features/<feature>/stores/`
+
+**React Query (Server State):**
+- All server data fetching
+- API response caching
+- Data synchronization
+- Background refetching
+- Use `useQuery` for reads, `useMutation` for writes
+
+**React Context (Cross-Cutting):**
+- Cross-cutting concerns
+- Provider patterns
+- Authentication state
+- Theme configuration
+- Global UI state (modals, sidebars)
+
+### Zustand Store Pattern
+
+```typescript
+import { create } from 'zustand';
+
+interface StoreState {
+  // State properties
+  value: string;
+  // Actions
+  setValue: (value: string) => void;
+}
+
+export const useStore = create<StoreState>((set) => ({
+  value: '',
+  setValue: (value) => set({ value }),
+}));
+```
+
+### React Query Pattern
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getDocuments, createDocument } from '@/api/documents';
+
+// Query
+export function useDocuments() {
+  return useQuery({
+    queryKey: ['documents'],
+    queryFn: getDocuments,
+  });
+}
+
+// Mutation
+export function useCreateDocument() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: createDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['documents']);
+    },
+  });
+}
+```
+
+### Query Key Patterns
+
+Use consistent, hierarchical query key patterns:
+
+```typescript
+// List queries
+['documents']
+['agents']
+['workflows']
+
+// Single item queries
+['documents', documentId]
+['agents', agentId]
+
+// Filtered queries
+['documents', { status: 'active' }]
+['agents', { type: 'assistant' }]
+```
+
+## API Layer
+
+### API Client Usage
+
+- Always use functions from `src/api/` instead of calling `api` directly
+- API functions should return typed promises
+- Use React Query hooks for data fetching, not direct API calls in components
+
+**Pattern:**
+```typescript
+// src/api/documents.ts
+import api from '@/lib/api-client';
+
+export interface Document {
+  id: string;
+  title: string;
+  // ...
+}
+
+export async function getDocuments(): Promise<Document[]> {
+  return api.get('/api/documents/') as Promise<Document[]>;
+}
+
+export async function getDocument(id: string): Promise<Document> {
+  return api.get(`/api/documents/${id}/`) as Promise<Document>;
+}
+
+export async function createDocument(data: Partial<Document>): Promise<Document> {
+  return api.post('/api/documents/', data) as Promise<Document>;
+}
+```
+
+### Error Handling
+
+- Always handle errors, especially in mutations
+- Use `APIError` class for API errors
+- Show user-friendly error messages
+- Log errors appropriately
+
+```typescript
+try {
+  await createDocument(data);
+} catch (error) {
+  if (error instanceof APIError) {
+    // Handle API error
+  }
+}
+```
+
+## Feature Development
+
+### Feature Structure
+
+When creating a new feature, follow this structure:
+
+```
+src/features/<feature-name>/
+├── components/          # Feature-specific UI components
+│   ├── ComponentName.tsx
+│   └── index.ts         # Component exports
+├── api/                 # Feature-specific API calls (React Query hooks)
+│   ├── useFeatureData.tsx
+│   └── index.ts
+├── hooks/              # Feature-specific React hooks
+│   ├── useFeatureHook.tsx
+│   └── index.ts
+├── stores/             # Feature-specific Zustand stores
+│   ├── useFeatureStore.tsx
+│   └── index.ts
+├── types.ts           # Feature-specific TypeScript types
+├── utils.ts           # Feature-specific utility functions
+└── index.ts           # Feature public API
+```
+
+### Feature Isolation
+
+- Keep features self-contained
+- Only extract to shared when used by 2+ features
+- Avoid circular dependencies between features
+- Export only what's needed via `index.ts`
+
+### Feature Communication
+
+Features communicate through:
+1. Shared API Layer (`src/api/`)
+2. Shared Contexts (`src/contexts/`)
+3. Shared Stores (`src/stores/`)
+4. Shared Components (`src/components/`)
+
+## Styling and UI
+
+### Tailwind CSS
+
+- Use Tailwind utility classes for styling
+- Use `cn()` utility from `@/lib/utils` for conditional classes
+- Follow mobile-first responsive design
+- Use design system colors from `tailwind.config.ts`
+
+**Example:**
+```typescript
+import { cn } from '@/lib/utils';
+
+<div className={cn(
+  'flex items-center gap-2',
+  isActive && 'bg-primary',
+  isMobile && 'flex-col'
+)}>
+```
+
+### Shadcn UI Components
+
+- Use Shadcn UI components from `src/components/ui/`
+- Extend components when needed, don't modify base components
+- Follow Shadcn patterns for component composition
+
+### Responsive Design
+
+- Use `useResponsiveStore()` for responsive logic
+- Breakpoints: small-mobile (<560px), mobile (<768px), tablet (768-1024px), desktop (≥1024px)
+- Always test on mobile and desktop
+
+```typescript
+import { useResponsiveStore } from '@/stores';
+
+const { isMobile, isDesktop, screenSize } = useResponsiveStore();
+```
+
+## Next.js App Router
+
+### Route Organization
+
+- Use route groups: `(auth)`, `(dashboard)`
+- Use `layout.tsx` for shared layouts
+- Use `page.tsx` for route pages
+- Use `loading.tsx` for loading states
+- Use `error.tsx` for error boundaries
+
+### Server vs Client Components
+
+- Default to Server Components
+- Use `"use client"` only when necessary:
+  - Event handlers
+  - Browser APIs (localStorage, window, etc.)
+  - React hooks (useState, useEffect, etc.)
+  - Context providers
+
+### Data Fetching
+
+- Use React Query for client-side data fetching
+- Use Server Components for initial data when possible
+- Prefer `useQuery` over `useEffect` for data fetching
+
+## Performance Optimization
+
+### React Optimization
+
+- Use `React.memo()` for expensive components
+- Use `useMemo()` for expensive computations
+- Use `useCallback()` for stable function references
+- Avoid unnecessary re-renders
+
+### Code Splitting
+
+- Use dynamic imports for large components
+- Lazy load routes when appropriate
+- Split feature bundles
+
+```typescript
+import dynamic from 'next/dynamic';
+
+const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+  loading: () => <Loading />,
+});
+```
+
+## Error Handling
+
+### Component Error Boundaries
+
+- Use error boundaries for error handling
+- Show user-friendly error messages
+- Log errors to Sentry in production
+
+### API Error Handling
+
+- Always handle API errors in try-catch blocks
+- Use `APIError` class for type-safe error handling
+- Show appropriate error messages to users
+
+## Testing and Quality
+
+### Code Quality
+
+- Keep functions focused and small
+- Avoid duplication - extract shared code
+- Use meaningful variable and function names
+- Add comments for complex logic
+- Keep files under 200-300 lines
+
+### Type Safety
+
+- Always define TypeScript interfaces
+- Avoid `any` type
+- Use proper type inference
+- Export types from feature `index.ts`
+
+## Best Practices
+
+### General
+
+1. **Simplicity**: Prefer simple solutions over complex ones
+2. **Consistency**: Follow existing patterns in the codebase
+3. **Type Safety**: Use TypeScript strictly
+4. **Performance**: Optimize for performance when needed
+5. **Accessibility**: Consider accessibility in UI components
+6. **Documentation**: Document complex logic and features
+
+### Component Development
+
+1. Keep components small and focused
+2. Extract logic into custom hooks
+3. Use composition over inheritance
+4. Prefer props over context when possible
+5. Memoize expensive computations
+
+### State Management
+
+1. Use React Query for server state
+2. Use Zustand for client state
+3. Use Context for cross-cutting concerns
+4. Keep state as local as possible
+5. Avoid prop drilling - use context or stores
+
+### API Development
+
+1. Always use API wrappers from `src/api/`
+2. Use React Query for all data fetching
+3. Handle errors appropriately
+4. Invalidate queries after mutations
+5. Use consistent query key patterns
+
+## Common Patterns
+
+### Loading States
+
+```typescript
+const { data, isLoading, error } = useQuery({
+  queryKey: ['documents'],
+  queryFn: getDocuments,
+});
+
+if (isLoading) return <Loading />;
+if (error) return <Error error={error} />;
+return <DocumentsList data={data} />;
+```
+
+### Form Handling
+
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  title: z.string().min(1),
+});
+
+export function MyForm() {
+  const form = useForm({
+    resolver: zodResolver(schema),
+  });
+  
+  // Form implementation
+}
+```
+
+### Context Usage
+
+```typescript
+import { useAuth } from '@/contexts/auth-context';
+
+function MyComponent() {
+  const { user, isAuthenticated, logout } = useAuth();
+  // Component logic
+}
+```
+
+## Environment Variables
+
+- Use `NEXT_PUBLIC_` prefix for client-side variables
+- Never commit `.env` files
+- Document required environment variables
+- Use `.env.example` for reference
+
+## Git and Version Control
+
+- Write clear commit messages
+- Keep commits focused and atomic
+- Use feature branches for new features
+- Review code before merging
+
+## Documentation
+
+- Update documentation when making architectural changes
+- Document complex features in feature README files
+- Keep code comments up-to-date
+- Follow existing documentation patterns
+
+## When in Doubt
+
+1. Check existing code for similar patterns
+2. Review architecture documentation in `docs/`
+3. Follow established conventions
+4. Ask for clarification if needed
+5. Prefer consistency over personal preferences
+
