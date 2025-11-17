@@ -106,7 +106,7 @@ import {
   Workflow as WorkflowIcon,
   Radio
 } from "lucide-react"
-import { nodeTypes, edgeTypes } from './components/nodes';
+import { nodeTypes, edgeTypes } from './components';
 
 
 const initialNodes: Node[] = [];
