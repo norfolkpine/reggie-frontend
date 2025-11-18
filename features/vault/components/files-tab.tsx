@@ -12,6 +12,7 @@ import { uploadFiles, getVaultFilesByProject, deleteVaultFile, createFolder, upd
 import { VaultFile } from "../types/vault";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { RenameDialog } from "./rename-dialog";
+import { FilePreviewDialog } from "./file-preview-dialog";
 
 interface FilesTabProps {
   projectId: string;
@@ -63,6 +64,8 @@ export const FilesTab = React.forwardRef<{
   const [newFileName, setNewFileName] = useState("");
   const [isRenamingFile, setIsRenamingFile] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<VaultFile | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Pagination hook
   const {
@@ -384,8 +387,12 @@ export const FilesTab = React.forwardRef<{
   };
 
   const handleFilePreview = (file: VaultFile) => {
-    if (file.file && isSafeUrl(file.file)) { window.open(file.file, '_blank'); }
-    else { toast({ title: "Error", description: "Invalid or unsafe file URL.", variant: "destructive" }); }
+    if (file.file && isSafeUrl(file.file)) {
+      setPreviewFile(file);
+      setIsPreviewOpen(true);
+    } else {
+      toast({ title: "Error", description: "Invalid or unsafe file URL.", variant: "destructive" });
+    }
   };
 
   const handleFileDelete = useCallback(async (fileId: number) => {
@@ -480,6 +487,12 @@ export const FilesTab = React.forwardRef<{
         open={createFolderOpen}
         onOpenChange={setCreateFolderOpen}
         onCreateFolder={handleCreateFolder}
+      />
+
+      <FilePreviewDialog
+        file={previewFile}
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
       />
     </>
   );
