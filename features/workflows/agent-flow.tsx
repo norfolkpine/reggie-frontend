@@ -63,6 +63,7 @@ import {
   ReactFlowProvider,
   BackgroundVariant,
   Controls,
+  PanelPosition,
   ConnectionMode,
   type Connection,
   type Node,
@@ -104,7 +105,8 @@ import {
   UserCheck,
   Edit,
   Workflow as WorkflowIcon,
-  Radio
+  Radio,
+  PanelBottom
 } from "lucide-react"
 import { nodeTypes, edgeTypes } from './components/nodes';
 
@@ -926,7 +928,7 @@ function WorkflowEditor() {
             fitView
           >
             <Background bgColor='#fafafa' variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls />
+            <Controls position='bottom-center' orientation='horizontal' />
           </ReactFlow>
         </div>
 
