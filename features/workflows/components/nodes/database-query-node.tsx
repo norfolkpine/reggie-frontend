@@ -14,7 +14,7 @@ export function DatabaseQueryNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-orange-50 border-2 border-orange-300 shadow-sm w-[200px] relative group">
+    <div className="rounded-lg bg-white border-2 border-gray-200 shadow-sm w-[200px] relative group">
       <Handle
         type="target"
         position={Position.Left}
@@ -43,7 +43,15 @@ export function DatabaseQueryNode({ data, id }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-orange-400 !w-3 !h-3 !border-2 !border-white"
+        id="success"
+        className="!bg-green-400 !w-3 !h-3 !border-2 !border-white !top-[30%]"
+        isConnectable={1}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="error"
+        className="!bg-red-400 !w-3 !h-3 !border-2 !border-white !top-[70%]"
         isConnectable={1}
       />
     </div>

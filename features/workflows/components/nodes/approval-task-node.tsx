@@ -14,7 +14,7 @@ export function ApprovalTaskNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-pink-50 border-2 border-pink-300 shadow-sm w-[200px] relative group">
+    <div className="rounded-lg bg-white border-2 border-gray-200 shadow-sm w-[200px] relative group">
       <Handle
         type="target"
         position={Position.Left}
