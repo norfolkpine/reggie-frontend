@@ -12,6 +12,7 @@ import AuthGuard from "@/components/auth-guard"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ModalProvider } from "@/contexts/modal-context"
 import { SearchProvider } from "@/contexts/search-context"
+import { ChatStreamProvider } from "@/contexts/chat-stream-context"
 import { ChatSessionProvider } from "@/features/chats/ChatSessionContext"
 import { AiPanelProvider } from "@/contexts/ai-panel-context"
 
@@ -74,15 +75,17 @@ export default function RootLayout({
           <AppProvider>
           <AuthProvider allowedRoutes={allowedRoutes}>
             <AuthGuard allowedRoutes={allowedRoutes}>
-              <SearchProvider>
-                <ModalProvider>
-                  <ChatSessionProvider>
-                    <AiPanelProvider>
-                      {children}
-                    </AiPanelProvider>
-                  </ChatSessionProvider>
-                </ModalProvider>
-              </SearchProvider>
+              <ChatStreamProvider>
+                <SearchProvider>
+                  <ModalProvider>
+                    <ChatSessionProvider>
+                      <AiPanelProvider>
+                        {children}
+                      </AiPanelProvider>
+                    </ChatSessionProvider>
+                  </ModalProvider>
+                </SearchProvider>
+              </ChatStreamProvider>
             </AuthGuard>
           </AuthProvider>
           <Toaster />

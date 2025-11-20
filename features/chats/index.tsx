@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Menu, RefreshCcw, Bot, History } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
@@ -11,6 +11,7 @@ import { chatStorage } from "@/lib/utils/chat-storage";
 import { useChatSessionContext } from "./ChatSessionContext";
 import { createChatSession, ChatSession } from "@/api/chat-sessions";
 import { useHeader } from "@/contexts/header-context";
+import { useChatStream } from "@/contexts/chat-stream-context";
 
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-8e3621016-opie";
@@ -26,6 +27,9 @@ export default function ChatsComponent() {
   // Get the refresh function from ChatSessionContext to update chat history
   const { refresh, addSession, updateSessionTitle, updateSessionTitleWithTyping } = useChatSessionContext();
   
+  // Get chat stream provider methods
+  const chatStream = useChatStream();
+  
   // Ref to track URL update timeout
   const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -33,11 +37,13 @@ export default function ChatsComponent() {
   const [isMobileDockOpen, setIsMobileDockOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
-  // Initialize state with URL params
-  const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>({ 
-      id: sessionId || "", 
-      agentCode: agentId
-    });
+  // Initialize state with URL params - use useMemo to prevent unnecessary re-initialization
+  const initialSelectedChat = useMemo(() => ({ 
+    id: sessionId || "", 
+    agentCode: agentId
+  }), [sessionId, agentId]);
+  
+  const [selectedChat, setSelectedChat] = useState<{ id: string; agentCode: string | null }>(initialSelectedChat);
 
   // Get chat title from useAgentChat if a session is selected
   const { currentChatTitle } = useAgentChat({
@@ -119,13 +125,27 @@ export default function ChatsComponent() {
     };
   }, [setHeaderActions, setHeaderCustomContent, currentChatTitle, isMobile]);
 
-  // Update selectedChat when URL params change
+  // Update selectedChat synchronously when URL params change for smooth transitions
   useEffect(() => {
-    setSelectedChat({ 
+    const newSelectedChat = { 
       id: sessionId || "", 
       agentCode: agentId
-    });
-  }, [sessionId, agentId]);
+    };
+    
+    // Only update if actually changed to prevent unnecessary re-renders
+    if (selectedChat.id !== newSelectedChat.id || selectedChat.agentCode !== newSelectedChat.agentCode) {
+      // Switch session in provider immediately for instant transition
+      if (sessionId) {
+        chatStream.switchSession(sessionId, agentId);
+      } else {
+        chatStream.switchSession(null, agentId);
+      }
+      
+      // Update state synchronously
+      setSelectedChat(newSelectedChat);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, agentId]); // Only depend on URL params, not selectedChat to avoid loops
 
   // Persist selectedChat in localStorage whenever it changes (only for existing sessions)
   useEffect(() => {
@@ -157,15 +177,20 @@ export default function ChatsComponent() {
   }, [isMobileDockOpen]);
 
   const handleSelectChat = (chatId: string, agentCode?: string | null) => {
-    // Update internal state
-    setSelectedChat({ id: chatId, agentCode: agentCode || DEFAULT_AGENT_ID });
+    const finalAgentCode = agentCode || DEFAULT_AGENT_ID;
+    
+    // Update state immediately for instant UI update
+    setSelectedChat({ id: chatId, agentCode: finalAgentCode });
+    
+    // Switch session in provider immediately (this will end current stream if different)
+    chatStream.switchSession(chatId, finalAgentCode);
     
     // Close mobile dock when chat is selected
     setIsMobileDockOpen(false);
     
-    // Navigate to the chat session URL
-    const newPath = `/chat/${chatId}${agentCode ? `?agentId=${agentCode}` : ''}`;
-    router.push(newPath);
+    // Use replace for smoother transition (no history entry, instant navigation)
+    const newPath = `/chat/${chatId}${finalAgentCode ? `?agentId=${finalAgentCode}` : ''}`;
+    router.replace(newPath);
   };
 
   const handleChangeAgent = () => {
@@ -181,10 +206,18 @@ export default function ChatsComponent() {
       setIsMobileDockOpen(false);
     }
     
+    // End current stream if any
+    if (selectedChat.id) {
+      chatStream.endStream(selectedChat.id);
+    }
+    
     try {
       // Create a new session immediately
       const session = await createChatSession({ agent_id: agentId });
       const newSessionId = session.session_id;
+      
+      // Switch to new session in provider
+      chatStream.switchSession(newSessionId, agentId);
       
       // Update URL immediately with the new session ID (no agentId in path)
       const newPath = `/chat/${newSessionId}`;
@@ -198,6 +231,7 @@ export default function ChatsComponent() {
     } catch (error) {
       console.error('Failed to create new chat session:', error);
       // Fallback to the old behavior if session creation fails
+      chatStream.switchSession(null, agentId);
       setSelectedChat({ id: "", agentCode: agentId });
       router.push("/chat");
     }
@@ -207,7 +241,7 @@ export default function ChatsComponent() {
     // Only update URL if this is a different session than what we already have
     // This prevents double updates when handleNewChat already created the session
     if (newSessionId && newSessionId !== selectedChat.id) {
-      // Update selectedChat state to reflect the new session ID immediately
+      // Update selectedChat state immediately for instant UI update
       setSelectedChat({ id: newSessionId, agentCode: agentId });
       
       // Optimistically add the new session to chat history instead of full refresh
@@ -222,25 +256,19 @@ export default function ChatsComponent() {
       };
       
       // Add to the beginning of the chat sessions list
-      // Note: This assumes the ChatSessionContext has a method to add sessions
-      // We'll need to add this functionality to the context
       addSession(newSession);
       
-      // Update URL after a delay to ensure message processing is complete
-      // This allows the session to appear in history while preventing message loss
-      if (!sessionId) {
-        // Clear any existing timeout
-        if (urlUpdateTimeoutRef.current) {
-          clearTimeout(urlUpdateTimeoutRef.current);
-        }
-        
-        // Set new timeout for URL update (no agentId in path)
-        urlUpdateTimeoutRef.current = setTimeout(() => {
-          const newPath = `/chat/${newSessionId}`;
-          router.replace(newPath);
-          urlUpdateTimeoutRef.current = null;
-        }, 3000); // 3 second delay to ensure message processing is complete
+      // Route immediately in parallel with stream - happens right after session creation
+      // Clear any existing timeout
+      if (urlUpdateTimeoutRef.current) {
+        clearTimeout(urlUpdateTimeoutRef.current);
+        urlUpdateTimeoutRef.current = null;
       }
+      
+      // Use replace for smooth transition without adding to history
+      // This happens immediately after session ID is generated, while stream continues
+      const newPath = `/chat/${newSessionId}`;
+      router.replace(newPath);
     }
   };
 
