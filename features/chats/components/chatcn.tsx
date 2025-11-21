@@ -458,7 +458,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
         {statusIndicators}
 
-        <div id="chat-input-container" className="border-t bg-background/95 backdrop-blur-sm flex-shrink-0" style={inputContainerStyle}>
+        <div id="chat-input-container" className="border-t backdrop-blur-sm flex-shrink-0" style={inputContainerStyle}>
           <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
             {/* Reasoning Toggle */}
             <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">

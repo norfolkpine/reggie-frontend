@@ -201,7 +201,7 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
         "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex left-0",
         sidebarWidth
       )}>
-        <div className="bg-background flex h-full w-full flex-col overflow-hidden">
+        <div className="flex h-full w-full flex-col overflow-hidden">
           <Sidebar />
         </div>
       </div>
@@ -210,13 +210,13 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full"
+      className="group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar bg-white dark:bg-background  flex min-h-svh w-full"
       style={sidebarStyle}
     >
       {desktopSidebar}
 
       {/* Main Content Area */}
-      <main className="bg-background relative flex w-full flex-1 flex-col">
+      <main className="relative flex w-full flex-1 flex-col">
         <HeaderProvider>
           <DashboardContent>{children}</DashboardContent>
         </HeaderProvider>
