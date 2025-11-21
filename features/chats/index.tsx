@@ -113,7 +113,7 @@ export default function ChatsComponent() {
 
     // Set chat title as custom content next to the page title
     setHeaderCustomContent(
-      <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
+      <div className="text-lg font-medium" title={currentChatTitle || "Chat"}>
         {currentChatTitle || "Chat"}
       </div>
     );

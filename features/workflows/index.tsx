@@ -55,7 +55,7 @@ export default function ExploreWorkflows() {
   useEffect(() => {
     setHeaderActions(headerActions);
 
-    setHeaderCustomContent(<span className="text-xl font-medium">Workflows</span>);
+    setHeaderCustomContent(<div className="text-lg font-medium ">Workflows</div>);
     return () => {
       setHeaderActions([]);
       setHeaderCustomContent(null);

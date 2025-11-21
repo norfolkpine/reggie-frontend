@@ -11,11 +11,11 @@ export default function AdminPage() {
 
   // Set the page title in the header
   useEffect(() => {
-    // setHeaderCustomContent("Admin Dashboard");
+    setHeaderCustomContent(<div className="text-lg font-medium ">Admin</div>);
     
-    return () => {
-      setHeaderCustomContent(null);
-    };
+    // return () => {
+    //   setHeaderCustomContent(null);
+    // };
   }, [setHeaderCustomContent]);
 
   if (loading) {
