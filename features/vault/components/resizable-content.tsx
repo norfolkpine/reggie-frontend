@@ -239,7 +239,7 @@ export const ResizableContent = memo(function ResizableContent({
     <div 
       ref={containerRef} 
       className={cn(
-        "h-full bg-background relative overflow-hidden",
+        "h-full relative overflow-hidden",
         isDragOver && "ring-2 ring-primary ring-offset-2"
       )}
       {...dragHandlers}

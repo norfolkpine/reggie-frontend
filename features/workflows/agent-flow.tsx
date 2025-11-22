@@ -14,6 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { WorkflowResultDialog } from "./components/workflow-result-dialog";
 import {
   createWorkflow,
@@ -57,224 +63,52 @@ import {
   ReactFlowProvider,
   BackgroundVariant,
   Controls,
-  Handle,
-  Position,
+  PanelPosition,
   ConnectionMode,
   type Connection,
   type Node,
   type Edge,
-  type NodeProps,
-  type EdgeProps,
   useReactFlow,
-  BaseEdge,
-  EdgeLabelRenderer,
-  getStraightPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Home, Bot, MessageSquareText, X, ArrowLeft, Plus, Trash2, StickyNote, Loader2, Play } from "lucide-react"
-
-function StartNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
-      <div className="flex items-center justify-between">
-        <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-          <Home size={12} />
-          <span className='text-xs font-semibold'>{data.label}</span>
-        </div>
-
-        <Button
-          onClick={onDelete}
-          className="h-5 w-5 bg-red-500 ml-2 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-        >
-          <Trash2 size={12}/>
-        </Button>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
-      />
-    </div>
-  );
-}
-
-function EndNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
-      />
-
-      <div className="flex items-center justify-between">
-        <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-          <MessageSquareText size={12} />
-          <span className='text-xs font-semibold'>{data.label}</span>
-        </div>
-
-        <Button
-          onClick={onDelete}
-          className="h-5 w-5 bg-red-500 ml-2 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-        >
-          <Trash2 size={12}/>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function AgentNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="rounded-lg bg-white border-2 shadow-sm w-[200px] relative group">
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
-      />
-      <div className="p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
-            <Bot size={14} />
-            <span className='text-xs font-semibold'>{data.type || 'Agent'}</span>
-          </div>
-
-          <Button
-            onClick={onDelete}
-            className="h-5 w-5 bg-red-500 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-          >
-            <Trash2 size={12}/>
-          </Button>
-        </div>
-        {data.config?.name && (
-          <div className="text-xs text-gray-600 font-medium">
-            {data.config.name}
-          </div>
-        )}
-      </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={true}
-      />
-    </div>
-  );
-}
-
-function StickyNoteNode({ data, id }: NodeProps) {
-  const { setNodes } = useReactFlow();
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNodes((nodes) => nodes.filter((node) => node.id !== id));
-  };
-
-  return (
-    <div className="rounded-lg bg-yellow-100 border-2 border-yellow-300 shadow-sm w-[200px] min-h-[150px] relative group">
-      <div className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1">
-            <StickyNote size={14} className="text-yellow-700" />
-            <span className='text-xs font-semibold text-yellow-700'>Note</span>
-          </div>
-          <Button
-            onClick={onDelete}
-            className="h-5 w-5 bg-red-500 hover:bg-red-600 text-red-500/0 hover:text-red-50/100 p-0 rounded-full flex items-center justify-center"
-          >
-            <Trash2 size={12}/>
-          </Button>
-        </div>
-        <div className="text-xs text-yellow-800 whitespace-pre-wrap">
-          {data.note || 'Add your note here...'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition }: EdgeProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getStraightPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-
-  const onEdgeDelete = () => {
-    setEdges((edges) => edges.filter((edge) => edge.id !== id));
-  };
-
-  return (
-    <>
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        type="bezier"
-      />
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
-          }}
-          className="nodrag nopan"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {isHovered && (
-            <button
-              onClick={onEdgeDelete}
-              className="w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-      </EdgeLabelRenderer>
-    </>
-  );
-}
-
-const nodeTypes = {
-  startNode: StartNode,
-  endNode: EndNode,
-  agentNode: AgentNode,
-  stickyNoteNode: StickyNoteNode,
-};
-
-const edgeTypes = {
-  deletable: DeletableEdge,
-};
+import { 
+  Home, 
+  Bot, 
+  MessageSquareText, 
+  ArrowLeft, 
+  Plus, 
+  StickyNote, 
+  Loader2, 
+  Play, 
+  X,
+  Webhook,
+  Clock,
+  PlayCircle,
+  GitBranch,
+  Route,
+  Split,
+  GitMerge,
+  Repeat,
+  Timer,
+  AlertTriangle,
+  Variable,
+  ArrowRightLeft,
+  Code,
+  Globe,
+  Database,
+  Folder,
+  Bell,
+  Search,
+  ShieldCheck,
+  FileText,
+  Upload,
+  UserCheck,
+  Edit,
+  Workflow as WorkflowIcon,
+  Radio,
+  PanelBottom
+} from "lucide-react"
+import { nodeTypes, edgeTypes } from './components/nodes';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
@@ -282,12 +116,77 @@ const initialEdges: Edge[] = [];
 // Sidebar node categories
 const nodeCategories = [
   {
-    title: 'Core',
+    title: 'Input',
     nodes: [
       { type: 'startNode', label: 'Input', icon: Home },
+      { type: 'webhookTrigger', label: 'Webhook', icon: Webhook },
+      { type: 'cronTrigger', label: 'Schedule', icon: Clock },
+      { type: 'manualTrigger', label: 'Manual', icon: PlayCircle },
+    ]
+  },
+  {
+    title: 'Core',
+    nodes: [
       { type: 'agentNode', label: 'Agent', icon: Bot },
-      { type: 'endNode', label: 'Output', icon: MessageSquareText},
-      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote},
+      { type: 'stickyNoteNode', label: 'Sticky Note', icon: StickyNote },
+    ]
+  },
+  {
+    title: 'Output',
+    nodes: [
+      { type: 'endNode', label: 'Output', icon: MessageSquareText },
+    ]
+  },
+  {
+    title: 'Control & Flow',
+    nodes: [
+      { type: 'ifNode', label: 'If', icon: GitBranch },
+      { type: 'switchNode', label: 'Switch', icon: Route },
+      { type: 'parallelSplit', label: 'Split', icon: Split },
+      { type: 'parallelMerge', label: 'Merge', icon: GitMerge },
+      { type: 'loopNode', label: 'Loop', icon: Repeat },
+      { type: 'timerNode', label: 'Timer', icon: Timer },
+      { type: 'errorNode', label: 'Try-Catch', icon: AlertTriangle },
+    ]
+  },
+  {
+    title: 'Data & Transform',
+    nodes: [
+      { type: 'setVariable', label: 'Set Variable', icon: Variable },
+      { type: 'mapTransform', label: 'Map', icon: ArrowRightLeft },
+      { type: 'functionNode', label: 'Function', icon: Code },
+    ]
+  },
+  {
+    title: 'Integrations',
+    nodes: [
+      { type: 'httpRequest', label: 'HTTP Request', icon: Globe },
+      { type: 'databaseQuery', label: 'Database', icon: Database },
+      { type: 'fileStorage', label: 'File Storage', icon: Folder },
+      { type: 'notification', label: 'Notification', icon: Bell },
+    ]
+  },
+  {
+    title: 'AI / Legal',
+    nodes: [
+      { type: 'extractEntities', label: 'Extract Entities', icon: Search },
+      { type: 'complianceCheck', label: 'Compliance Check', icon: ShieldCheck },
+      { type: 'generateSummary', label: 'Generate Summary', icon: FileText },
+      { type: 'documentIngest', label: 'Document Ingest', icon: Upload },
+    ]
+  },
+  {
+    title: 'Human-in-the-Loop',
+    nodes: [
+      { type: 'approvalTask', label: 'Approval', icon: UserCheck },
+      { type: 'dataCorrection', label: 'Data Review', icon: Edit },
+    ]
+  },
+  {
+    title: 'Temporal / System',
+    nodes: [
+      { type: 'childWorkflow', label: 'Child Workflow', icon: WorkflowIcon },
+      { type: 'signalWait', label: 'Signal Wait', icon: Radio },
     ]
   },
 ];
@@ -298,6 +197,10 @@ function WorkflowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // const [palettePosition, setPalettePosition] = useState({ x: 20, y: 80 });
+  // const [isDraggingPalette, setIsDraggingPalette] = useState(false);
+  // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [toolsComboOpen, setToolsComboOpen] = useState(false);
   const [toolSearchQuery, setToolSearchQuery] = useState('');
@@ -376,7 +279,7 @@ function WorkflowEditor() {
           id: edge.id.toString(),
           source: edge.source_node.toString(),
           target: edge.target_node.toString(),
-          type: 'smoothstep',
+          type: 'deletable',
         }));
         setEdges(loadedEdges);
 
@@ -400,7 +303,14 @@ function WorkflowEditor() {
   }, [searchParams, setNodes, setEdges, toast]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      setEdges((eds) => {
+        // Remove any existing edge from the source node
+        const filteredEdges = eds.filter((edge) => edge.source !== params.source);
+        // Add the new edge with deletable type
+        return addEdge({ ...params, type: 'deletable' }, filteredEdges);
+      });
+    },
     [setEdges]
   );
 
@@ -545,6 +455,30 @@ function WorkflowEditor() {
     }
   };
 
+  const handleConditionChange = (value: string) => {
+    if (selectedNode) {
+      updateNodeConfig(selectedNode.id, { condition: value });
+      // Also update the condition in the main data for display on the node
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedNode.id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                config: {
+                  ...node.data.config,
+                  condition: value,
+                },
+              },
+            };
+          }
+          return node;
+        })
+      );
+    }
+  };
+
   const handleAddNode = useCallback(
     (nodeType: string, label: string, position: { x: number; y: number }) => {
       const id = `${label.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
@@ -592,6 +526,39 @@ function WorkflowEditor() {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
+
+  // const handlePaletteMouseDown = (e: React.MouseEvent) => {
+  //   setIsDraggingPalette(true);
+  //   setDragOffset({
+  //     x: e.clientX - palettePosition.x,
+  //     y: e.clientY - palettePosition.y,
+  //   });
+  // };
+
+  // useEffect(() => {
+  //   const handleMouseMove = (e: MouseEvent) => {
+  //     if (isDraggingPalette) {
+  //       setPalettePosition({
+  //         x: e.clientX - dragOffset.x,
+  //         y: e.clientY - dragOffset.y,
+  //       });
+  //     }
+  //   };
+
+  //   const handleMouseUp = () => {
+  //     setIsDraggingPalette(false);
+  //   };
+
+  //   if (isDraggingPalette) {
+  //     document.addEventListener('mousemove', handleMouseMove);
+  //     document.addEventListener('mouseup', handleMouseUp);
+  //   }
+
+  //   return () => {
+  //     document.removeEventListener('mousemove', handleMouseMove);
+  //     document.removeEventListener('mouseup', handleMouseUp);
+  //   };
+  // }, [isDraggingPalette, dragOffset]);
 
   const handleTestWorkflow = async () => {
     if (!workflowId) {
@@ -841,50 +808,86 @@ function WorkflowEditor() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Palette Sidebar */}
+        {/* Draggable Palette Card */}
         {paletteOpen && (
-          <div className="w-64 bg-gray-50/50 border-r border-gray-200 overflow-y-auto flex-shrink-0">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-700">Components</h3>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setPaletteOpen(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              {nodeCategories.map((category, idx) => (
-                <div key={idx} className="mb-6">
-                  <div className="px-2 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {category.title}
-                  </div>
-                  <div className="space-y-2 mt-2">
-                    {category.nodes.map((node, nodeIdx) => {
-                      const Icon = node.icon;
-                      return (
-                        <div
-                          key={nodeIdx}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, node.type, node.label)}
-                          className="flex items-center gap-3 px-3 py-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 hover:bg-gray-100 hover:shadow-sm transition-all group"
-                        >
-                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center ">
-                            <Icon size={18} className="text-gray-600" />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">{node.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              <div className="mt-8 px-3 py-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs text-blue-600 leading-relaxed">
-                  <span className="font-semibold">Tip:</span> Drag components onto the canvas to build your workflow
-                </p>
+          <div
+            className="absolute bg-white border border-gray-300 rounded-xl shadow-2xl overflow-hidden z-50"
+            style={{
+              left: `20px`,
+              top: `80px`,
+              width: '350px',
+              maxHeight: '800px',
+            }}
+          >
+            <div
+              className="px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-move bg-white cursor-grabbing"
+            >
+              <h3 className="text-base font-semibold text-gray-800">Add Nodes</h3>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setPaletteOpen(false)}
+                className="h-8 w-8 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-4 py-3 border-b border-gray-200">
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto" style={{ maxHeight: '480px' }}>
+              <div className="p-4">
+                {nodeCategories.map((category, idx) => {
+                  const filteredNodes = category.nodes.filter(node =>
+                    node.label.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+
+                  if (filteredNodes.length === 0) return null;
+
+                  return (
+                    <Accordion
+                      type="single"
+                      collapsible
+                      className="w-full"
+                      defaultValue="Input"
+                      key={idx}
+                    >
+                      <AccordionItem value={category.title} className="mb-4 border-none">
+                        <AccordionTrigger className="px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md hover:no-underline">
+                          {category.title}
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-2 mt-2">
+                          {filteredNodes.map((node, nodeIdx) => {
+                            const Icon = node.icon;
+                            return (
+                              <div
+                                key={nodeIdx}
+                                draggable
+                                onDragStart={(e) => onDragStart(e, node.type, node.label)}
+                                className="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 hover:border hover:border-gray-200 rounded-lg cursor-pointer transition-all group"
+                              >
+                                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                  <Icon size={16} className="text-gray-600" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{node.label}</span>
+                                <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 text-lg font-semibold">+</span>
+                              </div>
+                            );
+                          })}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -917,15 +920,15 @@ function WorkflowEditor() {
             onEdgesDelete={onEdgesDelete}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            connectionMode={ConnectionMode.Loose}
+            connectionMode={ConnectionMode.Strict}
             defaultEdgeOptions={{
-              type: 'bezier',
+              type: 'deletable',
             }}
             // defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             fitView
           >
             <Background bgColor='#fafafa' variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls />
+            <Controls position='bottom-center' orientation='horizontal' />
           </ReactFlow>
         </div>
 
@@ -1128,6 +1131,19 @@ function WorkflowEditor() {
                       defaultValue={selectedNode?.data?.config?.outputMessage || ''}
                       onChange={(e) => handleOutputMessageChange(e.target.value)}
                     />
+                  </div>
+                ) : selectedNode?.type === 'ifNode' ? (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Condition</label>
+                    <Textarea
+                      placeholder="Enter condition (e.g., status === 'approved', amount > 1000, name contains 'test')"
+                      className="min-h-[120px] resize-none"
+                      defaultValue={(selectedNode?.data?.config as any)?.condition || ''}
+                      onChange={(e) => handleConditionChange(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      The condition will be evaluated. If true, flow continues through the green output. If false, flow continues through the red output.
+                    </p>
                   </div>
                 ) : (
                   <>

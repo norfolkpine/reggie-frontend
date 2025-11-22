@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Menu, RefreshCcw, Bot, History } from "lucide-react";
 import { CustomChat } from "./components/chatcn";
 import { useAgentChat } from "@/hooks/use-agent-chat";
-import AgentChatDock from "./components/agent-chat-dock";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { chatStorage } from "@/lib/utils/chat-storage";
 import { useChatSessionContext } from "./ChatSessionContext";
@@ -16,7 +15,7 @@ import { useChatStream } from "@/contexts/chat-stream-context";
 // Default agent ID to use for new conversations
 const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_DEFAULT_AGENT_ID || "o-8e3621016-opie";
 
-export default function ChatsComponent() {
+export default function ChatNoDock() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const agentId = searchParams.get("agentId") ?? DEFAULT_AGENT_ID;
@@ -113,7 +112,7 @@ export default function ChatsComponent() {
 
     // Set chat title as custom content next to the page title
     setHeaderCustomContent(
-      <div className="text-lg font-medium" title={currentChatTitle || "Chat"}>
+      <div className="text-lg font-semibold truncate" title={currentChatTitle || "Chat"}>
         {currentChatTitle || "Chat"}
       </div>
     );
@@ -288,32 +287,7 @@ export default function ChatsComponent() {
 
   return (
     <div className="flex h-[calc(100vh-6rem)] overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
-      {/* Mobile backdrop */}
-      {isMobileDockOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileDockOpen(false)}
-        />
-      )}
-      
-      {/* Desktop dock - always visible on desktop */}
-      <div className="hidden md:block">
-        <AgentChatDock onSelectChat={handleSelectChat} onNewChat={handleNewChat} currentAgentId={agentId} />
-      </div>
-      
-      {/* Mobile dock - overlay on mobile */}
-      {isMobileDockOpen && (
-        <div className="fixed inset-y-0 left-0 z-50 w-full max-w-sm sm:max-w-md bg-background border-r border-border md:hidden">
-          <AgentChatDock 
-            onSelectChat={handleSelectChat} 
-            onNewChat={handleNewChat}
-            isMobile={true}
-            onClose={() => setIsMobileDockOpen(false)}
-            currentAgentId={agentId}
-          />
-        </div>
-      )}
-      
+     
       <div className="flex-1 flex flex-col overflow-hidden">
         <CustomChat
           agentId={selectedChat.agentCode || DEFAULT_AGENT_ID}

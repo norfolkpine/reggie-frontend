@@ -24,14 +24,14 @@ interface WorkflowResultDialogProps {
 export function WorkflowResultDialog({ open, onOpenChange, result }: WorkflowResultDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[50vh] overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Workflow Execution Result</DialogTitle>
           <DialogDescription>
             Status: {result?.status || 'Unknown'}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-md">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-gray-50 rounded-md">
           {result?.error ? (
             <div className="text-red-600 whitespace-pre-wrap">
               <strong>Error:</strong> {result.error}

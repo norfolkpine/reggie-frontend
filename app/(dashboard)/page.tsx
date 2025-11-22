@@ -1,7 +1,7 @@
 "use client"
-import ChatsComponent from "@/features/chats";
+import ChatNoDock from "@/features/chats/chat-no-dock"
 
 export default function DashboardPage() {
-  return <ChatsComponent />
+  return <ChatNoDock />
 }
 

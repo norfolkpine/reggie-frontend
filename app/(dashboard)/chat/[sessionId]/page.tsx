@@ -5,7 +5,7 @@
 //   return <ChatInterface />
 // }
 
-import ChatsComponent from "@/features/chats"
+import ChatNoDock from "@/features/chats/chat-no-dock"
 
 // Required for static export - generate static params for dynamic routes
 export async function generateStaticParams() {
@@ -15,5 +15,5 @@ export async function generateStaticParams() {
 }
 
 export default function ChatPage() {
-  return <ChatsComponent />
+  return <ChatNoDock />
 }

@@ -1,18 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { listWorkflows } from "@/api/workflows";
 import { Workflow } from "@/types/api";
 
-export function useWorkflows() {
+export function useWorkflows(isTemplate?: boolean) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadWorkflows = async () => {
+  const loadWorkflows = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await listWorkflows();
+      const params = isTemplate !== undefined ? { is_template: isTemplate } : undefined;
+      const response = await listWorkflows(params);
       setWorkflows(response.results);
     } catch (error) {
       console.error('Failed to load workflows:', error);
@@ -23,11 +24,11 @@ export function useWorkflows() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isTemplate]);
 
   useEffect(() => {
     loadWorkflows();
-  }, []);
+  }, [loadWorkflows]);
 
   return {
     workflows,
