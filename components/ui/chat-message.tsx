@@ -20,7 +20,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { ExternalLink, FileText, Calendar, HardDrive, FileImage, FileSpreadsheet, FileCode, FileIcon } from "lucide-react"
 
 const chatBubbleVariants = cva(
-  "group/message relative break-words rounded-lg p-4 text-sm",
+  "group/message relative break-words rounded-lg p-2 text-sm",
   {
     variants: {
       isUser: {

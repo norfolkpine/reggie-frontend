@@ -64,8 +64,8 @@ export default function ExploreWorkflows() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <Tabs defaultValue="workflows" className="flex-1 flex flex-col">
-        <TabsList className="justify-start border-b mt-2">
+      <Tabs defaultValue="workflows">
+        <TabsList className="justify-start border-b mt-4 ml-4">
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>

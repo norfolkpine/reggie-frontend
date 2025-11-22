@@ -288,7 +288,7 @@ export function UserTokenUsage() {
                   colSpan={columns.length}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  {(table.getColumn('user_email')?.getFilterValue() as string)
+                  {columnFilters.length > 0
                     ? "No token usage logs match your search"
                     : "No token usage logs found"}
                 </TableCell>
@@ -311,7 +311,7 @@ export function UserTokenUsage() {
                       {total.toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      {`$ ${row.cost}` || '-'}
+                      {row.cost != null ? `$ ${Number(row.cost).toFixed(6)}` : '-'}
                     </TableCell>
                     <TableCell>
                       <Button size={"sm"} onClick={() => {handlePreview(row)}}><EyeIcon /></Button>

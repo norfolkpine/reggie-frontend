@@ -1,5 +1,6 @@
 
-import ChatsComponent from "@/features/chats"
+import ChatNoDock from "@/features/chats/chat-no-dock"
+
 export default function ChatPage() {
-  return <ChatsComponent />
+  return <ChatNoDock />
 }
