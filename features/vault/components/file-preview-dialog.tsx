@@ -8,6 +8,7 @@ import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Download, X } from 'lucide-
 import { VaultFile } from '../types/vault';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import './file-preview-dialog.css';
 
 // Configure PDF.js worker
 if (typeof window !== 'undefined') {
@@ -90,11 +91,18 @@ const PDFViewer = forwardRef<any, PDFViewerProps>(({
     }
   }));
 
+
   return (
-    <div className="flex flex-col h-full w-full bg-gray-50">
-      <div className="flex-1 overflow-auto flex justify-center items-start p-6">
+    <div className="flex flex-col w-full h-full bg-gray-50 min-h-0">
+      <div 
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pdf-scrollable-container min-h-0"
+        style={{ 
+          scrollbarWidth: 'auto',
+          scrollbarColor: '#9ca3af #e5e7eb',
+        }}
+      >
         {error && (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
+          <div className="flex flex-col items-center justify-center p-12 text-center min-h-full">
             <X className="h-12 w-12 text-destructive mb-4" />
             <p className="text-destructive">{error}</p>
             <p className="text-sm text-muted-foreground mt-2">Please try a different PDF file or URL</p>
@@ -102,33 +110,41 @@ const PDFViewer = forwardRef<any, PDFViewerProps>(({
         )}
 
         {!error && (
-          <div className="flex justify-center items-center min-h-full">
+          <div className="flex flex-col items-center w-full py-4">
             <Document
               file={file}
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={onDocumentLoadError}
               loading={
-                <div className="flex flex-col items-center justify-center p-12">
+                <div className="flex flex-col items-center justify-center p-12 min-h-full">
                   <div className="w-12 h-12 border-4 border-gray-300 border-t-primary rounded-full animate-spin"></div>
                   <p className="mt-4 text-muted-foreground">Loading PDF...</p>
                 </div>
               }
-              className="flex justify-center"
+              className="flex flex-col items-center w-full"
             >
-              <div className="relative inline-block">
-                <Page
-                  pageNumber={currentPageNumber}
-                  scale={currentScale}
-                  rotate={rotation}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  className="shadow-lg rounded"
-                  loading={
-                    <div className="flex items-center justify-center p-12">
-                      <div className="w-6 h-6 border-3 border-gray-300 border-t-primary rounded-full animate-spin"></div>
-                    </div>
-                  }
-                />
+              <div className="flex flex-col items-center gap-4 w-full">
+                {numPages && Array.from(new Array(numPages), (el, index) => (
+                  <div 
+                    key={`page_${index + 1}`} 
+                    id={`pdf-page-${index + 1}`}
+                    className="relative inline-block"
+                  >
+                    <Page
+                      pageNumber={index + 1}
+                      scale={currentScale}
+                      rotate={rotation}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      className="shadow-lg rounded"
+                      loading={
+                        <div className="flex items-center justify-center p-12 min-h-[400px]">
+                          <div className="w-6 h-6 border-3 border-gray-300 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                      }
+                    />
+                  </div>
+                ))}
               </div>
             </Document>
           </div>
@@ -151,8 +167,72 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
       setPageNumber(1);
       setScale(1.0);
       setNumPages(null);
+      // Scroll to top when dialog opens
+      setTimeout(() => {
+        const scrollContainer = document.querySelector('.pdf-scrollable-container') as HTMLElement;
+        if (scrollContainer) {
+          scrollContainer.scrollTop = 0;
+        }
+      }, 100);
     }
   }, [open, file]);
+
+  // Update page number based on scroll position
+  useEffect(() => {
+    if (!numPages) return;
+
+    const updatePageFromScroll = () => {
+      // Find the scroll container inside PDFViewer
+      const scrollContainer = document.querySelector('.pdf-scrollable-container') as HTMLElement;
+      if (!scrollContainer) return;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const scrollTop = scrollContainer.scrollTop;
+      const containerHeight = containerRect.height;
+      const viewportCenter = scrollTop + containerHeight / 2;
+
+      // Find which page is in the center of the viewport
+      let currentPage = 1;
+      let minDistance = Infinity;
+
+      for (let i = 1; i <= numPages; i++) {
+        const pageElement = document.getElementById(`pdf-page-${i}`);
+        if (pageElement) {
+          const pageTop = pageElement.offsetTop;
+          const pageHeight = pageElement.offsetHeight;
+          const pageCenter = pageTop + pageHeight / 2;
+          const distance = Math.abs(viewportCenter - pageCenter);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            currentPage = i;
+          }
+        }
+      }
+
+      if (currentPage !== pageNumber) {
+        setPageNumber(currentPage);
+      }
+    };
+
+    // Use a small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      const scrollContainer = document.querySelector('.pdf-scrollable-container') as HTMLElement;
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', updatePageFromScroll, { passive: true });
+        // Initial update
+        updatePageFromScroll();
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      const scrollContainer = document.querySelector('.pdf-scrollable-container') as HTMLElement;
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', updatePageFromScroll);
+      }
+    };
+  }, [numPages, pageNumber]);
 
   const handleDocumentLoad = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -175,8 +255,11 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent 
+        className="max-w-[90vw] w-full max-h-[90vh] p-0 flex flex-col !z-[1001]"
+        overlayClassName="!z-[1000]"
+      >
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-semibold">
               {file.original_filename || file.filename || 'File Preview'}
@@ -190,47 +273,74 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
         {isPDF && file.file ? (
           <>
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b bg-background">
+            <div className="flex items-center justify-between px-6 py-3 border-b bg-background flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">PDF Viewer</span>
+                {numPages && (
+                  <span className="text-sm text-muted-foreground">({numPages} {numPages === 1 ? 'page' : 'pages'})</span>
+                )}
               </div>
               
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPageNumber(prev => Math.max(1, prev - 1))}
-                  disabled={pageNumber <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md">
-                  <input
-                    type="number"
-                    min="1"
-                    max={numPages || 1}
-                    value={pageNumber}
-                    onChange={(e) => {
-                      const page = parseInt(e.target.value, 10);
-                      if (page >= 1 && page <= (numPages || 1)) {
-                        setPageNumber(page);
-                      }
-                    }}
-                    className="w-12 px-2 py-1 text-sm text-center bg-background border rounded focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <span className="text-sm text-muted-foreground">/</span>
-                  <span className="text-sm min-w-[30px] text-center">{numPages || '--'}</span>
-                </div>
+                {/* Navigation buttons */}
+                {numPages && numPages > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newPage = Math.max(1, pageNumber - 1);
+                        setPageNumber(newPage);
+                        const pageElement = document.getElementById(`pdf-page-${newPage}`);
+                        if (pageElement) {
+                          pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      disabled={pageNumber <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md">
+                      <input
+                        type="number"
+                        min="1"
+                        max={numPages || 1}
+                        value={pageNumber}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value, 10);
+                          if (page >= 1 && page <= (numPages || 1)) {
+                            setPageNumber(page);
+                            // Scroll to page
+                            const pageElement = document.getElementById(`pdf-page-${page}`);
+                            if (pageElement) {
+                              pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }
+                        }}
+                        className="w-12 px-2 py-1 text-sm text-center bg-background border rounded focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <span className="text-sm text-muted-foreground">/</span>
+                      <span className="text-sm min-w-[30px] text-center">{numPages || '--'}</span>
+                    </div>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPageNumber(prev => Math.min(numPages || 1, prev + 1))}
-                  disabled={pageNumber >= (numPages || 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newPage = Math.min(numPages || 1, pageNumber + 1);
+                        setPageNumber(newPage);
+                        const pageElement = document.getElementById(`pdf-page-${newPage}`);
+                        if (pageElement) {
+                          pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      disabled={pageNumber >= (numPages || 1)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
 
                 <div className="flex items-center gap-2 px-2 py-1 bg-muted rounded-md ml-2">
                   <Button
@@ -253,7 +363,7 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
             </div>
 
             {/* PDF Viewer */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col">
               <PDFViewer
                 ref={pdfViewerRef}
                 file={file.file}
