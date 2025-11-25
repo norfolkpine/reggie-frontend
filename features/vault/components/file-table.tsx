@@ -60,6 +60,7 @@ interface FileTableProps {
   onFolderClick: (folder: VaultFile) => void;
   onFilePreview: (file: VaultFile) => void;
   onFileDownload: (file: VaultFile) => void;
+  onReIngest: (file: VaultFile) => void;
   onFileRename: (file: VaultFile) => void;
   onFileDelete: (fileId: number) => void;
   onDragStart?: (event: DragEvent, fileId: number) => void;
@@ -151,6 +152,7 @@ export function FileTable({
   onDrop,
   isTrashMode = false,
   onFileRestore,
+  onReIngest,
 }: FileTableProps) {
   const { toast } = useToast();
 
@@ -365,6 +367,10 @@ export function FileTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onReIngest(file)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        ReIngest
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onFileDownload(file)}>
                         <Download className="mr-2 h-4 w-4" />
                         Download
@@ -398,6 +404,7 @@ export function FileTable({
       isTrashMode,
       onFileDelete,
       onFileDownload,
+      onReIngest,
       onFilePreview,
       onFileRename,
       onFileRestore,
