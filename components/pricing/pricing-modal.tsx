@@ -23,10 +23,22 @@ export function PricingModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={cn("max-w-6xl max-h-[90vh] overflow-y-auto", className)}>
-        <DialogHeader className="text-center">
-          <DialogTitle className="text-3xl font-bold">Choose Your Plan</DialogTitle>
+      <DialogContent
+        className={cn(
+          "max-w-6xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md",
+          className,
+        )}
+      >
+        <DialogHeader className="text-center space-y-2">
+          <DialogTitle className="text-3xl font-bold">
+            Choose your plan
+          </DialogTitle>
+          <DialogDescription className="text-sm">
+            Pick the plan that fits your workspace. You can change or cancel
+            your subscription at any time.
+          </DialogDescription>
         </DialogHeader>
+
         <div className="mt-6">
           <PricingCards
             viewMode="modal"
