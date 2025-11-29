@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { Webhook, Trash2 } from "lucide-react";
 
-export function WebhookTriggerNode({ data, id }: NodeProps) {
+export function WebhookTriggerNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function WebhookTriggerNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-green-50 border-2 border-green-300 shadow-sm w-[200px] relative group">
+    <div 
+      className="rounded-lg bg-green-50 border-2 border-green-300 shadow-sm relative group"
+      style={{ width: width || 200, height: height || 100, minWidth: 150, minHeight: 80 }}
+    >
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="bg-green-100 rounded flex items-center justify-center gap-1 px-2 py-1">
@@ -40,6 +43,7 @@ export function WebhookTriggerNode({ data, id }: NodeProps) {
         className="!bg-green-400 !w-3 !h-3 !border-2 !border-white"
         isConnectable={1}
       />
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={80} />
     </div>
   );
 }

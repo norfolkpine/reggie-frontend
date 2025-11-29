@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { MessageSquareText, Trash2 } from "lucide-react";
 
-export function EndNode({ data, id }: NodeProps) {
+export function EndNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function EndNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
+    <div 
+      className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm flex items-center justify-center gap-2 relative group"
+      style={{ width: width || 200, height: height || 60, minWidth: 150, minHeight: 50 }}
+    >
       <Handle
         type="target"
         position={Position.Left}
@@ -35,6 +38,7 @@ export function EndNode({ data, id }: NodeProps) {
           <Trash2 size={12}/>
         </Button>
       </div>
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={50} />
     </div>
   );
 }

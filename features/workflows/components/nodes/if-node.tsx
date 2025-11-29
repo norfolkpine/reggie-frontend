@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { GitBranch, Trash2 } from "lucide-react";
 
-export function IfNode({ data, id }: NodeProps) {
+export function IfNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function IfNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-blue-50 border-2 border-blue-300 shadow-sm w-[200px] relative group">
+    <div 
+      className="rounded-lg bg-blue-50 border-2 border-blue-300 shadow-sm relative group"
+      style={{ width: width || 200, height: height || 100, minWidth: 150, minHeight: 100 }}
+    >
       <Handle
         type="target"
         position={Position.Left}
@@ -58,6 +61,7 @@ export function IfNode({ data, id }: NodeProps) {
         className="!bg-red-400 !w-3 !h-3 !border-2 !border-white !top-[70%]"
         isConnectable={true}
       />
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={100} />
     </div>
   );
 }

@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { Home, Trash2 } from "lucide-react";
 
-export function StartNode({ data, id }: NodeProps) {
+export function StartNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function StartNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm min-w-[150px] flex items-center justify-center gap-2 relative group">
+    <div 
+      className="py-1 px-2 rounded-lg bg-white border-2 border-gray-200 shadow-sm flex items-center justify-center gap-2 relative group"
+      style={{ width: width || 200, height: height || 60, minWidth: 150, minHeight: 50 }}
+    >
       <div className="flex items-center justify-between">
         <div className="bg-gray-100 rounded flex items-center justify-center gap-1 px-2 py-1">
           <Home size={12} />
@@ -34,6 +37,7 @@ export function StartNode({ data, id }: NodeProps) {
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
         isConnectable={1}
       />
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={50} />
     </div>
   );
 }

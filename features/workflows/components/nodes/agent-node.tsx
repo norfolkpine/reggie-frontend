@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { Bot, Trash2 } from "lucide-react";
 
-export function AgentNode({ data, id }: NodeProps) {
+export function AgentNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function AgentNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-white border-2 shadow-sm w-[200px] relative group">
+    <div 
+      className="rounded-lg bg-white border-2 shadow-sm relative group"
+      style={{ width: width || 200, height: height || 100, minWidth: 150, minHeight: 80 }}
+    >
       <Handle
         type="target"
         position={Position.Left}
@@ -47,6 +50,7 @@ export function AgentNode({ data, id }: NodeProps) {
         className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
         isConnectable={1}
       />
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={80} />
     </div>
   );
 }

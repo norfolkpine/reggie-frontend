@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { useReactFlow, type NodeProps } from '@xyflow/react';
+import { useReactFlow, ResizeControl, type NodeProps } from '@xyflow/react';
 import { StickyNote, Trash2 } from "lucide-react";
 
-export function StickyNoteNode({ data, id }: NodeProps) {
+export function StickyNoteNode({ data, id, width, height }: NodeProps) {
   const { setNodes } = useReactFlow();
 
   const onDelete = (e: React.MouseEvent) => {
@@ -14,7 +14,10 @@ export function StickyNoteNode({ data, id }: NodeProps) {
   };
 
   return (
-    <div className="rounded-lg bg-yellow-100 border-2 border-yellow-300 shadow-sm w-[200px] min-h-[150px] relative group">
+    <div 
+      className="rounded-lg bg-yellow-100 border-2 border-yellow-300 shadow-sm relative group"
+      style={{ width: width || 200, height: height || 150, minWidth: 150, minHeight: 100 }}
+    >
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1">
@@ -32,6 +35,7 @@ export function StickyNoteNode({ data, id }: NodeProps) {
           {data.note || 'Add your note here...'}
         </div>
       </div>
+      <ResizeControl style={{ background: 'transparent', border: 'none' }} minWidth={150} minHeight={100} />
     </div>
   );
 }
