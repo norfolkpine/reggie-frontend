@@ -44,10 +44,17 @@ const DialogContent = React.forwardRef<
   const hasContentZIndexOverride = className?.includes('z-[') || className?.includes('!z-');
   // If overlay has z-index override, ensure content z-index is higher
   const hasOverlayZIndexOverride = overlayClassName?.includes('z-[') || overlayClassName?.includes('!z-');
-  
+  console.log('hasContentZIndexOverride', hasContentZIndexOverride);
+  console.log('hasOverlayZIndexOverride', hasOverlayZIndexOverride);
   return (
     <DialogPortal>
-      <DialogOverlay className={cn(overlayClassName || "")} />
+      <DialogOverlay className={cn(overlayClassName || "")} style={{
+          // Ensure content z-index is always higher than overlay when overlayClassName is provided
+          // Always set content z-index higher than overlay (1001) when overlay has z-index override
+          // This ensures content is always on top even if className has z-index
+          ...(hasOverlayZIndexOverride ? { zIndex: 1001 } : {}),
+          ...(props.style || {})
+        }} />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
