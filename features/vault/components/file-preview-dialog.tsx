@@ -19,6 +19,8 @@ interface FilePreviewDialogProps {
   file: VaultFile | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId?: string;
+  folderId?: number;
 }
 
 interface PDFViewerProps {
@@ -156,7 +158,7 @@ const PDFViewer = forwardRef<any, PDFViewerProps>(({
 
 PDFViewer.displayName = 'PDFViewer';
 
-export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialogProps) {
+export function FilePreviewDialog({ file, open, onOpenChange, projectId, folderId }: FilePreviewDialogProps) {
   const [pageNumber, setPageNumber] = useState(1);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [scale, setScale] = useState(1.0);
@@ -264,9 +266,11 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
             <DialogTitle className="text-lg font-semibold">
               {file.original_filename || file.filename || 'File Preview'}
             </DialogTitle>
-            <Button variant="ghost" size="icon" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleDownload}>
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -363,7 +367,7 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
             </div>
 
             {/* PDF Viewer */}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <PDFViewer
                 ref={pdfViewerRef}
                 file={file.file}
@@ -376,30 +380,33 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
             </div>
           </>
         ) : (
-          <div className="flex-1 overflow-auto p-6 flex items-center justify-center">
-            {file.file ? (
-              file.type?.startsWith('image/') ? (
-                <img
-                  src={file.file}
-                  alt={file.original_filename || 'Preview'}
-                  className="max-w-full max-h-full object-contain"
-                />
+          <div className="flex-1 min-h-0 overflow-auto">
+            {/* File Preview */}
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center">
+              {file.file ? (
+                file.type?.startsWith('image/') ? (
+                  <img
+                    src={file.file}
+                    alt={file.original_filename || 'Preview'}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <X className="h-16 w-16 mb-4" />
+                    <p>Preview not available for this file type</p>
+                    <Button variant="outline" className="mt-4" onClick={handleDownload}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download File
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                   <X className="h-16 w-16 mb-4" />
-                  <p>Preview not available for this file type</p>
-                  <Button variant="outline" className="mt-4" onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download File
-                  </Button>
+                  <p>No file URL available</p>
                 </div>
-              )
-            ) : (
-              <div className="flex flex-col items-center justify-center text-muted-foreground">
-                <X className="h-16 w-16 mb-4" />
-                <p>No file URL available</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </DialogContent>

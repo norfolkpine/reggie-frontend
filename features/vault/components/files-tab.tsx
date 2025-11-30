@@ -493,6 +493,8 @@ export const FilesTab = React.forwardRef<{
         file={previewFile}
         open={isPreviewOpen}
         onOpenChange={setIsPreviewOpen}
+        projectId={projectId}
+        folderId={currentFolderId}
       />
     </>
   );
