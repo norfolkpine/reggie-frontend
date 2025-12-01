@@ -50,10 +50,10 @@ const MainContentWrapper = React.memo(({
     }
 
     return (
-      <div className={`sticky top-0 z-[999] transition-all duration-150 ease-out ${
+      <div className={`transition-all duration-200 ${
         isScrolled 
-          ? 'shadow-md backdrop-blur-md bg-background/80' 
-          : 'bg-background'
+          ? 'sticky top-0 z-50 rounded-none shadow-md bg-white' 
+          : 'rounded-t-xl'
       }`}>
         <PageHeader
           actions={headerActions || []}
