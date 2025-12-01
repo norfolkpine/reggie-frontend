@@ -15,6 +15,8 @@ import { InstructionsDialog } from "./instructions-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { FilesTab } from "./files-tab";
 import { ActivityTabContent } from "./activity-tab-content";
+import { AnalyzerTabContent } from "./document-analyzer";
+import { WorkflowTabContent } from "./vault-workflow";
 import { SettingsTabContent } from "./settings-tab-content";
 import { TrashTab } from "./trash-tab";
 import { ProjectNotFound } from "./project-not-found";
@@ -372,6 +374,8 @@ export function VaultManager() {
             <TabsList>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="analyzer">Analyzer</TabsTrigger>
+              <TabsTrigger value="workflow">Workflow</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
               <TabsTrigger value="trash">Trash</TabsTrigger>
             </TabsList>
@@ -388,6 +392,8 @@ export function VaultManager() {
             />
 
             <ActivityTabContent />
+            <AnalyzerTabContent />
+            <WorkflowTabContent />
 
             <SettingsTabContent
               description={project?.description}
