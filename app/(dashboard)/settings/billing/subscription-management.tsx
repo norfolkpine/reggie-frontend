@@ -87,7 +87,7 @@ export default function SettingsBilling() {
   const [spendingLimit, setSpendingLimit] = useState<number | ''>(1000)
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false)
 
-  // Dummy usage – nanti tinggal diganti ke data dari backend/Stripe
+  // Dummy usage – replace with data from backend/Stripe when ready
   const usage = useMemo(
     () => ({
       messagesUsed: 3200,
@@ -109,7 +109,7 @@ export default function SettingsBilling() {
     [currentPlanId],
   )
 
-  // Billing history untuk diteruskan ke BillingHistoryCard
+  // Billing history to be passed to BillingHistoryCard
   const billingHistory = [
     { date: '2025-05-01', description: 'Pro plan – monthly', amount: '$20.00' },
     { date: '2025-04-01', description: 'Pro plan – monthly', amount: '$20.00' },
@@ -125,7 +125,7 @@ export default function SettingsBilling() {
       setCurrentPlanId(planId)
     }
 
-    // TODO: di sini nanti sambungkan ke API backend (Stripe/subscription update)
+    // TODO: connect to backend API (Stripe/subscription update) when ready
     console.log('Plan selected:', planId)
   }
 
@@ -143,7 +143,7 @@ export default function SettingsBilling() {
     setSpendingLimit(Number.isNaN(numeric) ? '' : numeric)
   }
 
-  // Optional: hook untuk download invoice (nanti bisa sambung ke backend)
+  // Optional: hook for invoice download (connect to backend when ready)
   const handleDownloadInvoice = async (options: {
     deliveryMethod: 'download' | 'email'
     email: string
@@ -152,7 +152,7 @@ export default function SettingsBilling() {
     invoice: { date: string; description: string; amount: string }
   }) => {
     console.log('Download invoice from SettingsBilling:', options)
-    // TODO: panggil API backend di sini kalau sudah siap
+    // TODO: call backend API here when ready
   }
 
   return (

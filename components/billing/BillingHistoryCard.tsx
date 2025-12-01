@@ -44,9 +44,9 @@ type DownloadOptions = {
 
 type BillingHistoryCardProps = {
   className?: string;
-  /** Optional: override invoices dari backend nanti */
+  /** Optional: override invoices from backend */
   invoices?: InvoiceRow[];
-  /** Optional: hook ke backend ketika user klik "Download" / "Send" */
+  /** Optional: hook to backend when user clicks "Download" / "Send" */
   onDownload?: (options: DownloadOptions) => void | Promise<void>;
 };
 
@@ -71,6 +71,12 @@ export function BillingHistoryCard({
 
   const latestInvoice = invoices[0];
 
+  // Basic email format validation
+  const isValidEmail = (emailToCheck: string): boolean => {
+    if (!emailToCheck) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToCheck);
+  };
+
   const handleConfirm = async () => {
     if (!latestInvoice) {
       setDialogOpen(false);
@@ -89,13 +95,13 @@ export function BillingHistoryCard({
       setIsSubmitting(true);
 
       if (onDownload) {
-        // nanti: panggil API backend di sini dari parent, kalau mau
+        // Call backend API from parent when ready
         await onDownload(options);
       } else {
-        // sementara: hanya log ke console sebagai placeholder
+        // Placeholder: log to console for now
         console.log("Download latest invoice with options:", options);
 
-        // contoh pseudo-code nanti:
+        // Example pseudo-code for later:
         // if (deliveryMethod === "download") {
         //   window.open(`/api/billing/invoices/latest/pdf?...`, "_blank");
         // } else {
@@ -121,18 +127,18 @@ export function BillingHistoryCard({
 
         <CardContent className="pt-0">
           <div className="overflow-hidden rounded-md border bg-background">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Billing history">
               <thead className="bg-muted/70">
                 <tr className="text-left">
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Description</th>
-                  <th className="px-4 py-2 font-medium text-right">Amount</th>
+                  <th className="px-4 py-2 font-medium" scope="col">Date</th>
+                  <th className="px-4 py-2 font-medium" scope="col">Description</th>
+                  <th className="px-4 py-2 font-medium text-right" scope="col">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
+                {invoices.map((invoice, index) => (
                   <tr
-                    key={invoice.date + invoice.description}
+                    key={`${invoice.date}-${invoice.description}-${index}`}
                     className="border-t"
                   >
                     <td className="px-4 py-2">{invoice.date}</td>
@@ -171,14 +177,14 @@ export function BillingHistoryCard({
         </CardFooter>
       </Card>
 
-      {/* Dialog konfirmasi download */}
+      {/* Download confirmation dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Download latest invoice</DialogTitle>
             {latestInvoice && (
               <DialogDescription>
-                You’re about to download the most recent invoice for this
+                You&apos;re about to download the most recent invoice for this
                 workspace:
                 <br />
                 <span className="font-medium">
@@ -224,7 +230,7 @@ export function BillingHistoryCard({
                 </RadioGroup>
               </div>
 
-              {/* Email field (optional) */}
+              {/* Email field */}
               {deliveryMethod === "email" && (
                 <div className="space-y-1">
                   <Label htmlFor="invoice-email" className="text-sm">
@@ -236,9 +242,16 @@ export function BillingHistoryCard({
                     placeholder="you@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className={cn(
+                      email && !isValidEmail(email) && "border-destructive"
+                    )}
+                    aria-invalid={email ? !isValidEmail(email) : undefined}
+                    aria-describedby="email-hint"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    We’ll email the PDF invoice to this address.
+                  <p id="email-hint" className="text-xs text-muted-foreground">
+                    {email && !isValidEmail(email)
+                      ? "Please enter a valid email address."
+                      : "We'll email the PDF invoice to this address."}
                   </p>
                 </div>
               )}
@@ -285,7 +298,7 @@ export function BillingHistoryCard({
               disabled={
                 isSubmitting ||
                 !latestInvoice ||
-                (deliveryMethod === "email" && !email)
+                (deliveryMethod === "email" && !isValidEmail(email))
               }
             >
               {deliveryMethod === "download"
