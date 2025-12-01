@@ -30,7 +30,6 @@ import {
   Bot,
   Workflow,
   Shield,
-  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -117,7 +116,6 @@ const navigationItems: NavigationItem[] = [
   { type: "divider" }, 
   // { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-  { name: "Subscription", icon: CreditCard, url: "/settings/billing" },
   { type: "divider" },
   // SuperUser/Staff Only. Future feature: Allow and restrict for Enterprise users
   { name: "Admin", icon: Shield, url: "/admin" },
