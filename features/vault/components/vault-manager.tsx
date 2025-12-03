@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
 import { Project } from "@/types/api";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Settings, Edit, Sparkles } from "lucide-react";
+import { Loader2, Settings, Edit, Sparkles, Download, Brain, Play } from "lucide-react";
 import { useHeader } from "@/contexts/header-context";
 import { useRightSection } from "@/hooks/use-right-section";
 import { useDragDropContext } from "@/contexts/drag-drop-context";
@@ -172,31 +172,69 @@ export function VaultManager() {
       );
     } else if (project) {
       // Set the back button and project name with edit functionality
-      setHeaderActions([
-        {
-          label: "Ask AI",
-          onClick: handleAskAI,
-          variant: "outline",
-          size: "sm",
-          icon: <Sparkles className="h-4 w-4" />
-        },
-        {
-          label: "",
-          onClick: () => {
-            setShowInstructionsDialog(true);
+      activeTab == "analyser" ?
+        setHeaderActions([
+          {
+            label: "Ask AI",
+            onClick: handleAskAI,
+            variant: "outline",
+            size: "sm",
+            icon: <Sparkles className="h-4 w-4" />
           },
-          variant: "ghost",
-          size: "icon",
-          icon: <Settings className="h-4 w-4" />
-        },
-        // {
-        //   label: "Delete Project",
-        //   onClick: () => setDeleteProjectOpen(true),
-        //   variant: "outline",
-        //   size: "sm",
-        //   icon: <Trash2 className="h-4 w-4" />
-        // }
-      ]);
+          {
+            label: "Export CSV",
+            onClick: () => {
+              console.log("Export CSV clicked");
+            },
+            variant: "outline",
+            size: "sm",
+            icon: <Download className="h-4 w-4" />
+          },
+          {
+            label: "Select Model",
+            onClick: () => {
+              console.log("Select Model clicked");
+            },
+            variant: "outline",
+            size: "sm",
+            icon: <Brain className="h-4 w-4" />
+          },
+          {
+            label: "Run Analysis",
+            onClick: () => {
+              console.log("Run Analysis clicked");
+            },
+            variant: "default",
+            size: "sm",
+            icon: <Play className="h-4 w-4" />
+          },
+          {
+            label: "",
+            onClick: () => {
+              setShowInstructionsDialog(true);
+            },
+            variant: "ghost",
+            size: "icon",
+            icon: <Settings className="h-4 w-4" />
+          }
+        ]) : setHeaderActions([
+          {
+            label: "Ask AI",
+            onClick: handleAskAI,
+            variant: "outline",
+            size: "sm",
+            icon: <Sparkles className="h-4 w-4" />
+          },
+          {
+            label: "",
+            onClick: () => {
+              setShowInstructionsDialog(true);
+            },
+            variant: "ghost",
+            size: "icon",
+            icon: <Settings className="h-4 w-4" />
+          }
+        ])
 
       // Set merged breadcrumb navigation as custom content
       setHeaderCustomContent(
@@ -282,7 +320,7 @@ export function VaultManager() {
       setHeaderActions([]);
       setHeaderCustomContent(null);
     };
-  }, [setHeaderActions, setHeaderCustomContent, project, loading, router, breadcrumbData]);
+  }, [setHeaderActions, setHeaderCustomContent, project, loading, router, breadcrumbData, activeTab]);
 
 
   // Initialize breadcrumb data when component mounts
@@ -379,7 +417,7 @@ export function VaultManager() {
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="trash">Trash</TabsTrigger>
               </TabsList>
-              {activeTab == "analyser" ? <Button size="sm">Analyse</Button> : null}
+              {/* {activeTab == "analyser" ? <Button size="sm">Analyse</Button> : null} */}
             </div>
             
             <FilesTab
