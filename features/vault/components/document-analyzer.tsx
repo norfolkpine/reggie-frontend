@@ -175,7 +175,7 @@ const AddColumnMenu: React.FC<AddColumnMenuProps> = ({
   );
 };
 
-export function AnalyzerTabContent() {
+export function AnalyserTabContent() {
   const [data, setData] = React.useState<RowData[]>([{ id: crypto.randomUUID() }]);
   const [isDraggingOver, setIsDraggingOver] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
@@ -447,10 +447,10 @@ export function AnalyzerTabContent() {
   }, []);
 
   return (
-    <TabsContent value="analyzer" className="flex-1 flex overflow-hidden m-0">
-      <main className="flex-1 flex overflow-hidden relative">
+    <TabsContent value="analyser" className="mt-4">
+      <div className="bg-card text-foreground rounded-md">
         <div 
-          className={`flex-1 flex flex-col min-w-0 bg-background relative ${isDraggingOver ? 'bg-primary/5' : ''}`}
+          className={`flex-1 flex flex-col min-w-0 bg-card relative ${isDraggingOver ? 'bg-primary/5' : ''}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -477,8 +477,8 @@ export function AnalyzerTabContent() {
             </div>
           )}
           
-          <div className="p-8">
-            <div className="max-w-7xl mx-auto">
+          <div >
+            <div>
               <DataGrid
                 {...dataGridProps}
                 height={600}
@@ -504,7 +504,7 @@ export function AnalyzerTabContent() {
             } : undefined}
           />
         )}
-      </main>
+      </div>
     </TabsContent>
   );
 }

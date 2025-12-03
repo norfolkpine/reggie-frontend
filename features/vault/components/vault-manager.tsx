@@ -14,14 +14,14 @@ import { useDragDropContext } from "@/contexts/drag-drop-context";
 import { InstructionsDialog } from "./instructions-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { FilesTab } from "./files-tab";
-import { ActivityTabContent } from "./activity-tab-content";
-import { AnalyzerTabContent } from "./document-analyzer";
+import { AnalyserTabContent } from "./document-analyzer";
 import { WorkflowTabContent } from "./vault-workflow";
 import { SettingsTabContent } from "./settings-tab-content";
 import { TrashTab } from "./trash-tab";
 import { ProjectNotFound } from "./project-not-found";
 import { AskAIButton } from "./ask-ai-button";
 import { AiLayoutPanel } from "@/components/vault/ai-layout-panel";
+import { Button } from "@/components/ui/button";
 
 export function VaultManager() {
   const params = useParams();
@@ -371,14 +371,17 @@ export function VaultManager() {
               setActiveTab(value);
             }}
           >
-            <TabsList>
-              <TabsTrigger value="files">Files</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="analyzer">Analyzer</TabsTrigger>
-              <TabsTrigger value="workflow">Workflow</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-              <TabsTrigger value="trash">Trash</TabsTrigger>
-            </TabsList>
+            <div className="flex justify-between items-center">
+              <TabsList>
+                <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="analyser">Analyser</TabsTrigger>
+                <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="trash">Trash</TabsTrigger>
+              </TabsList>
+              {activeTab == "analyser" ? <Button size="sm">Analyse</Button> : null}
+            </div>
+            
             <FilesTab
               ref={(ref) => {
                 filesTabRef.current = ref;
@@ -391,8 +394,7 @@ export function VaultManager() {
               onTrashTabRefresh={() => trashTabRef.current?.refreshFiles()}
             />
 
-            <ActivityTabContent />
-            <AnalyzerTabContent />
+            <AnalyserTabContent />
             <WorkflowTabContent />
 
             <SettingsTabContent
