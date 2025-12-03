@@ -19,6 +19,7 @@ import {
   LinkIcon,
   ListChecksIcon,
   ListIcon,
+  PencilIcon,
   PinIcon,
   PinOffIcon,
   TextInitialIcon,
@@ -142,6 +143,21 @@ export function DataGridColumnHeader<TData, TValue>({
     column.pin(false);
   }, [column]);
 
+  const onEditColumn = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    // Find the header element for this specific column
+    const headerElement = document.querySelector(`[data-column-id="${column.id}"][data-slot="grid-header-cell"]`);
+    const rect = headerElement 
+      ? headerElement.getBoundingClientRect()
+      : (event.currentTarget.closest('[data-slot="grid-header-cell"]') as HTMLElement)?.getBoundingClientRect();
+    
+    if (rect) {
+      (table.options.meta as any)?.onColumnEdit?.(column.id, rect);
+    } else {
+      (table.options.meta as any)?.onColumnEdit?.(column.id);
+    }
+  }, [table.options.meta, column.id]);
+
   const onTriggerPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
       onPointerDown?.(event);
@@ -249,6 +265,18 @@ export function DataGridColumnHeader<TData, TValue>({
                   Pin to right
                 </DropdownMenuItem>
               )}
+            </>
+          )}
+          {table.options.meta?.onColumnEdit && (
+            <>
+              {column.getCanSort() || column.getCanPin() || column.getCanHide() ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuItem
+                className="[&_svg]:text-muted-foreground"
+                onClick={onEditColumn}
+              >
+                <PencilIcon />
+                Edit column
+              </DropdownMenuItem>
             </>
           )}
           {column.getCanHide() && (

@@ -84,6 +84,7 @@ declare module "@tanstack/react-table" {
     onDataUpdate?: (params: UpdateCell | Array<UpdateCell>) => void;
     onRowsDelete?: (rowIndices: number[]) => void | Promise<void>;
     onColumnClick?: (columnId: string) => void;
+    onColumnEdit?: (columnId: string, rect?: DOMRect) => void;
     onCellClick?: (
       rowIndex: number,
       columnId: string,
