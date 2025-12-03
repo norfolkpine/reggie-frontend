@@ -14,7 +14,7 @@ import { useDragDropContext } from "@/contexts/drag-drop-context";
 import { InstructionsDialog } from "./instructions-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { FilesTab } from "./files-tab";
-import { AnalyserTabContent } from "./document-analyzer";
+import { AnalyserTabContent } from "./document-analyser";
 import { WorkflowTabContent } from "./vault-workflow";
 import { SettingsTabContent } from "./settings-tab-content";
 import { TrashTab } from "./trash-tab";

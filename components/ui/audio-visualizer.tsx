@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 
-// Configuration constants for the audio analyzer
+// Configuration constants for the audio analyser
 const AUDIO_CONFIG = {
   FFT_SIZE: 512,
   SMOOTHING: 0.8,

@@ -25,7 +25,7 @@ Opie AI includes several specialized agents:
 
 - **Policy Advisor** - Reviews and suggests improvements to company policies
 - **Regulatory Monitor** - Tracks regulatory changes in your industry
-- **Document Analyzer** - Scans documents for compliance issues
+- **Document Analyser** - Scans documents for compliance issues
 - **Risk Assessor** - Identifies potential compliance risks
 - **Training Assistant** - Helps create compliance training materials
 
