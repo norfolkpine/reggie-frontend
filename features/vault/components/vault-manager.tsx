@@ -172,7 +172,7 @@ export function VaultManager() {
       );
     } else if (project) {
       // Set the back button and project name with edit functionality
-      activeTab == "analyser" ?
+      activeTab === "analyser" ?
         setHeaderActions([
           {
             label: "Ask AI",
