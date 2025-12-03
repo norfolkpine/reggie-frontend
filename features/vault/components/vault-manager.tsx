@@ -417,7 +417,7 @@ export function VaultManager() {
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="trash">Trash</TabsTrigger>
               </TabsList>
-              {/* {activeTab == "analyser" ? <Button size="sm">Analyse</Button> : null} */}
+              {/* {activeTab === "analyser" ? <Button size="sm">Analyse</Button> : null} */}
             </div>
             
             <FilesTab
