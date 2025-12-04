@@ -6,18 +6,40 @@ import { DataGrid } from "@/src/components/data-grid/data-grid";
 import { useDataGrid } from "@/hooks/use-data-grid";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { FileCellData } from "@/src/types/data-grid";
-import { Upload, Loader2, X, HelpCircle, ChevronDown, Check, Type, WrapText, Hash, Calendar, CheckSquare, List, FileText } from "lucide-react";
+import { Upload, Loader2, X, HelpCircle, ChevronDown, Check, Type, WrapText, Hash, Calendar, CheckSquare, List, FileText, Play, Square, Brain, Cpu, Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { processDocumentFiles } from "../services/documentProcessingService";
+import { extractColumnData, type ExtractionCell } from "../services/extractionService";
 
 // Column type definition
 type ColumnType = 'short-text' | 'long-text' | 'number' | 'date' | 'boolean' | 'list' | 'file';
+
+// Processing status for each row
+type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'error';
+
+// Analysis results with quotes and reasoning
+type AnalysisResults = {
+  [rowId: string]: {
+    [columnId: string]: ExtractionCell;
+  };
+};
+
+// Available Models
+const MODELS = [
+  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', description: 'Deepest Reasoning', icon: Brain },
+  { id: 'gemini-2.5-pro-preview', name: 'Gemini 2.5 Pro', description: 'Balanced', icon: Cpu },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fastest', icon: Zap },
+];
 
 // Row data interface
 interface RowData {
   id: string;
   content?: FileCellData[];
+  processedContent?: string; // Base64 encoded markdown from document processing
+  processingStatus?: ProcessingStatus;
+  errorMessage?: string;
   [key: string]: any;
 }
 
@@ -182,10 +204,21 @@ export function AnalyserTabContent() {
   const [addColumnAnchor, setAddColumnAnchor] = React.useState<DOMRect | null>(null);
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null);
   
+  // Model and processing state
+  const [selectedModel, setSelectedModel] = React.useState<string>(MODELS[0].id);
+  const [isModelMenuOpen, setIsModelMenuOpen] = React.useState(false);
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const processingAbortRef = React.useRef(false);
+  
+  // Analysis results
+  const [analysisResults, setAnalysisResults] = React.useState<AnalysisResults>({});
+  
   const [columns, setColumns] = React.useState<ColumnDef<RowData>[]>([]);
   const [columnMetadata, setColumnMetadata] = React.useState<Record<string, { type: ColumnType; prompt: string }>>({
     content: { type: 'short-text', prompt: '' },
   });
+  
+  const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
 
   const defaultColumns = React.useMemo<ColumnDef<RowData>[]>(
     () => [
@@ -249,6 +282,51 @@ export function AnalyserTabContent() {
         : row
     ));
 
+    // Process files for content column (document conversion)
+    if (columnId === 'content' && files.length > 0) {
+      setIsConverting(true);
+      
+      try {
+        const result = await processDocumentFiles(files);
+        
+        if (result.success.length > 0) {
+          const processedFile = result.success[0];
+          // Update row with processed content
+          setData((prev) => prev.map((row, idx) => 
+            idx === rowIndex 
+              ? { 
+                  ...row, 
+                  processedContent: processedFile.content,
+                  processingStatus: 'completed' as ProcessingStatus,
+                }
+              : row
+          ));
+        } else if (result.errors.length > 0) {
+          setData((prev) => prev.map((row, idx) => 
+            idx === rowIndex 
+              ? { 
+                  ...row, 
+                  processingStatus: 'error' as ProcessingStatus,
+                  errorMessage: result.errors[0].error,
+                }
+              : row
+          ));
+        }
+      } catch (error) {
+        setData((prev) => prev.map((row, idx) => 
+          idx === rowIndex 
+            ? { 
+                ...row, 
+                processingStatus: 'error' as ProcessingStatus,
+                errorMessage: error instanceof Error ? error.message : 'Unknown error',
+              }
+            : row
+        ));
+      } finally {
+        setIsConverting(false);
+      }
+    }
+
     return uploadedFiles;
   }, []);
 
@@ -258,16 +336,30 @@ export function AnalyserTabContent() {
     rowIndex: number;
     columnId: string;
   }) => {
-    setData((prev) => prev.map((row, idx) => {
-      if (idx === rowIndex) {
-        const currentFiles = row[columnId] as FileCellData[] | undefined;
-        if (Array.isArray(currentFiles)) {
-          const updatedFiles = currentFiles.filter(f => !fileIds.includes(f.id));
-          return { ...row, [columnId]: updatedFiles.length > 0 ? updatedFiles : undefined };
+    // Clear processed content when file is deleted from content column
+    if (columnId === 'content') {
+      setData((prev) => prev.map((row, idx) => 
+        idx === rowIndex 
+          ? { 
+              ...row, 
+              processedContent: undefined,
+              processingStatus: undefined,
+              errorMessage: undefined,
+            }
+          : row
+      ));
+    } else {
+      setData((prev) => prev.map((row, idx) => {
+        if (idx === rowIndex) {
+          const currentFiles = row[columnId] as FileCellData[] | undefined;
+          if (Array.isArray(currentFiles)) {
+            const updatedFiles = currentFiles.filter(f => !fileIds.includes(f.id));
+            return { ...row, [columnId]: updatedFiles.length > 0 ? updatedFiles : undefined };
+          }
         }
-      }
-      return row;
-    }));
+        return row;
+      }));
+    }
   }, []);
 
   const handleColumnAdd = () => {
@@ -394,7 +486,7 @@ export function AnalyserTabContent() {
 
     setIsConverting(true);
 
-    // Create initial rows with files
+    // Create initial rows with pending status
     const initialRows: RowData[] = files.map((file: File) => {
       const fileData: FileCellData = {
         id: crypto.randomUUID(),
@@ -407,6 +499,7 @@ export function AnalyserTabContent() {
       return {
         id: crypto.randomUUID(),
         content: [fileData],
+        processingStatus: 'pending' as ProcessingStatus,
       };
     });
 
@@ -423,8 +516,179 @@ export function AnalyserTabContent() {
       return [...prev, ...initialRows];
     });
 
+    // Process each file individually for real-time updates
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const rowId = initialRows[i].id;
+
+      // Update status to processing
+      setData((prev) => prev.map((row) => 
+        row.id === rowId 
+          ? { ...row, processingStatus: 'processing' as ProcessingStatus }
+          : row
+      ));
+
+      try {
+        // Process single file
+        const result = await processDocumentFiles([file]);
+
+        if (result.success.length > 0) {
+          const processedFile = result.success[0];
+          // Update row with processed content
+          setData((prev) => prev.map((row) => 
+            row.id === rowId 
+              ? { 
+                  ...row, 
+                  processedContent: processedFile.content,
+                  processingStatus: 'completed' as ProcessingStatus,
+                }
+              : row
+          ));
+        } else if (result.errors.length > 0) {
+          // Update row with error status
+          setData((prev) => prev.map((row) => 
+            row.id === rowId 
+              ? { 
+                  ...row, 
+                  processingStatus: 'error' as ProcessingStatus,
+                  errorMessage: result.errors[0].error,
+                }
+              : row
+          ));
+        }
+      } catch (error) {
+        // Update row with error status
+        setData((prev) => prev.map((row) => 
+          row.id === rowId 
+            ? { 
+                ...row, 
+                processingStatus: 'error' as ProcessingStatus,
+                errorMessage: error instanceof Error ? error.message : 'Unknown error',
+              }
+            : row
+        ));
+      }
+    }
+
     setIsConverting(false);
   }, [dataGridProps.table]);
+
+  // Process cells using prompts and processed document content
+  const handleRunAnalysis = React.useCallback(async () => {
+    processingAbortRef.current = false;
+    setIsProcessing(true);
+
+    // Get all columns except the first one (content column)
+    const processingColumns = columns.slice(1);
+
+    // Process each row
+    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+      // Check if processing was aborted
+      if (processingAbortRef.current) {
+        break;
+      }
+
+      const row = data[rowIndex];
+      
+      // Skip rows that are still processing or had errors
+      if (row.processingStatus === 'processing' || row.processingStatus === 'pending') {
+        continue;
+      }
+
+      // Skip if no processed content
+      if (!row.processedContent) {
+        continue;
+      }
+
+      // Create a DocumentFile-like object for extractColumnData
+      const documentFile = {
+        id: row.id,
+        name: Array.isArray(row.content) && row.content[0] ? row.content[0].name : 'document',
+        type: 'text/markdown',
+        size: row.processedContent.length,
+        content: row.processedContent, // Already base64
+        mimeType: 'text/markdown',
+      };
+
+      // Process each column for this row
+      for (const column of processingColumns) {
+        // Check if processing was aborted
+        if (processingAbortRef.current) {
+          break;
+        }
+
+        const columnId = column.id as string;
+        const metadata = columnMetadata[columnId];
+
+        if (!metadata?.prompt) continue;
+
+        // Set loading indicator before processing
+        setData(prevData => {
+          const newData = [...prevData];
+          newData[rowIndex] = {
+            ...newData[rowIndex],
+            [columnId]: '__LOADING__'
+          };
+          return newData;
+        });
+
+        // Create a Column object for extractColumnData
+        const columnForExtraction = {
+          id: columnId,
+          name: typeof column.header === 'string' ? column.header : columnId,
+          type: metadata.type,
+          prompt: metadata.prompt,
+          status: 'extracting' as const,
+        };
+
+        try {
+          // Call extractColumnData to get structured result
+          const extractionResult = await extractColumnData(
+            documentFile,
+            columnForExtraction,
+            selectedModel
+          );
+
+          // Store the full extraction result for future use
+          setAnalysisResults(prev => ({
+            ...prev,
+            [row.id]: {
+              ...prev[row.id],
+              [columnId]: extractionResult
+            }
+          }));
+
+          // Update the cell value in the data grid
+          setData(prevData => {
+            const newData = [...prevData];
+            newData[rowIndex] = {
+              ...newData[rowIndex],
+              [columnId]: extractionResult.value
+            };
+            return newData;
+          });
+        } catch (error) {
+          console.error(`Failed to process row ${rowIndex}, column ${columnId}:`, error);
+          // On error, clear the loading indicator
+          setData(prevData => {
+            const newData = [...prevData];
+            newData[rowIndex] = {
+              ...newData[rowIndex],
+              [columnId]: ''
+            };
+            return newData;
+          });
+        }
+      }
+    }
+
+    setIsProcessing(false);
+  }, [data, columns, columnMetadata, selectedModel]);
+
+  const handleStopProcessing = React.useCallback(() => {
+    processingAbortRef.current = true;
+    setIsProcessing(false);
+  }, []);
 
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -449,6 +713,87 @@ export function AnalyserTabContent() {
   return (
     <TabsContent value="analyser" className="mt-4">
       <div className="bg-card text-foreground rounded-md">
+        {/* Header with Model Selector and Run Analysis Button */}
+        <div className="border-b border-border px-4 py-3 flex items-center justify-between bg-card">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-foreground">Document Analyser</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Model Selector */}
+            <div className="relative">
+              <button 
+                onClick={() => !isProcessing && setIsModelMenuOpen(!isModelMenuOpen)}
+                disabled={isProcessing}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 bg-muted text-foreground rounded-md border border-border transition-all text-xs font-semibold",
+                  !isProcessing ? 'hover:bg-muted/80 active:scale-95' : 'opacity-60 cursor-not-allowed'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <currentModel.icon className="w-3.5 h-3.5" />
+                  <span>{currentModel.name}</span>
+                </div>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </button>
+              
+              {isModelMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsModelMenuOpen(false)}></div>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-background rounded-xl shadow-xl border border-border p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    {MODELS.map(model => (
+                      <button
+                        key={model.id}
+                        onClick={() => {
+                          setSelectedModel(model.id);
+                          setIsModelMenuOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-colors text-xs",
+                          selectedModel === model.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent text-foreground'
+                        )}
+                      >
+                        <div className={cn(
+                          "p-1.5 rounded-md",
+                          selectedModel === model.id ? 'bg-background shadow-sm' : 'bg-muted'
+                        )}>
+                          <model.icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold">{model.name}</div>
+                          <div className="text-[10px] opacity-70">{model.description}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Run / Stop Button */}
+            {isProcessing ? (
+              <Button
+                onClick={handleStopProcessing}
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                Stop
+              </Button>
+            ) : (
+              <Button
+                onClick={handleRunAnalysis}
+                disabled={data.length === 0 || columns.length <= 1}
+                size="sm"
+                className="gap-2"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Run Analysis
+              </Button>
+            )}
+          </div>
+        </div>
+
         <div 
           className={`flex-1 flex flex-col min-w-0 bg-card relative ${isDraggingOver ? 'bg-primary/5' : ''}`}
           onDragOver={handleDragOver}
@@ -472,7 +817,20 @@ export function AnalyserTabContent() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Processing Documents</p>
-                <p className="text-xs text-muted-foreground">Uploading files...</p>
+                <p className="text-xs text-muted-foreground">Converting files to markdown...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Analysis Progress Overlay */}
+          {isProcessing && !isConverting && (
+            <div className="absolute bottom-4 right-4 z-50 bg-card rounded-xl shadow-xl border border-border p-4 flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-200">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Running Analysis</p>
+                <p className="text-xs text-muted-foreground">Extracting data from documents...</p>
               </div>
             </div>
           )}
