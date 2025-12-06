@@ -217,6 +217,4 @@ jobs:
             
             echo "Staging deployment completed successfully!"
             
-            # Force exit to close SSH session properly
-            exit 0
 
