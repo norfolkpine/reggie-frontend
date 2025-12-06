@@ -25,6 +25,7 @@ import {
   matchSelectOption,
   parseCellKey,
 } from "@/lib/data-grid";
+import { COLUMN_SIZE } from "@/lib/data-grid-constants";
 import type {
   CellPosition,
   ContextMenuState,
@@ -41,8 +42,8 @@ import type {
 const DEFAULT_ROW_HEIGHT = "short";
 const OVERSCAN = 6;
 const VIEWPORT_OFFSET = 1;
-const MIN_COLUMN_SIZE = 60;
-const MAX_COLUMN_SIZE = 800;
+const MIN_COLUMN_SIZE = COLUMN_SIZE.MIN;
+const MAX_COLUMN_SIZE = COLUMN_SIZE.MAX;
 const SEARCH_SHORTCUT_KEY = "f";
 const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions"];
 
@@ -2181,6 +2182,7 @@ function useDataGrid<TData>({
       // unstable cell.getContext() (see TanStack Table issue #4794)
       minSize: MIN_COLUMN_SIZE,
       maxSize: MAX_COLUMN_SIZE,
+      size: COLUMN_SIZE.DEFAULT,
     }),
     [],
   );
@@ -2330,16 +2332,43 @@ function useDataGrid<TData>({
     tableRef.current = table;
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: columnSizingInfo and columnSizing are used for calculating the column size vars
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we need to memoize the column size vars
   const columnSizeVars = React.useMemo(() => {
     const headers = table.getFlatHeaders();
     const colSizes: { [key: string]: number } = {};
+    const columnSizing = table.getState().columnSizing;
+    const defaultSize = defaultColumn.size ?? COLUMN_SIZE.DEFAULT;
+    
     for (const header of headers) {
-      colSizes[`--header-${header.id}-size`] = header.getSize();
-      colSizes[`--col-${header.column.id}-size`] = header.column.getSize();
+      const definedSize = header.column.columnDef.size;
+      const currentSize = header.column.getSize();
+      const minSize = header.column.columnDef.minSize ?? MIN_COLUMN_SIZE;
+      
+      // Check if this column has been explicitly resized by the user
+      const hasExplicitResize = columnSizing[header.column.id] !== undefined;
+      
+      let columnSize: number;
+      if (hasExplicitResize) {
+        // User has resized this column, use the current size from state
+        columnSize = currentSize;
+      } else if (definedSize !== undefined) {
+        // A size is explicitly defined in columnDef - always use it
+        // This ensures new columns use their defined size (e.g., 200) instead of getSize()
+        columnSize = definedSize;
+      } else if (currentSize > minSize) {
+        // No defined size, but getSize() returned a valid size (likely from defaultColumn)
+        columnSize = currentSize;
+      } else {
+        // Fallback to default size or minSize
+        columnSize = defaultSize || minSize;
+      }
+      
+      // Set both header and column size variables for consistency
+      colSizes[`--header-${header.id}-size`] = columnSize;
+      colSizes[`--col-${header.column.id}-size`] = columnSize;
     }
     return colSizes;
-  }, [table.getState().columnSizingInfo, table.getState().columnSizing]);
+  }, [table.getState().columnSizingInfo, table.getState().columnSizing, defaultColumn.size]);
 
   const rowVirtualizer = useVirtualizer({
     count: table.getRowModel().rows.length,

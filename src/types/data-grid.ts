@@ -47,6 +47,13 @@ export type CellOpts =
       maxFiles?: number;
       accept?: string;
       multiple?: boolean;
+    }
+  | {
+      variant: "auto"; // Auto-detects between file and text based on cell value
+      maxFileSize?: number;
+      maxFiles?: number;
+      accept?: string;
+      multiple?: boolean;
     };
 
 export interface UpdateCell {

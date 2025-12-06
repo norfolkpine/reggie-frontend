@@ -6,12 +6,13 @@ import { DataGrid } from "@/src/components/data-grid/data-grid";
 import { useDataGrid } from "@/hooks/use-data-grid";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { FileCellData } from "@/src/types/data-grid";
-import { Upload, Loader2, X, HelpCircle, ChevronDown, Check, Type, WrapText, Hash, Calendar, CheckSquare, List, FileText, Play, Square, Brain, Cpu, Zap } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Upload, Loader2, ChevronDown, Play, Square, Brain, Cpu, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { processDocumentFiles } from "../services/documentProcessingService";
 import { extractColumnData, type ExtractionCell } from "../services/extractionService";
+import { COLUMN_SIZE } from "@/lib/data-grid-constants";
+import { AddColumnMenu } from "./add-column-menu";
 
 // Column type definition
 type ColumnType = 'short-text' | 'long-text' | 'number' | 'date' | 'boolean' | 'list' | 'file';
@@ -42,160 +43,6 @@ interface RowData {
   errorMessage?: string;
   [key: string]: any;
 }
-
-const MIN_COLUMN_SIZE = 60;
-const MAX_COLUMN_SIZE = 800;
-
-const COLUMN_TYPES: { type: ColumnType; label: string; icon: React.FC<any> }[] = [
-  { type: 'short-text', label: 'Short Text', icon: Type },
-  { type: 'long-text', label: 'Long Text', icon: WrapText },
-  { type: 'number', label: 'Number', icon: Hash },
-  { type: 'date', label: 'Date', icon: Calendar },
-  { type: 'boolean', label: 'Yes/No', icon: CheckSquare },
-  { type: 'list', label: 'List', icon: List },
-  { type: 'file', label: 'File', icon: FileText },
-];
-
-// AddColumnMenu Component
-interface AddColumnMenuProps {
-  triggerRect: DOMRect;
-  onClose: () => void;
-  onSave: (col: { name: string; type: ColumnType; prompt: string }) => void;
-  onDelete?: () => void;
-  initialData?: { name: string; type: ColumnType; prompt?: string };
-}
-
-const AddColumnMenu: React.FC<AddColumnMenuProps> = ({
-  triggerRect,
-  onClose,
-  onSave,
-  onDelete,
-  initialData
-}) => {
-  const [name, setName] = React.useState(initialData?.name || '');
-  const [type, setType] = React.useState<ColumnType>(initialData?.type || 'short-text');
-  const [prompt, setPrompt] = React.useState(initialData?.prompt || '');
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = React.useState(false);
-
-  const selectedType = COLUMN_TYPES.find(t => t.type === type) || COLUMN_TYPES[0];
-
-  // Calculate position
-  const MENU_WIDTH = 400;
-  let top = triggerRect.bottom + 8;
-  let left = triggerRect.left;
-
-  if (left + MENU_WIDTH > window.innerWidth - 10) {
-    left = triggerRect.right - MENU_WIDTH;
-    if (left < 10) {
-      left = 10;
-    }
-  }
-
-  const handleSave = () => {
-    if (name) {
-      onSave({ name, type, prompt });
-    }
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose}></div>
-      <div 
-        className="fixed bg-background rounded-xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50 w-[400px]"
-        style={{ top, left }}
-      >
-        <button 
-          onClick={onClose}
-          className="absolute top-3 right-3 p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors z-10"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="p-5 space-y-5">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <label className="text-xs font-semibold">Label</label>
-            </div>
-            <input 
-              type="text" 
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-muted-foreground"
-              placeholder="e.g. Persons mentioned"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSave()}
-            />
-          </div>
-
-          <div className="space-y-1.5 relative">
-            <label className="text-xs font-semibold text-muted-foreground ml-1">Format</label>
-            <button 
-              onClick={() => setIsTypeMenuOpen(!isTypeMenuOpen)}
-              className="w-full flex items-center justify-between border border-border bg-muted/50 hover:bg-muted rounded-lg px-3 py-2 text-sm text-foreground transition-colors focus:ring-2 focus:ring-primary outline-none"
-            >
-              <div className="flex items-center gap-2">
-                <selectedType.icon className="w-4 h-4 text-muted-foreground" />
-                <span>{selectedType.label}</span>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </button>
-            
-            {isTypeMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setIsTypeMenuOpen(false)}></div>
-                <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border shadow-xl rounded-lg overflow-hidden z-30 py-1 max-h-[200px] overflow-y-auto">
-                  {COLUMN_TYPES.map((t) => (
-                    <button
-                      key={t.type}
-                      onClick={() => { setType(t.type); setIsTypeMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent text-sm text-foreground text-left"
-                    >
-                      <t.icon className="w-4 h-4 text-muted-foreground" />
-                      <span>{t.label}</span>
-                      {type === t.type && <Check className="w-3.5 h-3.5 ml-auto text-primary" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-              <label className="text-xs font-semibold text-foreground">Prompt (optional)</label>
-            </div>
-            <Textarea 
-              className="h-[120px] resize-none"
-              placeholder="Describe what data to extract from the document... (optional)"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className={`px-5 py-3 bg-muted/50 border-t border-border flex ${initialData ? 'justify-between' : 'justify-end'} gap-3`}>
-          {initialData && onDelete && (
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-2 px-3 py-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg font-medium text-xs transition-colors"
-            >
-              Delete
-            </button>
-          )}
-          <Button 
-            onClick={handleSave}
-            disabled={!name}
-            className="px-4 py-2"
-          >
-            {initialData ? 'Update Column' : 'Create Column'}
-          </Button>
-        </div>
-      </div>
-    </>
-  );
-};
 
 export function AnalyserTabContent() {
   const [data, setData] = React.useState<RowData[]>([{ id: crypto.randomUUID() }]);
@@ -230,13 +77,13 @@ export function AnalyserTabContent() {
         enableSorting: true,
         meta: {
           cell: {
-            variant: "file",
+            variant: "auto" as any, // Auto-detects: shows file badge for files, text input for text
             multiple: false,
           },
         },
-        size: 200,
-        minSize: MIN_COLUMN_SIZE,
-        maxSize: MAX_COLUMN_SIZE,
+        size: 200, // Wider to fit file badge with view/delete icons
+        minSize: COLUMN_SIZE.MIN,
+        maxSize: COLUMN_SIZE.MAX,
       },
     ],
     [],
@@ -266,6 +113,9 @@ export function AnalyserTabContent() {
     rowIndex: number;
     columnId: string;
   }): Promise<FileCellData[]> => {
+    // Note: "auto" variant auto-detects file vs text based on cell value
+    // No need to switch column variant - just set the file data and it will render correctly
+
     // Create FileCellData objects for each file
     const uploadedFiles: FileCellData[] = files.map((file) => ({
       id: crypto.randomUUID(),
@@ -274,13 +124,6 @@ export function AnalyserTabContent() {
       type: file.type,
       url: URL.createObjectURL(file),
     }));
-
-    // Update the row with uploaded files
-    setData((prev) => prev.map((row, idx) => 
-      idx === rowIndex 
-        ? { ...row, [columnId]: uploadedFiles }
-        : row
-    ));
 
     // Process files for content column (document conversion)
     if (columnId === 'content' && files.length > 0) {
@@ -401,7 +244,7 @@ export function AnalyserTabContent() {
       'file': 'file',
     };
 
-    // Special handling for content column - preserve accessorKey
+    // Special handling for content column - preserve accessorKey and always use "auto" variant
     const isContentColumn = editingColumnId === 'content';
     
     // Build the column definition - ensure it matches the structure of defaultColumns
@@ -412,20 +255,25 @@ export function AnalyserTabContent() {
       enableHiding: true,
       enableSorting: true,
       meta: {
-        cell: colDef.type === 'file' 
+        cell: isContentColumn
+          ? {
+              variant: "auto" as any, // Content column always uses auto variant
+              multiple: false,
+            }
+          : colDef.type === 'file' 
           ? {
               variant: "file" as const,
-              multiple: isContentColumn ? false : true,
-              maxFiles: isContentColumn ? 1 : 10,
+              multiple: true,
+              maxFiles: 10,
               maxFileSize: 10 * 1024 * 1024, // 10MB
             }
           : {
               variant: variantMap[colDef.type] as any,
             },
       },
-      size: 150,
-      minSize: MIN_COLUMN_SIZE,
-      maxSize: MAX_COLUMN_SIZE,
+      size: COLUMN_SIZE.DEFAULT,
+      minSize: COLUMN_SIZE.MIN,
+      maxSize: COLUMN_SIZE.MAX,
     };
 
     // Only add custom cell renderer for boolean type
@@ -855,6 +703,7 @@ export function AnalyserTabContent() {
               setEditingColumnId(null);
             }}
             onSave={handleSaveColumn}
+            modelId={selectedModel}
             initialData={editingColumnId ? {
               name: columns.find(c => c.id === editingColumnId)?.header as string || '',
               type: columnMetadata[editingColumnId]?.type || 'short-text',
