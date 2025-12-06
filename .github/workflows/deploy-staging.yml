@@ -106,7 +106,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: github-actions
+          username: github-actions-deploy-staging
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
           script: |
