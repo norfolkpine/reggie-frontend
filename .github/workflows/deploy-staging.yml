@@ -109,7 +109,6 @@ jobs:
           username: github-actions-deploy-staging
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
-          script_stop: true
           script: |
             # Set variables from environment
             PROJECT_ID=${{ env.PROJECT_ID }}
@@ -134,7 +133,7 @@ jobs:
             services:
               frontend:
                 container_name: opie-frontend-staging
-                image: opie-frontend-staging:staging
+                image: $IMAGE_FRONTEND
                 ports:
                   - "5174:3000"
                 env_file:
