@@ -134,7 +134,7 @@ jobs:
             services:
               frontend:
                 container_name: opie-frontend-staging
-                image: $IMAGE_FRONTEND
+                image: opie-frontend-staging:staging
                 ports:
                   - "5174:3000"
                 env_file:
