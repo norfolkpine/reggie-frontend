@@ -1,0 +1,281 @@
+"use client";
+
+import type { Table, TableMeta } from "@tanstack/react-table";
+import { CopyIcon, EraserIcon, ScissorsIcon, Trash2Icon, Clipboard, Eye } from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { parseCellKey } from "@/lib/data-grid";
+import type { UpdateCell } from "../types/data-grid";
+
+interface DataGridContextMenuProps<TData> {
+  table: Table<TData>;
+}
+
+export function DataGridContextMenu<TData>({
+  table,
+}: DataGridContextMenuProps<TData>) {
+  const meta = table.options.meta;
+  const contextMenu = meta?.contextMenu;
+  const onContextMenuOpenChange = meta?.onContextMenuOpenChange;
+  const selectionState = meta?.selectionState;
+  const dataGridRef = meta?.dataGridRef;
+  const onDataUpdate = meta?.onDataUpdate;
+  const onRowsDelete = meta?.onRowsDelete;
+  const onCellsCopy = meta?.onCellsCopy;
+  const onCellsCut = meta?.onCellsCut;
+  const onCellsPaste = meta?.onCellsPaste;
+  const onViewCellDetails = meta?.onViewCellDetails;
+  const readOnly = meta?.readOnly;
+
+  if (!contextMenu) return null;
+
+  return (
+    <ContextMenu
+      table={table}
+      dataGridRef={dataGridRef}
+      contextMenu={contextMenu}
+      onContextMenuOpenChange={onContextMenuOpenChange}
+      selectionState={selectionState}
+      onDataUpdate={onDataUpdate}
+      onRowsDelete={onRowsDelete}
+      onCellsCopy={onCellsCopy}
+      onCellsCut={onCellsCut}
+      onCellsPaste={onCellsPaste}
+      onViewCellDetails={onViewCellDetails}
+      readOnly={readOnly}
+    />
+  );
+}
+
+interface ContextMenuProps<TData>
+  extends Pick<
+      TableMeta<TData>,
+      | "dataGridRef"
+      | "onContextMenuOpenChange"
+      | "selectionState"
+      | "onDataUpdate"
+      | "onRowsDelete"
+      | "onCellsCopy"
+      | "onCellsCut"
+      | "onCellsPaste"
+      | "onViewCellDetails"
+      | "readOnly"
+    >,
+    Required<Pick<TableMeta<TData>, "contextMenu">> {
+  table: Table<TData>;
+}
+
+const ContextMenu = React.memo(ContextMenuImpl, (prev, next) => {
+  if (prev.contextMenu.open !== next.contextMenu.open) return false;
+  if (!next.contextMenu.open) return true;
+  if (prev.contextMenu.x !== next.contextMenu.x) return false;
+  if (prev.contextMenu.y !== next.contextMenu.y) return false;
+
+  const prevSize = prev.selectionState?.selectedCells?.size ?? 0;
+  const nextSize = next.selectionState?.selectedCells?.size ?? 0;
+  if (prevSize !== nextSize) return false;
+
+  return true;
+}) as typeof ContextMenuImpl;
+
+function ContextMenuImpl<TData>({
+  table,
+  dataGridRef,
+  contextMenu,
+  onContextMenuOpenChange,
+  selectionState,
+  onDataUpdate,
+  onRowsDelete,
+  onCellsCopy,
+  onCellsCut,
+  onCellsPaste,
+  onViewCellDetails,
+  readOnly,
+}: ContextMenuProps<TData>) {
+  const triggerStyle = React.useMemo<React.CSSProperties>(
+    () => ({
+      position: "fixed",
+      left: `${contextMenu.x}px`,
+      top: `${contextMenu.y}px`,
+      width: "1px",
+      height: "1px",
+      padding: 0,
+      margin: 0,
+      border: "none",
+      background: "transparent",
+      pointerEvents: "none",
+      opacity: 0,
+    }),
+    [contextMenu.x, contextMenu.y],
+  );
+
+  const onCloseAutoFocus: NonNullable<
+    React.ComponentProps<typeof DropdownMenuContent>["onCloseAutoFocus"]
+  > = React.useCallback(
+    (event) => {
+      event.preventDefault();
+      dataGridRef?.current?.focus();
+    },
+    [dataGridRef],
+  );
+
+  const onCopy = React.useCallback(() => {
+    onCellsCopy?.();
+  }, [onCellsCopy]);
+
+  const onCut = React.useCallback(() => {
+    onCellsCut?.();
+  }, [onCellsCut]);
+
+  const onPaste = React.useCallback(() => {
+    onCellsPaste?.();
+  }, [onCellsPaste]);
+
+  const onClear = React.useCallback(() => {
+    if (
+      !selectionState?.selectedCells ||
+      selectionState.selectedCells.size === 0
+    )
+      return;
+
+    const updates: Array<UpdateCell> = [];
+    const tableColumns = table.getAllColumns();
+
+    for (const cellKey of selectionState.selectedCells) {
+      const { rowIndex, columnId } = parseCellKey(cellKey);
+
+      const column = tableColumns.find((col) => col.id === columnId);
+      const cellVariant = column?.columnDef?.meta?.cell?.variant;
+
+      let emptyValue: unknown = "";
+      if (cellVariant === "multi-select" || cellVariant === "file") {
+        emptyValue = [];
+      } else if (cellVariant === "number" || cellVariant === "date") {
+        emptyValue = null;
+      } else if (cellVariant === "checkbox") {
+        emptyValue = false;
+      }
+
+      updates.push({ rowIndex, columnId, value: emptyValue });
+    }
+
+    onDataUpdate?.(updates);
+
+    toast.success(
+      `${updates.length} cell${updates.length !== 1 ? "s" : ""} cleared`,
+    );
+  }, [onDataUpdate, selectionState, table]);
+
+  const onDelete = React.useCallback(async () => {
+    if (
+      !selectionState?.selectedCells ||
+      selectionState.selectedCells.size === 0
+    )
+      return;
+
+    const rowIndices = new Set<number>();
+    for (const cellKey of selectionState.selectedCells) {
+      const { rowIndex } = parseCellKey(cellKey);
+      rowIndices.add(rowIndex);
+    }
+
+    const rowIndicesArray = Array.from(rowIndices).sort((a, b) => a - b);
+    const rowCount = rowIndicesArray.length;
+
+    await onRowsDelete?.(rowIndicesArray);
+
+    toast.success(`${rowCount} row${rowCount !== 1 ? "s" : ""} deleted`);
+  }, [onRowsDelete, selectionState]);
+
+  // Get the first selected cell for "View Details"
+  const firstSelectedCell = React.useMemo(() => {
+    if (!selectionState?.selectedCells || selectionState.selectedCells.size === 0) {
+      return null;
+    }
+    const firstCellKey = Array.from(selectionState.selectedCells)[0];
+    if (!firstCellKey) return null;
+    return parseCellKey(firstCellKey);
+  }, [selectionState]);
+
+  const onViewDetails = React.useCallback(() => {
+    if (!firstSelectedCell || !onViewCellDetails) return;
+    onViewCellDetails({
+      rowIndex: firstSelectedCell.rowIndex,
+      columnId: firstSelectedCell.columnId,
+    });
+  }, [firstSelectedCell, onViewCellDetails]);
+
+  // Only show "View Details" for non-content columns with a single cell selected
+  const showViewDetails = onViewCellDetails && 
+    firstSelectedCell && 
+    firstSelectedCell.columnId !== 'content' &&
+    selectionState?.selectedCells?.size === 1;
+
+  return (
+    <DropdownMenu
+      open={contextMenu.open}
+      onOpenChange={onContextMenuOpenChange}
+    >
+      <DropdownMenuTrigger style={triggerStyle} />
+      <DropdownMenuContent
+        data-grid-popover=""
+        align="start"
+        className="w-48"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
+        {showViewDetails && (
+          <>
+            <DropdownMenuItem onSelect={onViewDetails}>
+              <Eye />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuItem onSelect={onCopy}>
+          <CopyIcon />
+          Copy
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={onCut}
+          disabled={readOnly}
+        >
+          <ScissorsIcon />
+          Cut
+        </DropdownMenuItem>
+        {onCellsPaste && (
+          <DropdownMenuItem
+            onSelect={onPaste}
+            disabled={readOnly}
+          >
+            <Clipboard />
+            Paste
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onSelect={onClear}
+          disabled={readOnly}
+        >
+          <EraserIcon />
+          Clear
+        </DropdownMenuItem>
+        {onRowsDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2Icon />
+              Delete rows
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
