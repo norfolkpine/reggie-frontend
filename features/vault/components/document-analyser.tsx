@@ -532,7 +532,7 @@ export function AnalyserTabContent() {
           </div>
         )}
         <div>
-          <div className={`transition-all duration-300 ${sidebarMode !== 'none' ? (isSidebarExpanded ? 'max-w-4xl' : 'max-w-5xl') : 'max-w-7xl'} mx-auto`}>
+          <div className={`transition-all duration-300`}>
             <DataGrid
               {...dataGridProps}
               height={600}
