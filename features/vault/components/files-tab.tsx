@@ -422,6 +422,19 @@ export const FilesTab = React.forwardRef<{
     } finally { setIsRenamingFile(false); }
   };
 
+  const handleReIngest = useCallback((file: VaultFile) => {
+    // TODO: Implement re-ingest functionality
+    toast({ title: "Re-ingest", description: "Re-ingest functionality coming soon" });
+  }, [toast]);
+
+  const handleFileAnalyze = useCallback((file: VaultFile) => {
+    // This will be handled by the parent component (vault-manager) via a callback
+    // For now, we'll emit a custom event that the parent can listen to
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('vault-file-analyze', { detail: { file, projectId } }));
+    }
+  }, [projectId]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     getBreadcrumbData: () => breadcrumbRef.current,
@@ -456,6 +469,8 @@ export const FilesTab = React.forwardRef<{
         onFileDownload={handleFileDownload}
         onFileRename={openRenameDialog}
         onFileDelete={handleFileDelete}
+        onReIngest={handleReIngest}
+        onFileAnalyze={handleFileAnalyze}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}

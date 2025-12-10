@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2,
   RotateCcw,
+  Zap,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -153,6 +154,7 @@ export function FileTable({
   isTrashMode = false,
   onFileRestore,
   onReIngest,
+  onFileAnalyze,
 }: FileTableProps) {
   const { toast } = useToast();
 
@@ -367,6 +369,12 @@ export function FileTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
                       </DropdownMenuItem>
+                      {!file.is_folder && onFileAnalyze && (
+                        <DropdownMenuItem onClick={() => onFileAnalyze(file)}>
+                          <Zap className="mr-2 h-4 w-4" />
+                          Analyze
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => onReIngest(file)}>
                         <FileText className="mr-2 h-4 w-4" />
                         ReIngest
@@ -404,6 +412,7 @@ export function FileTable({
       isTrashMode,
       onFileDelete,
       onFileDownload,
+      onFileAnalyze,
       onReIngest,
       onFilePreview,
       onFileRename,

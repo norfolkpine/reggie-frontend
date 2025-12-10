@@ -38,6 +38,8 @@ interface FilesTabContentProps {
   onFileDownload: (file: VaultFile) => void;
   onFileRename: (file: VaultFile) => void;
   onFileDelete: (fileId: number) => void;
+  onReIngest?: (file: VaultFile) => void;
+  onFileAnalyze?: (file: VaultFile) => void;
   onDragStart?: (e: React.DragEvent, fileId: number) => void;
   onDragEnd?: () => void;
   onDragOver?: (e: React.DragEvent, folderId?: number) => void;
@@ -113,6 +115,8 @@ export function FilesTabContent(props: FilesTabContentProps) {
           onFileDownload={props.onFileDownload}
           onFileRename={props.onFileRename}
           onFileDelete={props.onFileDelete}
+          onReIngest={props.onReIngest}
+          onFileAnalyze={props.onFileAnalyze}
           onDragStart={props.onDragStart}
           onDragEnd={props.onDragEnd}
           onDragOver={props.onDragOver}

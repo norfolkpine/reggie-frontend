@@ -17,6 +17,10 @@ import { TabsContent } from "@/components/ui/tabs";
 
 import { processDocumentFiles } from "./services/documentProcessingService";
 import { extractColumnData } from "./services/geminiService";
+import { uploadFiles } from "@/api/vault";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/ui/use-toast";
+import { useParams } from "next/navigation";
 
 // Column type definition
 
@@ -39,7 +43,16 @@ type AnalysisResults = {
 // Processing status for each row
 type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'error';
 
-export function AnalyserTabContent() {
+interface AnalyserTabContentProps {
+  projectId?: string;
+  teamId?: number;
+}
+
+export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProps = {}) {
+  const params = useParams();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const currentProjectId = projectId || (params?.uuid as string);
   const [data, setData] = React.useState<RowData[]>([{ id: crypto.randomUUID() }]);
   const [isDraggingOver, setIsDraggingOver] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
@@ -58,6 +71,159 @@ export function AnalyserTabContent() {
   });
   
   const selectedRow = React.useMemo(() => data.find(r => r.id === selectedRowId), [data, selectedRowId]);
+
+  // Helper function to download file from vault URL and convert to File object
+  const downloadFileFromVault = React.useCallback(async (fileUrl: string, filename: string): Promise<File> => {
+    try {
+      const response = await fetch(fileUrl, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      return new File([blob], filename, { type: blob.type });
+    } catch (error) {
+      throw new Error(`Error downloading file from vault: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, []);
+
+  // Helper function to upload file to vault
+  const uploadFileToVault = React.useCallback(async (file: File): Promise<void> => {
+    if (!currentProjectId || !user) {
+      console.warn('Cannot upload to vault: missing projectId or user');
+      return;
+    }
+
+    try {
+      await uploadFiles({
+        file,
+        project_uuid: currentProjectId,
+        uploaded_by: user.id,
+        team: teamId,
+        parent_id: 0, // Upload to root folder
+      });
+    } catch (error) {
+      console.error('Failed to upload file to vault:', error);
+      toast({
+        title: "Vault Upload Warning",
+        description: "File added to analyzer but failed to upload to vault. You can manually upload it later.",
+        variant: "default",
+      });
+    }
+  }, [currentProjectId, user, teamId, toast]);
+
+  // Listen for files sent from vault
+  React.useEffect(() => {
+    const handleVaultFileAnalyze = async (event: CustomEvent<{ file: any; projectId: string }>) => {
+      const { file } = event.detail;
+      
+      if (!file || !file.file) {
+        toast({
+          title: "Error",
+          description: "Invalid file data",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        // Download the file from vault
+        const downloadedFile = await downloadFileFromVault(file.file, file.original_filename || file.filename || 'document');
+        
+        // Add to analyzer
+        const fileData: FileCellData = {
+          id: crypto.randomUUID(),
+          name: downloadedFile.name,
+          size: downloadedFile.size,
+          type: downloadedFile.type,
+          url: URL.createObjectURL(downloadedFile),
+        };
+
+        const newRow: RowData = {
+          id: faker.string.nanoid(),
+          content: [fileData],
+          processingStatus: 'pending' as ProcessingStatus,
+        };
+
+        setData((prev) => {
+          const hasOnlyEmptyRows = prev.every(row => {
+            const content = row.content;
+            return !content || (Array.isArray(content) && content.length === 0);
+          });
+          if (hasOnlyEmptyRows) {
+            return [newRow];
+          }
+          return [...prev, newRow];
+        });
+
+        // Process the file
+        setIsConverting(true);
+        setData((prev) => prev.map((row) => 
+          row.id === newRow.id 
+            ? { ...row, processingStatus: 'processing' as ProcessingStatus }
+            : row
+        ));
+
+        try {
+          const result = await processDocumentFiles([downloadedFile]);
+          if (result.success.length > 0) {
+            const processedFile = result.success[0];
+            setData((prev) => prev.map((row) => 
+              row.id === newRow.id 
+                ? { 
+                    ...row, 
+                    processedContent: processedFile.content,
+                    processingStatus: 'completed' as ProcessingStatus,
+                  }
+                : row
+            ));
+          } else if (result.errors.length > 0) {
+            setData((prev) => prev.map((row) => 
+              row.id === newRow.id 
+                ? { 
+                    ...row, 
+                    processingStatus: 'error' as ProcessingStatus,
+                    errorMessage: result.errors[0].error,
+                  }
+                : row
+            ));
+          }
+        } catch (error) {
+          setData((prev) => prev.map((row) => 
+            row.id === newRow.id 
+              ? { 
+                  ...row, 
+                  processingStatus: 'error' as ProcessingStatus,
+                  errorMessage: error instanceof Error ? error.message : 'Unknown error',
+                }
+              : row
+          ));
+        } finally {
+          setIsConverting(false);
+        }
+
+        // Switch to analyser tab (triggered by parent)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('switch-to-analyser-tab'));
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: `Failed to load file from vault: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        });
+      }
+    };
+
+    const eventHandler = (event: Event) => {
+      handleVaultFileAnalyze(event as CustomEvent<{ file: any; projectId: string }>);
+    };
+    window.addEventListener('vault-file-analyze', eventHandler);
+    return () => {
+      window.removeEventListener('vault-file-analyze', eventHandler);
+    };
+  }, [downloadFileFromVault, toast]);
   
   const defaultColumns = React.useMemo<ColumnDef<Record<string, any>>[]>(
     () => [
@@ -65,6 +231,7 @@ export function AnalyserTabContent() {
         id: "content",
         accessorKey: "content" as any,
         header: "Content",
+        enableResizing: true,
         meta: {
           cell: {
             variant: "auto", // Auto-detects: shows file badge for files, text input for text
@@ -115,7 +282,7 @@ export function AnalyserTabContent() {
 
   React.useEffect(() => {
     if (columns.length === 0) {
-      setColumns(defaultColumns);
+      setColumns(defaultColumns as ColumnDef<RowData>[]);
     }
   }, [columns.length, defaultColumns]);
 
@@ -137,6 +304,16 @@ export function AnalyserTabContent() {
     rowIndex: number;
     columnId: string;
   }): Promise<FileCellData[]> => {
+    // Upload files to vault first (if project context is available)
+    if (currentProjectId && user) {
+      try {
+        await Promise.all(files.map(file => uploadFileToVault(file)));
+      } catch (error) {
+        // Continue processing even if vault upload fails
+        console.warn('Some files failed to upload to vault:', error);
+      }
+    }
+
     // Create FileCellData objects for each file
     const uploadedFiles: FileCellData[] = files.map((file) => ({
       id: crypto.randomUUID(),
@@ -154,7 +331,7 @@ export function AnalyserTabContent() {
     ));
 
     return uploadedFiles;
-  }, []);
+  }, [currentProjectId, user, uploadFileToVault]);
 
   // Handle file deletions within cells
   const onFilesDelete = React.useCallback(async ({ fileIds, rowIndex, columnId }: {
@@ -223,6 +400,7 @@ export function AnalyserTabContent() {
       header: isContentColumn ? 'Content' : colDef.name,
       enableHiding: true,
       enableSorting: true,
+      enableResizing: true,
       meta: {
         cell: colDef.type === 'file' 
           ? {
@@ -291,6 +469,16 @@ export function AnalyserTabContent() {
     const files = Array.from(fileList) as File[];
     if (files.length === 0) return;
 
+    // Upload files to vault first (if project context is available)
+    if (currentProjectId && user) {
+      try {
+        await Promise.all(files.map(file => uploadFileToVault(file)));
+      } catch (error) {
+        // Continue processing even if vault upload fails
+        console.warn('Some files failed to upload to vault:', error);
+      }
+    }
+
     // Clear sorting so new rows appear at the bottom
     if (dataGridProps.table.getState().sorting.length > 0) {
       dataGridProps.table.setSorting([]);
@@ -328,7 +516,7 @@ export function AnalyserTabContent() {
     });
 
     setIsConverting(false);
-  }, [dataGridProps.table]);
+  }, [dataGridProps.table, currentProjectId, user, uploadFileToVault]);
 
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -433,14 +621,24 @@ export function AnalyserTabContent() {
           setData((prev) => {
             const hasOnlyEmptyRows = prev.every(row => {
               const content = row.content;
-              // Empty if: undefined, null, empty string, or empty array
-              return !content || content === '' || (Array.isArray(content) && content.length === 0);
+              // Empty if: undefined, null, or empty array
+              return !content || (Array.isArray(content) && content.length === 0);
             });
             if (hasOnlyEmptyRows) {
               return initialRows;
             }
             return [...prev, ...initialRows];
           });
+
+          // Upload files to vault first (if project context is available)
+          if (currentProjectId && user) {
+            try {
+              await Promise.all(files.map(file => uploadFileToVault(file)));
+            } catch (error) {
+              // Continue processing even if vault upload fails
+              console.warn('Some files failed to upload to vault:', error);
+            }
+          }
 
           // Process each file individually for real-time updates
           for (let i = 0; i < files.length; i++) {
@@ -737,7 +935,7 @@ export function AnalyserTabContent() {
                           const quoteToHighlight = sidebarMode === 'cell' && selectedCellData?.quote;
                           if (quoteToHighlight && decodedMarkdown.includes(quoteToHighlight)) {
                             const parts = decodedMarkdown.split(quoteToHighlight);
-                            return parts.map((part, i) => (
+                            return parts.map((part: string, i: number) => (
                               <React.Fragment key={i}>
                                 {part}
                                 {i < parts.length - 1 && (

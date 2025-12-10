@@ -1951,6 +1951,7 @@ function useDataGrid<TData>({
       minSize: MIN_COLUMN_SIZE,
       maxSize: MAX_COLUMN_SIZE,
       size: COLUMN_SIZE.DEFAULT,
+      enableResizing: true,
     }),
     [],
   );
