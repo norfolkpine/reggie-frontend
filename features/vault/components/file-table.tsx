@@ -372,7 +372,7 @@ export function FileTable({
                       {!file.is_folder && onFileAnalyze && (
                         <DropdownMenuItem onClick={() => onFileAnalyze(file)}>
                           <Zap className="mr-2 h-4 w-4" />
-                          Analyze
+                          Analyse
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem onClick={() => onReIngest(file)}>

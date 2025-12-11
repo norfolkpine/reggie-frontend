@@ -431,9 +431,44 @@ export const FilesTab = React.forwardRef<{
     // This will be handled by the parent component (vault-manager) via a callback
     // For now, we'll emit a custom event that the parent can listen to
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('vault-file-analyze', { detail: { file, projectId } }));
+      window.dispatchEvent(new CustomEvent('vault-file-analyse', { detail: { file, projectId } }));
     }
   }, [projectId]);
+
+  const handleBulkAnalyze = useCallback(async () => {
+    if (selectedFiles.length === 0) return;
+
+    // Get selected files (filter out folders)
+    const filesToAnalyse = filteredFiles.filter(
+      file => selectedFiles.includes(file.id) && !file.is_folder
+    );
+
+    if (filesToAnalyse.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select files (not folders) to analyse.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Send each file to analyser
+    for (const file of filesToAnalyse) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vault-file-analyse', { detail: { file, projectId } }));
+      }
+    }
+
+    // Switch to analyser tab after a short delay to allow files to be processed
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('switch-to-analyser-tab'));
+      }
+    }, 100);
+
+    // Clear selection
+    setSelectedFiles([]);
+  }, [selectedFiles, filteredFiles, projectId, toast]);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -459,6 +494,7 @@ export const FilesTab = React.forwardRef<{
         onCreateFolder={() => setCreateFolderOpen(true)}
         onUploadFile={() => setIsUploadDialogOpen(true)}
         onGoogleDriveClick={() => toast({ title: "Google Drive Integration", description: "Google Drive integration coming soon!", duration: 3000 })}
+        onBulkAnalyze={handleBulkAnalyze}
         files={filteredFiles}
         draggedFiles={draggedFiles}
         dragOverFolderId={dragOverFolderId}

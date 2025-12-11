@@ -27,6 +27,7 @@ interface FilesTabContentProps {
   onCreateFolder: () => void;
   onUploadFile: () => void;
   onGoogleDriveClick: () => void;
+  onBulkAnalyze?: () => void;
 
   files: VaultFile[];
   draggedFiles: number[];
@@ -98,6 +99,8 @@ export function FilesTabContent(props: FilesTabContentProps) {
                 onCreateFolder={props.onCreateFolder}
                 onUploadFile={props.onUploadFile}
                 onGoogleDriveClick={props.onGoogleDriveClick}
+                onBulkAnalyze={props.onBulkAnalyze}
+                selectedFilesCount={props.selectedFiles.length}
               />
             </div>
           </div>

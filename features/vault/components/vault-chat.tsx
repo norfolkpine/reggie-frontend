@@ -344,7 +344,7 @@ export function VaultChat({ agentId, projectId, folderId, fileIds, sessionId, on
               }}
               suggestions={[
                 "Summarize this folder.",
-                "Analyze each file."
+                "Analyse each file."
               ]}
             />
           </div>

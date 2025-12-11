@@ -107,7 +107,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       console.error('Failed to upload file to vault:', error);
       toast({
         title: "Vault Upload Warning",
-        description: "File added to analyzer but failed to upload to vault. You can manually upload it later.",
+        description: "File added to analyser but failed to upload to vault. You can manually upload it later.",
         variant: "default",
       });
     }
@@ -115,7 +115,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
 
   // Listen for files sent from vault
   React.useEffect(() => {
-    const handleVaultFileAnalyze = async (event: CustomEvent<{ file: any; projectId: string }>) => {
+    const handleVaultFileAnalyse = async (event: CustomEvent<{ file: any; projectId: string }>) => {
       const { file } = event.detail;
       
       if (!file || !file.file) {
@@ -131,7 +131,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
         // Download the file from vault
         const downloadedFile = await downloadFileFromVault(file.file, file.original_filename || file.filename || 'document');
         
-        // Add to analyzer
+        // Add to analyser
         const fileData: FileCellData = {
           id: crypto.randomUUID(),
           name: downloadedFile.name,
@@ -217,13 +217,13 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     };
 
     const eventHandler = (event: Event) => {
-      handleVaultFileAnalyze(event as CustomEvent<{ file: any; projectId: string }>);
+      handleVaultFileAnalyse(event as CustomEvent<{ file: any; projectId: string }>);
     };
-    window.addEventListener('vault-file-analyze', eventHandler);
+    window.addEventListener('vault-file-analyse', eventHandler);
     return () => {
-      window.removeEventListener('vault-file-analyze', eventHandler);
+      window.removeEventListener('vault-file-analyse', eventHandler);
     };
-  }, [downloadFileFromVault, toast]);
+  }, [downloadFileFromVault, toast, currentProjectId, user, teamId]);
   
   const defaultColumns = React.useMemo<ColumnDef<Record<string, any>>[]>(
     () => [
