@@ -25,7 +25,7 @@ const chatBubbleVariants = cva(
     variants: {
       isUser: {
         true: "bg-primary text-primary-foreground sm:max-w-[70%]",
-        false: "bg-muted text-foreground w-full",
+        false: "bg-transparent text-foreground w-full",
       },
       isError: {
         true: "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-200",

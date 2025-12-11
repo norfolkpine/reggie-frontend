@@ -69,7 +69,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
   const chatMessagesBgStyle = useMemo(() => {
     return {
-      backgroundColor: isDarkMode ? undefined : '#FAFAFC'
+      backgroundColor: isDarkMode ? undefined : '#fdfdfd'
     };
   }, [isDarkMode]);
 
