@@ -1,12 +1,15 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { DocumentFile, ExtractionCell, Column, ExtractionResult } from "../../types";
+import { BASE_URL } from "@/lib/api-client";
+import { getCSRFToken } from "@/api";
 
-// Initialize Gemini Client
-const apiKey = "your api key.";
+// Initialize Gemini Client (for structured extraction with schemas)
+// Note: For simple analysis, use the Django /analyze endpoint instead
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 if (!apiKey) {
-  console.error("VITE_GEMINI_API_KEY is not set in environment variables");
+  console.warn("NEXT_PUBLIC_GEMINI_API_KEY is not set. Structured extraction may not work.");
 }
-const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Helper for delay
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -78,8 +81,6 @@ export const extractColumnData = async (
 ): Promise<ExtractionCell> => {
   return withRetry(async () => {
     try {
-      const parts = [];
-      
       // We assume doc.content is now ALWAYS text/markdown because we converted it locally on upload.
       // Decode Base64 to get the text
       let docText = "";
@@ -90,10 +91,6 @@ export const extractColumnData = async (
           docText = atob(doc.content);
       }
 
-      parts.push({
-        text: `DOCUMENT CONTENT:\n${docText}`,
-      });
-  
       // Format instruction based on column type
       let formatInstruction = "";
       switch (column.type) {
@@ -128,36 +125,70 @@ export const extractColumnData = async (
       - Provide a brief reasoning.
       `;
 
-      parts.push({ text: prompt });
+      // Use structured extraction with Google GenAI SDK if available (better for complex schemas)
+      // Otherwise fall back to Django analyze endpoint
+      if (ai) {
+        const parts = [
+          { text: `DOCUMENT CONTENT:\n${docText}` },
+          { text: prompt }
+        ];
 
-      const response = await ai.models.generateContent({
-        model: modelId,
-        contents: {
-            role: 'user',
-            parts: parts
-        },
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: extractionSchema,
-            systemInstruction: "You are a precise data extraction agent. You must extract data exactly as requested."
+        const response = await ai.models.generateContent({
+          model: modelId,
+          contents: {
+              role: 'user',
+              parts: parts
+          },
+          config: {
+              responseMimeType: 'application/json',
+              responseSchema: extractionSchema,
+              systemInstruction: "You are a precise data extraction agent. You must extract data exactly as requested."
+          }
+        });
+
+        const responseText = response.text;
+        if (!responseText) {
+            throw new Error("Empty response from model");
         }
-      });
 
-      const responseText = response.text;
-      if (!responseText) {
-          throw new Error("Empty response from model");
+        const json = JSON.parse(responseText);
+
+        return {
+          value: String(json.value || ""),
+          confidence: (json.confidence as any) || "Low",
+          quote: json.quote || "",
+          page: json.page || 1,
+          reasoning: json.reasoning || "",
+          status: 'needs_review'
+        };
+      } else {
+        // Fallback to Django analyze endpoint (simpler, but may not support structured output)
+        const fullPrompt = `${prompt}\n\nDOCUMENT CONTENT:\n${docText}`;
+        const result = await analyzeContent(docText, fullPrompt, modelId);
+        
+        // Try to parse as JSON if possible, otherwise return as simple value
+        try {
+          const json = JSON.parse(result);
+          return {
+            value: String(json.value || result),
+            confidence: (json.confidence as any) || "Medium",
+            quote: json.quote || "",
+            page: json.page || 1,
+            reasoning: json.reasoning || "",
+            status: 'needs_review'
+          };
+        } catch {
+          // If not JSON, return as simple value
+          return {
+            value: result,
+            confidence: "Medium",
+            quote: "",
+            page: 1,
+            reasoning: "",
+            status: 'needs_review'
+          };
+        }
       }
-
-      const json = JSON.parse(responseText);
-
-      return {
-        value: String(json.value || ""),
-        confidence: (json.confidence as any) || "Low",
-        quote: json.quote || "",
-        page: json.page || 1,
-        reasoning: json.reasoning || "",
-        status: 'needs_review'
-      };
 
     } catch (error) {
       console.error("Extraction error:", error);

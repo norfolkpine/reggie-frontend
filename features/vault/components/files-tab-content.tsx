@@ -27,6 +27,7 @@ interface FilesTabContentProps {
   onCreateFolder: () => void;
   onUploadFile: () => void;
   onGoogleDriveClick: () => void;
+  onBulkAnalyze?: () => void;
 
   files: VaultFile[];
   draggedFiles: number[];
@@ -38,6 +39,8 @@ interface FilesTabContentProps {
   onFileDownload: (file: VaultFile) => void;
   onFileRename: (file: VaultFile) => void;
   onFileDelete: (fileId: number) => void;
+  onReIngest?: (file: VaultFile) => void;
+  onFileAnalyze?: (file: VaultFile) => void;
   onDragStart?: (e: React.DragEvent, fileId: number) => void;
   onDragEnd?: () => void;
   onDragOver?: (e: React.DragEvent, folderId?: number) => void;
@@ -96,6 +99,8 @@ export function FilesTabContent(props: FilesTabContentProps) {
                 onCreateFolder={props.onCreateFolder}
                 onUploadFile={props.onUploadFile}
                 onGoogleDriveClick={props.onGoogleDriveClick}
+                onBulkAnalyze={props.onBulkAnalyze}
+                selectedFilesCount={props.selectedFiles.length}
               />
             </div>
           </div>
@@ -113,6 +118,8 @@ export function FilesTabContent(props: FilesTabContentProps) {
           onFileDownload={props.onFileDownload}
           onFileRename={props.onFileRename}
           onFileDelete={props.onFileDelete}
+          onReIngest={props.onReIngest}
+          onFileAnalyze={props.onFileAnalyze}
           onDragStart={props.onDragStart}
           onDragEnd={props.onDragEnd}
           onDragOver={props.onDragOver}

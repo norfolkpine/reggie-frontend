@@ -23,9 +23,10 @@
  * - Fast and reliable for plain text formats
  * 
  * ### PDF and DOCX Files
- * - Sent to backend server running Docling converter
- * - Backend URL: http://localhost:8001/convert (configurable via VITE_API_URL)
- * - Preserves formatting and structure
+ * - Sent to Django /convert endpoint which proxies to llamaindex service
+ * - Django endpoint: /opie/api/v1/convert/
+ * - Uses GCS-based storage (maintains existing GCS workflow)
+ * - Preserves formatting and structure via Docling
  * - Falls back to text extraction if backend unavailable
  * 
  * ### Other Formats

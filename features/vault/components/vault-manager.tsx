@@ -346,6 +346,18 @@ export function VaultManager() {
       localStorage.setItem('vault_active_tab', activeTab);
     }
   }, [activeTab]);
+
+  // Listen for switch to analyser tab event
+  useEffect(() => {
+    const handleSwitchToAnalyser = () => {
+      setActiveTab('analyser');
+    };
+
+    window.addEventListener('switch-to-analyser-tab', handleSwitchToAnalyser);
+    return () => {
+      window.removeEventListener('switch-to-analyser-tab', handleSwitchToAnalyser);
+    };
+  }, []);
   
   const fetchProject = async () => {
     if (!projectId) return;
@@ -432,7 +444,10 @@ export function VaultManager() {
               onTrashTabRefresh={() => trashTabRef.current?.refreshFiles()}
             />
 
-            <AnalyserTabContent />
+            <AnalyserTabContent 
+              projectId={projectId || ''}
+              teamId={(project?.team as any)?.id}
+            />
             <WorkflowTabContent />
 
             <SettingsTabContent
