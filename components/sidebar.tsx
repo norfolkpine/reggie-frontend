@@ -50,9 +50,6 @@ import { createProject } from "@/api/projects";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "./ui/use-toast";
 import { useMobileNav } from "@/contexts/mobile-nav-context";
-import { ChatSession, getChatSessions } from "@/api/chat-sessions";
-import { IconBubble, IconMenu } from "@tabler/icons-react";
-import { chatStorage } from "@/lib/utils/chat-storage";
 import { getProjects, updateProject, deleteProject } from "@/api/projects";
 import { Project, getProjectId } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
@@ -66,6 +63,7 @@ import { Doc } from "@/features/docs/doc-management/types";
 import { useProjects } from "@/features/vault/api/useProjects";
 import { DeleteProjectDialog } from "@/features/vault/components/delete-project-dialog";
 import { useSidebar } from "@/contexts/sidebar-context";
+import { ChatHistory } from "@/components/chat-history";
 
 
 const FolderShieldIcon = () => (
@@ -613,9 +611,9 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-sidebar-accent scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-sidebar-accent scrollbar-track-transparent min-h-0">
             <div className="p-3 space-y-2">
-              
+              <ChatHistory isMobile={isMobile} />
             </div>
           </div>
 

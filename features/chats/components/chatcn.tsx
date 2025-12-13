@@ -40,8 +40,24 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
   const [messageFeedback, setMessageFeedback] = useState<Record<string, { isGood?: boolean; isBad?: boolean }>>({});
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   // Responsive input container style
   const inputContainerStyle = useMemo(() => {
@@ -50,6 +66,12 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
     }
     return { height: 'auto', minHeight: '200px' };
   }, []);
+
+  const chatMessagesBgStyle = useMemo(() => {
+    return {
+      backgroundColor: isDarkMode ? undefined : '#fdfdfd'
+    };
+  }, [isDarkMode]);
 
   const {
     messages,
@@ -393,7 +415,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
       >
         {dragOverlay}
 
-        <div id="chat-messages-container" className="flex-1 flex flex-col overflow-hidden" >
+        <div id="chat-messages-container" className="flex-1 flex flex-col overflow-hidden dark:bg-background" style={chatMessagesBgStyle}>
           {isEmpty && (
             <div className="flex-1 flex items-center justify-center p-3 sm:p-4 md:p-6">
               <div className="w-full max-w-2xl lg:max-w-3xl xl:max-w-4xl">
@@ -436,7 +458,7 @@ export function CustomChat({ agentId, sessionId, onTitleUpdate, onNewSessionCrea
 
         {statusIndicators}
 
-        <div id="chat-input-container" className="border-t bg-background/95 backdrop-blur-sm flex-shrink-0" style={inputContainerStyle}>
+        <div id="chat-input-container" className="border-t backdrop-blur-sm flex-shrink-0" style={inputContainerStyle}>
           <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
             {/* Reasoning Toggle */}
             <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">

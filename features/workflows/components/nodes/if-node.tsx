@@ -19,7 +19,7 @@ export function IfNode({ data, id }: NodeProps) {
         type="target"
         position={Position.Left}
         className="!bg-blue-400 !w-3 !h-3 !border-2 !border-white"
-        isConnectable={1}
+        isConnectable={true}
       />
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between">
@@ -34,25 +34,29 @@ export function IfNode({ data, id }: NodeProps) {
             <Trash2 size={12}/>
           </Button>
         </div>
-        {data.config?.condition && (
-          <div className="text-xs text-blue-800 font-medium truncate">
-            {data.config.condition}
-          </div>
-        )}
+        <div className="text-xs text-blue-800 font-medium break-words min-h-[16px]">
+          {(data.config as any)?.condition || (
+            <span className="text-blue-400 italic">No condition set</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between pt-1 border-t border-blue-200">
+          <span className="text-[10px] font-medium text-green-700">True</span>
+          <span className="text-[10px] font-medium text-red-700">False</span>
+        </div>
       </div>
       <Handle
         type="source"
         position={Position.Right}
         id="true"
         className="!bg-green-400 !w-3 !h-3 !border-2 !border-white !top-[30%]"
-        isConnectable={1}
+        isConnectable={true}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="false"
         className="!bg-red-400 !w-3 !h-3 !border-2 !border-white !top-[70%]"
-        isConnectable={1}
+        isConnectable={true}
       />
     </div>
   );

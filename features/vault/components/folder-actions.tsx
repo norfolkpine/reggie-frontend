@@ -2,18 +2,22 @@
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FolderPlus, Plus, FileText, UploadCloud } from "lucide-react";
+import { FolderPlus, Plus, FileText, UploadCloud, Zap } from "lucide-react";
 
 interface FolderActionsProps {
   onCreateFolder: () => void;
   onUploadFile: () => void;
   onGoogleDriveClick: () => void;
+  onBulkAnalyze?: () => void;
+  selectedFilesCount?: number;
 }
 
 export function FolderActions({
   onCreateFolder,
   onUploadFile,
-  onGoogleDriveClick
+  onGoogleDriveClick,
+  onBulkAnalyze,
+  selectedFilesCount = 0
 }: FolderActionsProps) {
   return (
     <div className="flex items-center space-x-2">
@@ -39,6 +43,19 @@ export function FolderActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {onBulkAnalyze && (
+        <Button 
+          onClick={onBulkAnalyze} 
+          size={'sm'}
+          disabled={selectedFilesCount === 0}
+          variant="default"
+        >
+          <Zap className="h-4 w-4 mr-0 sm:mr-2" />
+          <span className="button-text">
+            Analyse{selectedFilesCount > 0 ? ` (${selectedFilesCount})` : ''}
+          </span>
+        </Button>
+      )}
     </div>
   );
 }
