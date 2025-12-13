@@ -3,15 +3,15 @@
 import type React from "react"
 
 import { useState, useRef } from "react"
-import { Upload, X, FileText, AlertCircle, FolderPlus } from "lucide-react"
+import { Upload, X, FileText, AlertCircle, FolderPlus, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import type { File as ApiFile, FileWithUI, Folder } from "@/types/knowledge-base"
 import { uploadFiles } from "@/api/files"
+import { toast } from "sonner"
 
 interface FileUploadProps {
   onUploadComplete: (files: FileWithUI[]) => void
@@ -49,7 +49,6 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadingFile[]>([])
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(currentFolderId)
   const [title, setTitle] = useState("")
   const [isGlobal, setIsGlobal] = useState(false)
@@ -104,7 +103,13 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
     if (files.length === 0) return;
 
     setUploading(true);
-    setError(null);
+    const totalFiles = files.length;
+
+    // Show uploading toast (Google Drive style)
+    const uploadToastId = toast.loading(
+      `Uploading ${totalFiles} file${totalFiles > 1 ? 's' : ''}...`,
+      { duration: Infinity }
+    );
 
     try {
       // Set all files to 50% progress before API call
@@ -113,8 +118,8 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
       );
 
       // Upload all files in parallel, each with its own title (file name)
-      await Promise.all(
-        files.map(async (fileObj) => {
+      const uploadResults = await Promise.all(
+        files.map(async (fileObj, index) => {
           try {
             await uploadFiles([
               fileObj.file
@@ -129,22 +134,67 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
               }),
               is_global: isGlobal
             });
+            return { success: true, fileName: fileObj.file.name };
           } catch (err) {
-            // Optionally, set error on this fileObj
+            console.error(`Failed to upload file ${fileObj.file.name}:`, err);
+            // Update the file's error state
+            setFiles((currentFiles) => {
+              const updated = [...currentFiles];
+              if (updated[index]) {
+                updated[index] = { ...updated[index], error: err instanceof Error ? err.message : 'Upload failed' };
+              }
+              return updated;
+            });
+            return { success: false, fileName: fileObj.file.name, error: err };
           }
         })
       );
 
-      // Update progress to 100% for all files
-      setFiles((currentFiles) =>
-        currentFiles.map((file) => ({ ...file, progress: 100 }))
-      );
+      // Count successes and failures
+      const successfulUploads = uploadResults.filter(r => r.success);
+      const failedUploads = uploadResults.filter(r => !r.success);
 
-      onUploadComplete([]);
-      setFiles([]);
-      setError(null);
+      // Dismiss the loading toast
+      toast.dismiss(uploadToastId);
+
+      // Show result toasts (Google Drive style)
+      if (successfulUploads.length > 0 && failedUploads.length === 0) {
+        // All succeeded
+        toast.success(
+          `${successfulUploads.length} file${successfulUploads.length > 1 ? 's' : ''} uploaded`,
+          { duration: 4000 }
+        );
+        // Update progress to 100% for all files
+        setFiles((currentFiles) =>
+          currentFiles.map((file) => ({ ...file, progress: 100 }))
+        );
+        onUploadComplete([]);
+        setFiles([]);
+      } else if (failedUploads.length > 0 && successfulUploads.length > 0) {
+        // Partial success
+        toast.success(
+          `${successfulUploads.length} file${successfulUploads.length > 1 ? 's' : ''} uploaded`,
+          { duration: 4000 }
+        );
+        toast.error(
+          `${failedUploads.length} file${failedUploads.length > 1 ? 's' : ''} failed: ${failedUploads.map(f => f.fileName).join(', ')}`,
+          { duration: 6000 }
+        );
+        // Keep failed files in the list, clear successful ones
+        setFiles((currentFiles) => 
+          currentFiles.filter((_, index) => !uploadResults[index].success)
+        );
+        onUploadComplete([]);
+      } else if (failedUploads.length > 0) {
+        // All failed
+        toast.error(
+          `Failed to upload ${failedUploads.length} file${failedUploads.length > 1 ? 's' : ''}: ${failedUploads.map(f => f.fileName).join(', ')}`,
+          { duration: 6000 }
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload files");
+      toast.dismiss(uploadToastId);
+      toast.error(err instanceof Error ? err.message : "Failed to upload files");
     } finally {
       setUploading(false);
     }
@@ -262,11 +312,6 @@ export function FileUpload({ onUploadComplete, folders, currentFolderId, current
         </div>
       )}
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
     </div>
   )
 }
