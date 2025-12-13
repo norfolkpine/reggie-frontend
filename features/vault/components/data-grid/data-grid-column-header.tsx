@@ -399,7 +399,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
         // Reset the drag flag after a short delay to allow double-click detection
         setTimeout(() => {
           hasDragged.current = false;
-        }, 100);
+        }, 200);
       };
       
       document.addEventListener("mousemove", handleMouseMove);
