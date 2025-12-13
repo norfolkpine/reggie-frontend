@@ -44,7 +44,8 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
             try {
                 const decoded = decodeURIComponent(escape(binaryString));
                 setDecodedContent(decoded);
-        } catch {
+        } catch (e) {
+                console.error("Unicode decoding error", e);
                 setDecodedContent(binaryString);
             }
         } catch (e) {
@@ -91,7 +92,7 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
     }
 
     const escapedQuote = quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const loosePattern = escapedQuote.replace(/\s+/g, '[\\s\\W]*');
+    const loosePattern = escapedQuote.replace(/\s+/g, '\\s+');
     const looseQuoteRegex = new RegExp(`(${loosePattern})`, 'gi');
 
     const parts = decodedContent.split(looseQuoteRegex);
