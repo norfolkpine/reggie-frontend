@@ -12,15 +12,17 @@ import { useDataGrid } from "./hooks/use-data-grid";
 import { AddColumnMenu } from "./AddColumnMenu";
 import type { ColumnType, ExtractionCell } from "../types";
 import type { FileCellData } from "./types/data-grid";
-import { Table, ChevronDown, ChevronLeft, ChevronRight, Square, Play, Zap, Cpu, Brain, Download, Upload, Loader2, AlertCircle, CheckCircle2, X, FileText, Eye, Quote } from "./Icons";
+import { Table, ChevronDown, Square, Play, Zap, Cpu, Brain, Download, Upload, Loader2, CheckCircle2 } from "./Icons";
 import { TabsContent } from "@/components/ui/tabs";
 
 import { processDocumentFiles } from "./services/documentProcessingService";
 import { extractColumnData } from "./services/geminiService";
-import { uploadFiles } from "@/api/vault";
+import { uploadFiles, analyzeDocuments } from "@/api/vault";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import { useParams } from "next/navigation";
+import { VerificationSidebar } from "./verification-sidebar";
+import type { DocumentFile, Column } from "../types";
 
 // Column type definition
 
@@ -56,6 +58,27 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
   const [data, setData] = React.useState<RowData[]>([{ id: crypto.randomUUID() }]);
   const [isDraggingOver, setIsDraggingOver] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
+  const convertingToastRef = React.useRef<{ dismiss: () => void } | null>(null);
+
+  // Show/dismiss toast when isConverting changes
+  React.useEffect(() => {
+    if (isConverting) {
+      const { dismiss } = toast({
+        title: "Processing Documents",
+        description: (
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Converting files to markdown...</span>
+          </div>
+        ),
+        duration: Number.POSITIVE_INFINITY,
+      });
+      convertingToastRef.current = { dismiss };
+    } else {
+      convertingToastRef.current?.dismiss();
+      convertingToastRef.current = null;
+    }
+  }, [isConverting, toast]);
   const [addColumnAnchor, setAddColumnAnchor] = React.useState<DOMRect | null>(null);
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -112,6 +135,199 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       });
     }
   }, [currentProjectId, user, teamId, toast]);
+
+  // Handle CSV export
+  const handleExportCSV = React.useCallback((projectName: string) => {
+    if (data.length === 0) return;
+
+    // Get non-content columns (columns that aren't the file/content column)
+    const exportColumns = columns.filter(col => col.id !== 'content');
+    
+    // Headers: Document Name followed by column names
+    const headerRow = ['Document Name', ...exportColumns.map(c => {
+      const header = c.header;
+      return typeof header === 'string' ? header : (c.id || '');
+    })];
+    
+    // Rows
+    const rows = data.map((doc, index) => {
+      // Get document name from content field
+      let docName = 'Untitled';
+      const content = doc.content as FileCellData[] | string | undefined;
+      
+      if (Array.isArray(content) && content.length > 0 && content[0]?.name) {
+        // FileCellData array - use file name
+        docName = content[0].name;
+      } else if (typeof content === 'string' && content.trim()) {
+        // Direct text content - use the text (truncated if too long)
+        docName = content.length > 50 ? content.substring(0, 50) + '...' : content;
+      } else {
+        // Fallback to row number
+        docName = `Row ${index + 1}`;
+      }
+      
+      const rowData = [`"${docName.replace(/"/g, '""')}"`];
+      
+      exportColumns.forEach(col => {
+        const colId = col.id || '';
+        // Check analysisResults first, then fall back to direct row data
+        const cellValue = analysisResults[doc.id]?.[colId]?.value || doc[colId] || '';
+        // Escape double quotes with two double quotes
+        const val = String(cellValue).replace(/"/g, '""');
+        rowData.push(`"${val}"`);
+      });
+      return rowData.join(",");
+    });
+
+    const csvContent = [headerRow.map(h => `"${h.replace(/"/g, '""')}"`).join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${projectName.replace(/\s+/g, '_').toLowerCase()}_export.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Export Complete",
+      description: `Exported ${data.length} rows to CSV`,
+    });
+  }, [data, columns, analysisResults, toast]);
+
+  // Run analysis on all documents with all columns
+  const runAnalysis = React.useCallback(async () => {
+    // Filter rows that have processed content (ready for analysis)
+    const rowsToAnalyze = data.filter(row => row.processedContent);
+    
+    if (rowsToAnalyze.length === 0) {
+      toast({
+        title: "No Documents",
+        description: "Please add documents to analyze first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get columns that have prompts (excluding the content column)
+    const columnsToExtract = columns
+      .filter(col => col.id !== 'content' && columnMetadata[col.id || '']?.prompt)
+      .map(col => ({
+        id: col.id || '',
+        name: typeof col.header === 'string' ? col.header : (col.id || ''),
+        type: columnMetadata[col.id || '']?.type || 'short-text',
+        prompt: columnMetadata[col.id || '']?.prompt || '',
+      }));
+
+    if (columnsToExtract.length === 0) {
+      toast({
+        title: "No Columns",
+        description: "Please add columns with extraction prompts first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Prepare documents for API
+      const documentsForApi = rowsToAnalyze.map(row => {
+        const fileData = Array.isArray(row.content) ? row.content[0] : null;
+        return {
+          id: row.id,
+          content: row.processedContent || '',
+          name: fileData?.name || 'Untitled',
+        };
+      });
+
+      // Call the analyze API
+      const response = await analyzeDocuments(documentsForApi, columnsToExtract);
+
+      // Update analysis results
+      if (response.results) {
+        const newResults: AnalysisResults = { ...analysisResults };
+        
+        for (const docResult of response.results) {
+          newResults[docResult.document_id] = {};
+          for (const [colId, cellResult] of Object.entries(docResult.results)) {
+            newResults[docResult.document_id][colId] = {
+              value: cellResult.value,
+              confidence: cellResult.confidence,
+              quote: cellResult.quote,
+              page: cellResult.page || 1,
+              reasoning: cellResult.reasoning,
+              status: 'needs_review',
+            };
+          }
+        }
+        
+        setAnalysisResults(newResults);
+        
+        // Also update the data rows with the extracted values for display
+        setData(prev => prev.map(row => {
+          const rowResults = newResults[row.id];
+          if (rowResults) {
+            const updates: Record<string, string> = {};
+            for (const [colId, cell] of Object.entries(rowResults)) {
+              updates[colId] = cell.value;
+            }
+            return { ...row, ...updates };
+          }
+          return row;
+        }));
+      }
+
+      // Handle any errors
+      if (response.errors && response.errors.length > 0) {
+        toast({
+          title: "Some Documents Failed",
+          description: `${response.errors.length} document(s) could not be analyzed.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Analysis Complete",
+          description: `Successfully analyzed ${rowsToAnalyze.length} document(s) across ${columnsToExtract.length} column(s).`,
+        });
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : 'An error occurred during analysis.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [data, columns, columnMetadata, analysisResults, toast]);
+
+  // Listen for CSV export event from header button
+  React.useEffect(() => {
+    const handleExportEvent = (event: CustomEvent<{ projectName: string }>) => {
+      handleExportCSV(event.detail.projectName);
+    };
+
+    window.addEventListener('analyser-export-csv', handleExportEvent as EventListener);
+    return () => {
+      window.removeEventListener('analyser-export-csv', handleExportEvent as EventListener);
+    };
+  }, [handleExportCSV]);
+
+  // Listen for run analysis event from header button
+  React.useEffect(() => {
+    const handleRunAnalysis = () => {
+      runAnalysis();
+    };
+
+    window.addEventListener('analyser-run-analysis', handleRunAnalysis);
+    return () => {
+      window.removeEventListener('analyser-run-analysis', handleRunAnalysis);
+    };
+  }, [runAnalysis]);
 
   // Listen for files sent from vault
   React.useEffect(() => {
@@ -246,39 +462,45 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     [],
   );
   
-  // Get the ExtractionCell for the selected cell with additional context
-  const selectedCellData = React.useMemo(() => {
-    if (!selectedCell || !selectedRowId || !selectedRow) return null;
+  // Create DocumentFile for VerificationSidebar
+  const documentForSidebar = React.useMemo<DocumentFile | null>(() => {
+    if (!selectedRow) return null;
     
-    const extractionCell = analysisResults[selectedRowId]?.[selectedCell.columnId];
-    const metadata = columnMetadata[selectedCell.columnId];
-    const column = columns.find(c => c.id === selectedCell.columnId);
-    
-    // Get source file name from the row's content
-    const sourceFileName = Array.isArray(selectedRow.content) && selectedRow.content[0] 
-      ? selectedRow.content[0].name 
-      : 'Unknown document';
-    
-    // Get column name from the column definition
-    const columnName = column && typeof column.header === 'string' 
-      ? column.header 
-      : selectedCell.columnId;
+    const fileData = Array.isArray(selectedRow.content) ? selectedRow.content[0] : null;
+    const fileName = fileData?.name || 'Untitled';
+    const fileType = fileData?.type || 'text/plain';
     
     return {
-      // ExtractionCell fields
-      value: extractionCell?.value || (selectedRow[selectedCell.columnId] as string) || '',
-      confidence: extractionCell?.confidence || 'Medium',
-      quote: extractionCell?.quote || '',
-      page: extractionCell?.page || 1,
-      reasoning: extractionCell?.reasoning || '',
-      status: extractionCell?.status || 'needs_review',
-      // Additional context
-      columnName,
-      sourceFileName,
-      prompt: metadata?.prompt || '',
-      columnId: selectedCell.columnId,
+      id: selectedRow.id,
+      name: fileName,
+      type: fileType,
+      size: fileData?.size || 0,
+      content: selectedRow.processedContent || '',
+      mimeType: fileType,
     };
-  }, [selectedCell, selectedRowId, selectedRow, analysisResults, columnMetadata, columns]);
+  }, [selectedRow]);
+
+  // Create Column for VerificationSidebar
+  const columnForSidebar = React.useMemo<Column | null>(() => {
+    if (!selectedCell) return null;
+    
+    const colDef = columns.find(c => c.id === selectedCell.columnId);
+    const metadata = columnMetadata[selectedCell.columnId];
+    
+    return {
+      id: selectedCell.columnId,
+      name: colDef && typeof colDef.header === 'string' ? colDef.header : selectedCell.columnId,
+      type: metadata?.type || 'short-text',
+      prompt: metadata?.prompt || '',
+      status: 'idle',
+    };
+  }, [selectedCell, columns, columnMetadata]);
+
+  // Create ExtractionCell for VerificationSidebar
+  const cellForSidebar = React.useMemo(() => {
+    if (!selectedCell || !selectedRowId) return null;
+    return analysisResults[selectedRowId]?.[selectedCell.columnId] || null;
+  }, [selectedCell, selectedRowId, analysisResults]);
 
   React.useEffect(() => {
     if (columns.length === 0) {
@@ -323,12 +545,49 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       url: URL.createObjectURL(file),
     }));
 
-    // Update the row with uploaded files
+    // Update the row with uploaded files and set processing status
     setData((prev) => prev.map((row, idx) => 
       idx === rowIndex 
-        ? { ...row, [columnId]: uploadedFiles }
+        ? { ...row, [columnId]: uploadedFiles, processingStatus: 'processing' as const }
         : row
     ));
+
+    // Process the files to extract markdown content
+    try {
+      const result = await processDocumentFiles(files);
+      if (result.success.length > 0) {
+        const processedFile = result.success[0];
+        setData((prev) => prev.map((row, idx) => 
+          idx === rowIndex 
+            ? { 
+                ...row, 
+                processedContent: processedFile.content,
+                processingStatus: 'completed' as const,
+              }
+            : row
+        ));
+      } else if (result.errors.length > 0) {
+        setData((prev) => prev.map((row, idx) => 
+          idx === rowIndex 
+            ? { 
+                ...row, 
+                processingStatus: 'error' as const,
+                errorMessage: result.errors[0].error,
+              }
+            : row
+        ));
+      }
+    } catch (error) {
+      setData((prev) => prev.map((row, idx) => 
+        idx === rowIndex 
+          ? { 
+              ...row, 
+              processingStatus: 'error' as const,
+              errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            }
+          : row
+      ));
+    }
 
     return uploadedFiles;
   }, [currentProjectId, user, uploadFileToVault]);
@@ -442,6 +701,18 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     setEditingColumnId(null);
   }, [editingColumnId, columns, columnMetadata]);
 
+  // Handle viewing a file from the grid
+  const handleViewFile = React.useCallback(({ file, rowIndex, columnId, row }: {
+    file: FileCellData;
+    rowIndex: number;
+    columnId: string;
+    row: RowData;
+  }) => {
+    // Set the selected row and open document sidebar
+    setSelectedRowId(row.id);
+    setSidebarMode('document');
+  }, []);
+
   const dataGridProps = useDataGrid({
     columns,
     data,
@@ -454,6 +725,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     enablePaste: true,
     meta: {
       onColumnEdit: handleColumnEdit,
+      onViewFile: handleViewFile,
     } as any,
   });
 
@@ -545,19 +817,8 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     setIsSidebarExpanded(false);
   }, []);
     
-  // Decode markdown content for display
-  const decodedMarkdown = React.useMemo(() => {
-    if (!selectedRow?.processedContent) return null;
-    try {
-      return decodeURIComponent(escape(atob(selectedRow.processedContent)));
-    } catch {
-      return selectedRow.processedContent;
-    }
-  }, [selectedRow?.processedContent]);
-
-
   return (
-    <TabsContent value="analyser" className="mt-4">
+    <TabsContent value="analyser" className="mt-4 flex flex-row">
       <div 
         className={`flex-1 flex flex-col min-w-0 bg-white relative ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
         onDragOver={(e) => {
@@ -705,18 +966,6 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
             </div>
           </div>
         )}
-        {/* Conversion Progress Overlay */}
-        {isConverting && (
-          <div className="absolute bottom-4 right-4 z-50 bg-white rounded-xl shadow-xl border border-indigo-100 p-4 flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-200">
-            <div className="bg-indigo-50 p-2 rounded-lg">
-              <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Processing Documents</p>
-              <p className="text-xs text-slate-500">Converting files to markdown...</p>
-            </div>
-          </div>
-        )}
         {/* Analysis Progress Overlay */}
         {isProcessing && !isConverting && (
           <div className="absolute bottom-4 right-4 z-50 bg-white rounded-xl shadow-xl border border-emerald-100 p-4 flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-200">
@@ -740,238 +989,23 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
         </div>
       </div>
 
-      {/* Review Sidebar - Document or Cell mode */}
-      <div 
-        className={`transition-all duration-300 ease-in-out border-l border-slate-200 bg-white shadow-xl relative flex ${
-          sidebarMode !== 'none' 
-            ? isSidebarExpanded ? 'w-[900px] translate-x-0' : 'w-[400px] translate-x-0'
-            : 'w-0 translate-x-10 opacity-0 overflow-hidden'
-        }`}
-      >
-        {sidebarMode !== 'none' && (
-          <div className="w-full h-full flex">
-            {/* Left Panel - Answer/Info */}
-            <div className={`${isSidebarExpanded ? 'w-[400px] border-r border-slate-200' : 'w-full'} flex-shrink-0 flex flex-col bg-white`}>
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${sidebarMode === 'cell' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                    {sidebarMode === 'cell' ? <Eye className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                      {sidebarMode === 'cell' ? 'Cell Review' : 'Document Preview'}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-900 truncate max-w-[200px]" title={
-                      sidebarMode === 'cell' ? selectedCellData?.columnName : selectedRow?.content?.[0]?.name
-                    }>
-                      {sidebarMode === 'cell' ? selectedCellData?.columnName : (selectedRow?.content?.[0]?.name || 'Untitled')}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-                    title={isSidebarExpanded ? 'Collapse' : 'Expand to show document'}
-                  >
-                    {isSidebarExpanded ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                  </button>
-                  <button 
-                    onClick={handleCloseSidebar}
-                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Body Content */}
-              {sidebarMode === 'cell' && selectedCellData ? (
-                <div className="flex-1 overflow-y-auto p-6">
-                  {/* Source File */}
-                  <div className="mb-6">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Source Document</h4>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                      <FileText className="w-4 h-4 text-slate-400" />
-                      <span className="text-sm text-slate-700 truncate" title={selectedCellData.sourceFileName}>{selectedCellData.sourceFileName}</span>
-                    </div>
-                  </div>
-
-                  {/* Extracted Value with Confidence */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Extracted Value</h4>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        selectedCellData.confidence === 'High' ? 'bg-emerald-100 text-emerald-700' :
-                        selectedCellData.confidence === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {selectedCellData.confidence} Confidence
-                      </span>
-                    </div>
-                    <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-                      <p className="text-lg text-slate-900 leading-relaxed font-medium whitespace-pre-wrap">
-                        {selectedCellData.value || <span className="text-slate-400 italic">No value</span>}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Quote from Document */}
-                  {selectedCellData.quote && (
-                    <div className="mb-6">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                        <span className="flex items-center gap-1">
-                          <Quote className="w-3 h-3" />
-                          Quote from Document
-                        </span>
-                      </h4>
-                      <div className="p-4 bg-amber-50 rounded-lg border-l-4 border-amber-400">
-                        <p className="text-sm text-slate-700 leading-relaxed italic">
-                          "{selectedCellData.quote}"
-                        </p>
-                        {selectedCellData.page > 0 && (
-                          <p className="text-xs text-slate-500 mt-2">Page {selectedCellData.page}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* AI Reasoning */}
-                  {selectedCellData.reasoning && (
-                    <div className="mb-6">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI Reasoning</h4>
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          {selectedCellData.reasoning}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Prompt Used */}
-                  {selectedCellData.prompt && (
-                    <div className="mb-6">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Extraction Prompt</h4>
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          {selectedCellData.prompt}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* View Document Button (when collapsed) */}
-                  {!isSidebarExpanded && decodedMarkdown && (
-                    <button
-                      onClick={() => setIsSidebarExpanded(true)}
-                      className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Source Document
-                    </button>
-                  )}
-                </div>
-              ) : sidebarMode === 'document' && selectedRow ? (
-                <div className="flex-1 overflow-y-auto p-6">
-                  {/* Status Badge */}
-                  {selectedRow.processingStatus && selectedRow.processingStatus !== 'completed' && (
-                    <div className={`mb-4 px-3 py-2 rounded-lg flex items-center gap-2 text-sm ${
-                      selectedRow.processingStatus === 'processing' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                      selectedRow.processingStatus === 'pending' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
-                      'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
-                      {selectedRow.processingStatus === 'processing' && (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Processing document...</span>
-                        </>
-                      )}
-                      {selectedRow.processingStatus === 'pending' && (
-                        <>
-                          <span className="w-2 h-2 bg-slate-400 rounded-full"></span>
-                          <span>Waiting to process...</span>
-                        </>
-                      )}
-                      {selectedRow.processingStatus === 'error' && (
-                        <>
-                          <AlertCircle className="w-4 h-4" />
-                          <span>{selectedRow.errorMessage || 'Processing failed'}</span>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Document Content (when not expanded) */}
-                  {!isSidebarExpanded && (
-                    <>
-                      {decodedMarkdown ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                          <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 font-mono">
-                            {decodedMarkdown}
-                          </pre>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <FileText className="w-12 h-12 text-slate-200 mb-4" />
-                          <p className="text-sm text-slate-500 mb-2">No content available</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Right Panel - Full Document (when expanded) */}
-            {isSidebarExpanded && (
-              <div className="flex-1 bg-slate-100 flex flex-col overflow-y-auto">
-                <div className="p-8">
-                  <div className="max-w-[600px] mx-auto bg-white shadow-lg p-8">
-                    {decodedMarkdown ? (
-                      <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 font-mono">
-                        {(() => {
-                          // If we have a quote to highlight (in cell mode), split and highlight
-                          const quoteToHighlight = sidebarMode === 'cell' && selectedCellData?.quote;
-                          if (quoteToHighlight && decodedMarkdown.includes(quoteToHighlight)) {
-                            const parts = decodedMarkdown.split(quoteToHighlight);
-                            return parts.map((part: string, i: number) => (
-                              <React.Fragment key={i}>
-                                {part}
-                                {i < parts.length - 1 && (
-                                  <mark 
-                                    className="bg-amber-200 text-slate-900 px-0.5 rounded scroll-mt-32"
-                                    ref={i === 0 ? (el) => {
-                                      // Auto-scroll to first highlighted quote
-                                      if (el) {
-                                        setTimeout(() => {
-                                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        }, 100);
-                                      }
-                                    } : undefined}
-                                  >
-                                    {quoteToHighlight}
-                                  </mark>
-                                )}
-                              </React.Fragment>
-                            ));
-                          }
-                          return decodedMarkdown;
-                        })()}
-                      </pre>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <FileText className="w-12 h-12 text-slate-200 mb-4" />
-                        <p className="text-sm text-slate-500">No document content available</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Verification Sidebar */}
+      {sidebarMode !== 'none' && documentForSidebar && (
+        <div 
+          className={`h-[600px] transition-all duration-300 ease-in-out border-l border-slate-200 bg-white ${
+            isSidebarExpanded ? 'w-[900px]' : 'w-[400px]'
+          }`}
+        >
+          <VerificationSidebar
+            cell={cellForSidebar}
+            document={documentForSidebar}
+            column={columnForSidebar}
+            onClose={handleCloseSidebar}
+            isExpanded={isSidebarExpanded}
+            onExpand={setIsSidebarExpanded}
+          />
+        </div>
+      )}
 
       {/* Add/Edit Column Menu */}
       {addColumnAnchor && (

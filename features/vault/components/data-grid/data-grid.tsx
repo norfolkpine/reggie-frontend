@@ -169,6 +169,8 @@ export function DataGrid<TData>({
                     style={{
                       ...getCommonPinningStyles({ column: header.column, dir }),
                       width: `calc(var(--col-${header.column.id}-size, ${COLUMN_SIZE.DEFAULT}) * 1px)`,
+                      minWidth: `calc(var(--col-${header.column.id}-size, ${COLUMN_SIZE.DEFAULT}) * 1px)`,
+                      maxWidth: `calc(var(--col-${header.column.id}-size, ${COLUMN_SIZE.DEFAULT}) * 1px)`,
                     }}
                   >
                     {header.isPlaceholder ? null : typeof header.column

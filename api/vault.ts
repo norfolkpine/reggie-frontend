@@ -237,3 +237,81 @@ export async function moveVaultFiles(fileIds: number[], targetFolderId: number):
     throw new Error(message || 'Failed to move files');
   }
 }
+
+// Analysis types
+export interface AnalyzeDocumentRequest {
+  document_id: string;
+  document_content: string;
+  document_name: string;
+  columns: {
+    id: string;
+    name: string;
+    type: string;
+    prompt: string;
+  }[];
+  model_id?: string;
+}
+
+export interface AnalyzeColumnResult {
+  value: string;
+  confidence: 'High' | 'Medium' | 'Low';
+  quote: string;
+  page?: number;
+  reasoning: string;
+}
+
+export interface AnalyzeDocumentResponse {
+  document_id: string;
+  results: {
+    [columnId: string]: AnalyzeColumnResult;
+  };
+}
+
+export interface AnalyzeBatchRequest {
+  documents: AnalyzeDocumentRequest[];
+  model_id?: string;
+}
+
+export interface AnalyzeBatchResponse {
+  results: AnalyzeDocumentResponse[];
+  errors?: {
+    document_id: string;
+    error: string;
+  }[];
+}
+
+/**
+ * Analyze documents using AI to extract column data
+ */
+export async function analyzeDocuments(
+  documents: {
+    id: string;
+    content: string;
+    name: string;
+  }[],
+  columns: {
+    id: string;
+    name: string;
+    type: string;
+    prompt: string;
+  }[],
+  modelId?: string
+): Promise<AnalyzeBatchResponse> {
+  try {
+    const payload: AnalyzeBatchRequest = {
+      documents: documents.map(doc => ({
+        document_id: doc.id,
+        document_content: doc.content,
+        document_name: doc.name,
+        columns: columns,
+      })),
+      model_id: modelId,
+    };
+
+    const response = await api.post('/api/v1/opie/analyze/', payload);
+    return response as AnalyzeBatchResponse;
+  } catch (error) {
+    const { message } = handleApiError(error);
+    throw new Error(message || 'Failed to analyze documents');
+  }
+}

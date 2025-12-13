@@ -184,7 +184,10 @@ export function VaultManager() {
           {
             label: "Export CSV",
             onClick: () => {
-              console.log("Export CSV clicked");
+              // Dispatch event to trigger CSV export in AnalyserTabContent
+              window.dispatchEvent(new CustomEvent('analyser-export-csv', {
+                detail: { projectName: project?.name || 'export' }
+              }));
             },
             variant: "outline",
             size: "sm",
@@ -202,7 +205,8 @@ export function VaultManager() {
           {
             label: "Run Analysis",
             onClick: () => {
-              console.log("Run Analysis clicked");
+              // Dispatch event to trigger analysis in AnalyserTabContent
+              window.dispatchEvent(new CustomEvent('analyser-run-analysis'));
             },
             variant: "default",
             size: "sm",

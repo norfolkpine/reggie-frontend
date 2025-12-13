@@ -8,8 +8,6 @@ import {
   Plus,
   MessageSquare,
   Search,
-  Tag,
-  Filter,
   Star,
   FileText,
   Code,
@@ -283,25 +281,6 @@ export default function Projects() {
           </Button> */}
         </div>
 
-        {/* Tag filters */}
-        <div className="flex items-center gap-2 mb-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filter by tags:</span>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {allTags.map((tag) => (
-            <Button
-              key={tag}
-              variant={selectedTags.includes(tag) ? "default" : "outline"}
-              size="sm"
-              className="rounded-full"
-              onClick={() => toggleTag(tag)}
-            >
-              <Tag className="h-3.5 w-3.5 mr-1" />
-              {tag}
-            </Button>
-          ))}
-        </div>
 
         {/* View mode selector */}
         <div className="flex rounded-md overflow-hidden border w-fit">
