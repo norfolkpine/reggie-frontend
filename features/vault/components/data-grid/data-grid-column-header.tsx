@@ -396,6 +396,10 @@ function DataGridColumnResizerImpl<TData, TValue>({
       const handleMouseUp = () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+        // Reset the drag flag after a short delay to allow double-click detection
+        setTimeout(() => {
+          hasDragged.current = false;
+        }, 100);
       };
       
       document.addEventListener("mousemove", handleMouseMove);

@@ -157,7 +157,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     // Rows
     const rows = data.map((doc, index) => {
       // Get document name from content field
-      let docName: string;
+      let docName: string = `Row ${index + 1}`;
       const content = doc.content as FileCellData[] | string | undefined;
       
       if (Array.isArray(content) && content.length > 0 && content[0]?.name) {
@@ -166,9 +166,6 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       } else if (typeof content === 'string' && content.trim()) {
         // Direct text content - use the text (truncated if too long)
         docName = content.length > 50 ? content.substring(0, 50) + '...' : content;
-      } else {
-        // Fallback to row number
-        docName = `Row ${index + 1}`;
       }
       
       const rowData = [`"${docName.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '')}"`];
