@@ -98,9 +98,20 @@ export function CreateCollectionDialog({ isOpen, onClose, onCollectionCreated, m
         onCollectionCreated();
         onClose();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(mode === 'edit' ? 'Failed to update collection:' : 'Failed to create collection:', error);
-      toast.error(mode === 'edit' ? 'Failed to update collection' : 'Failed to create collection');
+      // Extract meaningful error message from API response
+      let errorMessage = mode === 'edit' ? 'Failed to update collection' : 'Failed to create collection';
+      if (error?.message) {
+        errorMessage += `: ${error.message}`;
+      } else if (error?.detail) {
+        errorMessage += `: ${error.detail}`;
+      } else if (error?.name && Array.isArray(error.name)) {
+        errorMessage += `: ${error.name.join(', ')}`;
+      } else if (typeof error === 'string') {
+        errorMessage += `: ${error}`;
+      }
+      toast.error(errorMessage);
     } finally {
       setIsCreating(false);
     }

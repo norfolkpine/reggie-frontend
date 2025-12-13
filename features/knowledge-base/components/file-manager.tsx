@@ -961,6 +961,17 @@ export function FileManager() {
     return value.includes(cellValue);
   };
 
+  // Custom filter for type column that handles 'all', 'folders', 'files'
+  const typeFilter: ColumnDef<FileOrFolder>["filterFn"] = (row, id, value) => {
+    // If no filter value or 'all', show everything
+    if (!value || value === 'all') return true;
+    // Check the original row type (not the displayed collection_type)
+    const rowType = row.original.type;
+    if (value === 'folders') return rowType === 'folder';
+    if (value === 'files') return rowType === 'file';
+    return true;
+  };
+
   const columns = useMemo<ColumnDef<FileOrFolder>[]>(
     () => [
       // Checkbox column
@@ -989,6 +1000,7 @@ export function FileManager() {
         id: "type",
         header: 'Type',
         accessorFn: (row) => row.type === 'folder' ? (row.folder?.collection_type || 'Folder') : (row.file_type || 'Unknown'),
+        filterFn: typeFilter,
         enableSorting: true,
       },
       // Upload Date column
