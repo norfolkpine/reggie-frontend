@@ -308,7 +308,7 @@ export async function analyzeDocuments(
       model_id: modelId,
     };
 
-    const response = await api.post('/api/v1/opie/analyze/', payload);
+    const response = await api.post('/opie/api/v1/analyze/', payload);
     return response as AnalyzeBatchResponse;
   } catch (error) {
     const { message } = handleApiError(error);

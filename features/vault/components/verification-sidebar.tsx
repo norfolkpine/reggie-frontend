@@ -1,6 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, FileText, AlertCircle, ChevronLeft, ChevronRight } from './Icons';
+import { X, FileText, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ExtractionCell, DocumentFile, Column } from '../types';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface VerificationSidebarProps {
   cell?: ExtractionCell | null;
@@ -25,16 +38,13 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
   
   useEffect(() => {
     if (document) {
-        // Decode Base64 content (which is now always Markdown/Text from App.tsx)
         try {
             const cleanContent = document.content.replace(/^data:.*;base64,/, '');
             const binaryString = atob(cleanContent);
             try {
-                // Handle UTF-8 characters properly
                 const decoded = decodeURIComponent(escape(binaryString));
                 setDecodedContent(decoded);
-            } catch (e) {
-                // Fallback for simple ASCII or already decoded parts
+        } catch {
                 setDecodedContent(binaryString);
             }
         } catch (e) {
@@ -44,10 +54,8 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
     }
   }, [document]);
 
-  // Auto-scroll to highlighted text when expanded or cell changes
   useEffect(() => {
     if (isExpanded && cell?.quote) {
-        // Small timeout to ensure DOM is rendered
         const timer = setTimeout(() => {
             if (scrollContainerRef.current) {
                 const mark = scrollContainerRef.current.querySelector('mark');
@@ -62,29 +70,28 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
 
   const handleCitationClick = () => {
     onExpand(true);
-    // Scroll handled by useEffect
   };
 
-  // Helper to render text with highlight (HTML/TXT)
   const renderHighlightedContent = () => {
     if (!cell || !cell.quote || !decodedContent) {
-        return <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{decodedContent}</div>;
+      return (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {decodedContent}
+        </div>
+      );
     }
 
     const quote = cell.quote.trim();
-    if (!quote) return <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{decodedContent}</div>;
+    if (!quote) {
+      return (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {decodedContent}
+        </div>
+      );
+    }
 
-    // Robust Fuzzy Matcher
-    // 1. Escape regex characters in the quote
     const escapedQuote = quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // 2. Replace whitespace with a flexible pattern that matches:
-    //    - spaces
-    //    - newlines
-    //    - common markdown characters that might appear in source but not quote (like **, _, #)
     const loosePattern = escapedQuote.replace(/\s+/g, '[\\s\\W]*');
-    
-    // 3. Create regex with capturing group to split and keep delimiters
     const looseQuoteRegex = new RegExp(`(${loosePattern})`, 'gi');
 
     const parts = decodedContent.split(looseQuoteRegex);
@@ -92,30 +99,31 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
     if (parts.length === 1) {
         return (
             <div className="relative">
-                <div className="bg-red-50 border border-red-200 rounded p-2 mb-4 text-xs text-red-700 flex items-center gap-2 sticky top-0 z-10">
-                    <AlertCircle className="w-3 h-3" />
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
                     Exact quote not found. Showing full text.
+            </AlertDescription>
+          </Alert>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {decodedContent}
                 </div>
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{decodedContent}</div>
             </div>
         );
     }
 
     return (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
             {parts.map((part, i) => {
-                // Check if this part matches the loose pattern
-                // Since we split by capturing group, matches will be at odd indices (1, 3, 5...)
-                // IF the first part is empty (match at start), then matches are 1, 3...
-                // IF the first part is text, matches are 1, 3...
-                // Basically, split(regexWithCapture) returns [pre, match, post]
                 const isMatch = looseQuoteRegex.test(part);
-                // Reset regex lastIndex because test() advances it if global
                 looseQuoteRegex.lastIndex = 0; 
 
                 if (isMatch) {
                     return (
-                        <mark key={i} className="bg-yellow-200 text-slate-900 px-0.5 rounded-sm border-b-2 border-yellow-400 font-medium">
+              <mark
+                key={i}
+                className="bg-primary/20 text-foreground px-0.5 rounded-sm border-b-2 border-primary font-medium"
+              >
                             {part}
                         </mark>
                     );
@@ -126,116 +134,156 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
     );
   };
 
+  const getConfidenceBadgeVariant = (confidence: string) => {
+    switch (confidence) {
+      case 'High':
+        return 'default';
+      case 'Medium':
+        return 'secondary';
+      default:
+        return 'destructive';
+    }
+  };
+
   const renderAnswerPanel = () => (
-    <div className="flex flex-col h-full bg-white">
-         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white z-10">
+    <Card className="flex flex-col h-full rounded-none border-0 border-r">
+      <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                    <FileText className="w-5 h-5" />
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <FileText className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+            <CardDescription className="text-[10px] uppercase tracking-wider font-bold">
                         {cell ? 'Analyst Review' : 'Document Preview'}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-900 truncate max-w-[200px]" title={document?.name}>
+            </CardDescription>
+            <CardTitle className="text-sm font-semibold truncate max-w-[200px]" title={document?.name}>
                         {document?.name}
-                    </span>
+            </CardTitle>
                 </div>
             </div>
             <div className="flex items-center gap-1">
-                <button 
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
                     onClick={() => onExpand(!isExpanded)}
-                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-                    title={isExpanded ? 'Collapse' : 'Expand to show document'}
                 >
-                    {isExpanded ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                </button>
-                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-                    <X className="w-5 h-5" />
-                </button>
-            </div>
+                  {isExpanded ? (
+                    <ChevronRight className="h-5 w-5" />
+                  ) : (
+                    <ChevronLeft className="h-5 w-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isExpanded ? 'Collapse' : 'Expand to show document'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
+      </CardHeader>
 
-        {/* Body */}
+      <Separator />
+
+      <CardContent className="flex-1 overflow-hidden p-0">
         {cell && column ? (
-            <div className="p-6 flex-1 overflow-y-auto">
+          <ScrollArea className="h-full">
+            <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded">
+                <Badge variant="outline" className="text-xs font-bold uppercase tracking-wider">
                         {column.name}
-                    </span>
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
-                        cell.confidence === 'High' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        cell.confidence === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        'bg-red-50 text-red-700 border-red-200'
-                    }`}>
+                </Badge>
+                <Badge variant={getConfidenceBadgeVariant(cell.confidence)}>
                         {cell.confidence} Confidence
-                    </span>
+                </Badge>
                 </div>
 
                 <div className="mb-8">
-                     <div className="text-lg text-slate-900 leading-relaxed font-medium">
+                <p className="text-lg text-foreground leading-relaxed font-medium">
                         {cell.value}
-                    </div>
+                </p>
                 </div>
                 
                 <div className="space-y-4">
                     <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI Reasoning</h4>
-                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-sm text-slate-600 leading-relaxed inline">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    AI Reasoning
+                  </h4>
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3">
+                      <p className="text-sm text-muted-foreground leading-relaxed inline">
                                 {cell.reasoning}
                             </p>
                             
-                            {/* Inline Citation Chip */}
                             {cell.quote && (
-                                <button 
+                        <Button
+                          variant="secondary"
+                          size="sm"
                                     onClick={handleCitationClick}
-                                    className="inline-flex items-center justify-center ml-1.5 align-middle px-1.5 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-bold rounded cursor-pointer border border-indigo-200 hover:border-indigo-300 transition-all transform active:scale-95"
-                                    title="View in Document"
+                          className="inline-flex ml-1.5 align-middle h-5 px-1.5 text-[10px] font-bold"
                                 >
                                     {cell.page ? `p.${cell.page}` : 'Src'}
-                                </button>
+                        </Button>
                             )}
-                        </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                </div>
                 </div>
             </div>
+          </ScrollArea>
         ) : (
-            <div className="p-6 flex-1 overflow-y-auto">
+          <ScrollArea className="h-full">
+            <div className="p-6">
                 {decodedContent ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 font-mono">
+                <Card>
+                  <CardContent className="p-4">
+                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground font-mono">
                             {decodedContent}
                         </pre>
-                    </div>
+                  </CardContent>
+                </Card>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <FileText className="w-12 h-12 text-slate-200 mb-4" />
-                        <p className="text-sm text-slate-500 mb-2">No content available</p>
+                  <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                  <p className="text-sm text-muted-foreground mb-2">No content available</p>
                         {!isExpanded && (
-                            <button onClick={() => onExpand(true)} className="mt-4 text-indigo-600 text-xs font-bold hover:underline">
+                    <Button variant="link" onClick={() => onExpand(true)} className="mt-4">
                                 Open Document Viewer
-                            </button>
+                    </Button>
                         )}
                     </div>
                 )}
             </div>
+          </ScrollArea>
         )}
-    </div>
+      </CardContent>
+    </Card>
   );
 
   const renderDocumentPanel = () => (
-      <div className="h-full flex flex-col bg-slate-100 border-l border-slate-200 overflow-hidden">
-          <div className="flex-1 bg-slate-200 relative flex flex-col min-h-0">
-                <div 
-                    ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto p-8 md:p-12 scroll-smooth"
-                >
-                    <div className="max-w-[800px] w-full bg-white shadow-lg min-h-[800px] p-8 md:p-12 relative mx-auto text-left">
+    <div className="h-full flex flex-col bg-muted border-l overflow-hidden">
+      <div className="flex-1 bg-muted/50 relative flex flex-col min-h-0">
+        <ScrollArea className="flex-1" ref={scrollContainerRef}>
+          <div className="p-8 md:p-12">
+            <Card className="max-w-[800px] w-full min-h-[800px] mx-auto">
+              <CardContent className="p-8 md:p-12 text-left">
                         {renderHighlightedContent()}
-                    </div>
-                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
           </div>
       </div>
   );
@@ -243,19 +291,23 @@ export const VerificationSidebar: React.FC<VerificationSidebarProps> = ({
   if (!document) return null;
 
   return (
+    <TooltipProvider>
     <div className="h-full w-full flex">
-        {/* Left Panel (Analyst) - Always Visible */}
-        <div className={`${isExpanded ? 'w-[400px]' : 'w-full'} flex-shrink-0 transition-all duration-300 z-20`}>
+        <div
+          className={cn(
+            'flex-shrink-0 transition-all duration-300 z-20',
+            isExpanded ? 'w-[400px]' : 'w-full'
+          )}
+        >
              {renderAnswerPanel()}
         </div>
 
-        {/* Right Panel (Document) - Conditionally Visible */}
         {isExpanded && (
             <div className="flex-1 animate-in slide-in-from-right duration-300 min-w-0">
                 {renderDocumentPanel()}
             </div>
         )}
     </div>
+    </TooltipProvider>
   );
 };
-
