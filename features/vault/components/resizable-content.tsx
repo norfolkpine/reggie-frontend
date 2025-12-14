@@ -244,16 +244,6 @@ export const ResizableContent = memo(function ResizableContent({
       )}
       {...dragHandlers}
     >
-      {/* Drag overlay - shows when files are being dragged over */}
-      {isDragOver && (
-        <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
-          <div className="text-center">
-            <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
-            <p className="text-muted-foreground mt-2">Supported formats: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG, JPEG</p>
-          </div>
-        </div>
-      )}
-
       {/* Error overlay - shows validation errors */}
       {error && (
         <div className="absolute inset-0 bg-destructive/10 border-4 border-dotted border-destructive rounded-lg flex items-center justify-center z-50 pointer-events-none">
