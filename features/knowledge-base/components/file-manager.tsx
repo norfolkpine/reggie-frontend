@@ -517,7 +517,7 @@ export function FileManager() {
 
   // Rebuild breadcrumbs when navigation path changes
   useEffect(() => {
-    console.log('useEffect triggered:', { navigationPathLength: navigationPath.length, currentCollectionUuid });
+    console.log('useEffect triggered:', { navigationPathLength: navigationPath.length, currentCollectionUuid, isLoading });
 
     // Don't run breadcrumb logic if we're at root level
     if (!currentCollectionUuid) {
@@ -528,15 +528,28 @@ export function FileManager() {
       return;
     }
 
+    // Skip rebuilding breadcrumbs if we're currently loading data
+    // fetchData will handle breadcrumbs from the API response, preventing placeholder breadcrumbs
+    if (isLoading) {
+      console.log('Skipping breadcrumb rebuild - data is loading, fetchData will handle breadcrumbs');
+      return;
+    }
+
     if (navigationPath.length > 0 && currentCollectionUuid) {
-      console.log('Calling rebuildBreadcrumbsFromPath');
-      rebuildBreadcrumbsFromPath();
+      // Only rebuild breadcrumbs if we don't already have them set
+      // This prevents overwriting breadcrumbs that were just set by fetchData
+      if (breadcrumbs.length === 0 || breadcrumbs.length !== navigationPath.length) {
+        console.log('Calling rebuildBreadcrumbsFromPath - breadcrumbs missing or incomplete');
+        rebuildBreadcrumbsFromPath();
+      } else {
+        console.log('Skipping breadcrumb rebuild - breadcrumbs already set correctly');
+      }
     } else if (navigationPath.length === 0 && breadcrumbs.length > 0) {
       // Only clear breadcrumbs if they're not already empty
       console.log('Clearing breadcrumbs in useEffect');
       updateNavigationState({ breadcrumbs: [] });
     }
-  }, [navigationPath, currentCollectionUuid, breadcrumbs.length]);
+  }, [navigationPath, currentCollectionUuid, breadcrumbs.length, isLoading]);
 
 
 
@@ -691,17 +704,35 @@ export function FileManager() {
           if (data.breadcrumb_path && data.breadcrumb_path.length > 0) {
             console.log('Using breadcrumb path from backend response');
             // Convert breadcrumb path to Collection objects for breadcrumb display
-            const breadcrumbCollections = data.breadcrumb_path.map((item, index) => ({
-              uuid: item.uuid,
-              name: item.name,
-              description: '',
-              collection_type: 'folder' as any,
-              sort_order: index,
-              children: [],
-              files: [],
-              full_path: '',
-              created_at: '',
-            } as Collection));
+            const breadcrumbCollections = data.breadcrumb_path.map((item, index) => {
+              // Try to get the name from the backend response, cache, or use a fallback
+              let collectionName = item.name;
+              
+              // If name is missing, empty, or looks like just a number, try cache
+              if (!collectionName || collectionName.trim() === '' || /^\d+$/.test(collectionName)) {
+                const cachedCollection = getCachedCollection(item.uuid);
+                if (cachedCollection && cachedCollection.name && cachedCollection.name.trim() !== '') {
+                  collectionName = cachedCollection.name;
+                  console.log(`Using cached name for breadcrumb ${index}: ${collectionName}`);
+                } else {
+                  // Final fallback - use a generic name
+                  collectionName = `Collection ${index + 1}`;
+                  console.warn(`Breadcrumb ${index} has invalid name "${item.name}", using fallback: ${collectionName}`);
+                }
+              }
+              
+              return {
+                uuid: item.uuid,
+                name: collectionName,
+                description: '',
+                collection_type: 'folder' as any,
+                sort_order: index,
+                children: [],
+                files: [],
+                full_path: '',
+                created_at: '',
+              } as Collection;
+            });
             
             updateBreadcrumbs(breadcrumbCollections);
           } else {
@@ -1226,6 +1257,16 @@ export function FileManager() {
         
         // Cache the minimal collection to avoid recreating it
         cacheCollection(collection);
+      } else {
+        // Validate that the cached collection has a valid name
+        // If name is missing, empty, or just a number, use a fallback
+        if (!collection.name || collection.name.trim() === '' || /^\d+$/.test(collection.name)) {
+          console.warn(`Cached collection ${uuid} has invalid name "${collection.name}", using fallback`);
+          collection = {
+            ...collection,
+            name: `Collection ${i + 1}`,
+          };
+        }
       }
       
       // At this point, collection is guaranteed to be defined
