@@ -370,14 +370,41 @@ function DataGridColumnResizerImpl<TData, TValue>({
   label,
 }: DataGridColumnResizerProps<TData, TValue>) {
   const defaultColumnDef = table._getDefaultColumnDef();
+  const hasDragged = React.useRef(false);
+  const initialX = React.useRef(0);
 
-  const onDoubleClick = React.useCallback(() => {
-    header.column.resetSize();
-  }, [header.column]);
+  const onDoubleClick = React.useCallback((event: React.MouseEvent) => {
+    // Only prevent default if a drag has occurred, otherwise allow double-click
+    if (hasDragged.current) {
+      event.preventDefault();
+    }
+  }, []);
 
   const handleMouseDown = React.useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
+      hasDragged.current = false;
+      initialX.current = event.clientX;
+      
+      const handleMouseMove = (e: MouseEvent) => {
+        // Consider it a drag if moved more than 3px
+        if (Math.abs(e.clientX - initialX.current) > 3) {
+          hasDragged.current = true;
+        }
+      };
+      
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        // Reset the drag flag after a short delay to allow double-click detection
+        setTimeout(() => {
+          hasDragged.current = false;
+        }, 200);
+      };
+      
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      
       const resizeHandler = header.getResizeHandler();
       if (resizeHandler) {
         resizeHandler(event);
@@ -414,7 +441,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
       aria-valuemax={defaultColumnDef.maxSize}
       tabIndex={0}
       className={cn(
-        "after:-translate-x-1/2 -end-px absolute top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none select-none bg-border transition-opacity after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[8px] after:content-[''] after:pointer-events-auto hover:bg-primary focus:bg-primary focus:outline-none pointer-events-none",
+        "after:-translate-x-1/2 -end-px absolute top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none select-none bg-border transition-opacity after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[8px] after:content-[''] hover:bg-primary focus:bg-primary focus:outline-none",
         header.column.getIsResizing()
           ? "bg-primary pointer-events-auto"
           : "opacity-0 hover:opacity-100",
