@@ -83,7 +83,7 @@ export const tokens = {
           'greyscale-950': '#1E1E1E',
           'greyscale-1000': '#161616',
           'primary-action': '#1212FF',
-          'primary-bg': '#FAFAFA',
+          'primary-bg': '#FFFFFF',
           'blue-400': '#7AB1E8',
           'blue-500': '#417DC4',
           'blue-600': '#3558A2',
