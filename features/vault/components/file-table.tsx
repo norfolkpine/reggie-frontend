@@ -61,9 +61,10 @@ interface FileTableProps {
   onFolderClick: (folder: VaultFile) => void;
   onFilePreview: (file: VaultFile) => void;
   onFileDownload: (file: VaultFile) => void;
-  onReIngest: (file: VaultFile) => void;
+  onReIngest?: (file: VaultFile) => void;
   onFileRename: (file: VaultFile) => void;
   onFileDelete: (fileId: number) => void;
+  onFileAnalyze?: (file: VaultFile) => void;
   onDragStart?: (event: DragEvent, fileId: number) => void;
   onDragEnd?: () => void;
   onDragOver?: (event: DragEvent, folderId?: number) => void;
@@ -375,10 +376,12 @@ export function FileTable({
                           Analyse
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => onReIngest(file)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        ReIngest
-                      </DropdownMenuItem>
+                      {onReIngest && (
+                        <DropdownMenuItem onClick={() => onReIngest(file)}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          ReIngest
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => onFileDownload(file)}>
                         <Download className="mr-2 h-4 w-4" />
                         Download
