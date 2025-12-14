@@ -24,6 +24,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -388,6 +389,7 @@ export function FileManager() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string; type: 'file' | 'folder' } | null>(null);
   const [renameName, setRenameName] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // Combined items for display
   const combinedItems = useMemo<FileOrFolder[]>(() => {
@@ -514,6 +516,60 @@ export function FileManager() {
   useEffect(() => {
     fetchData();
   }, [currentCollectionUuid, currentPage, itemsPerPage, debouncedSearchValue, currentFilters, sorting]);
+
+  // Global drag and drop handler for file uploads
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.types.includes('Files')) {
+        setIsDraggingOver(true);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Only hide if we're leaving the window
+      if (e.clientX <= 0 || e.clientY <= 0 || 
+          e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+        setIsDraggingOver(false);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(false);
+      
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0 && !isUploadDialogOpen) {
+        // Open upload dialog when files are dropped
+        setIsUploadDialogOpen(true);
+        // Files will be handled by the FileUpload component once dialog opens
+      }
+    };
+
+    // Only add listeners if upload dialog is not already open
+    if (!isUploadDialogOpen) {
+      document.addEventListener('dragenter', handleDragEnter);
+      document.addEventListener('dragover', handleDragOver);
+      document.addEventListener('dragleave', handleDragLeave);
+      document.addEventListener('drop', handleDrop);
+    }
+
+    return () => {
+      document.removeEventListener('dragenter', handleDragEnter);
+      document.removeEventListener('dragover', handleDragOver);
+      document.removeEventListener('dragleave', handleDragLeave);
+      document.removeEventListener('drop', handleDrop);
+    };
+  }, [isUploadDialogOpen]);
 
   // Rebuild breadcrumbs when navigation path changes
   useEffect(() => {
@@ -1335,7 +1391,19 @@ export function FileManager() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full relative">
+        {/* Global drag overlay */}
+        {isDraggingOver && !isUploadDialogOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-lg p-8 border-4 border-dashed border-primary shadow-xl">
+              <div className="text-center">
+                <Upload className="w-12 h-12 mx-auto mb-4 text-primary" />
+                <p className="text-xl font-semibold text-foreground">Drop files here to upload</p>
+                <p className="text-sm text-muted-foreground mt-2">Release to open upload dialog</p>
+              </div>
+            </div>
+          </div>
+        )}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">File Manager</h2>
