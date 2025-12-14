@@ -374,8 +374,10 @@ function DataGridColumnResizerImpl<TData, TValue>({
   const initialX = React.useRef(0);
 
   const onDoubleClick = React.useCallback((event: React.MouseEvent) => {
-    // Disabled to prevent accidental column reset while trying to resize
-    event.preventDefault();
+    // Only prevent default if a drag has occurred, otherwise allow double-click
+    if (hasDragged.current) {
+      event.preventDefault();
+    }
   }, []);
 
   const handleMouseDown = React.useCallback(
@@ -394,10 +396,10 @@ function DataGridColumnResizerImpl<TData, TValue>({
       const handleMouseUp = () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
-        // Reset after a short delay to allow double-click detection
+        // Reset the drag flag after a short delay to allow double-click detection
         setTimeout(() => {
           hasDragged.current = false;
-        }, 300);
+        }, 200);
       };
       
       document.addEventListener("mousemove", handleMouseMove);

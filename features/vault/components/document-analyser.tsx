@@ -12,7 +12,7 @@ import { useDataGrid } from "./hooks/use-data-grid";
 import { AddColumnMenu } from "./AddColumnMenu";
 import type { ColumnType, ExtractionCell } from "../types";
 import type { FileCellData } from "./types/data-grid";
-import { Table, ChevronDown, Square, Play, Zap, Cpu, Brain, Download, Upload, Loader2, CheckCircle2 } from "./Icons";
+import { Upload, Loader2 } from "./Icons";
 import { TabsContent } from "@/components/ui/tabs";
 
 import { processDocumentFiles } from "./services/documentProcessingService";
@@ -78,6 +78,11 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       convertingToastRef.current?.dismiss();
       convertingToastRef.current = null;
     }
+    return () => {
+      // Cleanup: dismiss toast if still present on unmount
+      convertingToastRef.current?.dismiss();
+      convertingToastRef.current = null;
+    };
   }, [isConverting, toast]);
   const [addColumnAnchor, setAddColumnAnchor] = React.useState<DOMRect | null>(null);
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null);
@@ -152,7 +157,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
     // Rows
     const rows = data.map((doc, index) => {
       // Get document name from content field
-      let docName = 'Untitled';
+      let docName: string = `Row ${index + 1}`;
       const content = doc.content as FileCellData[] | string | undefined;
       
       if (Array.isArray(content) && content.length > 0 && content[0]?.name) {
@@ -161,19 +166,16 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       } else if (typeof content === 'string' && content.trim()) {
         // Direct text content - use the text (truncated if too long)
         docName = content.length > 50 ? content.substring(0, 50) + '...' : content;
-      } else {
-        // Fallback to row number
-        docName = `Row ${index + 1}`;
       }
       
-      const rowData = [`"${docName.replace(/"/g, '""')}"`];
+      const rowData = [`"${docName.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '')}"`];
       
       exportColumns.forEach(col => {
         const colId = col.id || '';
         // Check analysisResults first, then fall back to direct row data
         const cellValue = analysisResults[doc.id]?.[colId]?.value || doc[colId] || '';
-        // Escape double quotes with two double quotes
-        const val = String(cellValue).replace(/"/g, '""');
+        // Escape double quotes with two double quotes and replace newlines/carriage returns
+        const val = String(cellValue).replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
         rowData.push(`"${val}"`);
       });
       return rowData.join(",");
@@ -307,13 +309,17 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
 
   // Listen for CSV export event from header button
   React.useEffect(() => {
-    const handleExportEvent = (event: CustomEvent<{ projectName: string }>) => {
-      handleExportCSV(event.detail.projectName);
+    const handleExportEvent = (event: Event) => {
+      // Ensure the event is a CustomEvent with the expected detail
+      const customEvent = event as CustomEvent<{ projectName: string }>;
+      if (customEvent.detail && typeof customEvent.detail.projectName === "string") {
+        handleExportCSV(customEvent.detail.projectName);
+      }
     };
 
-    window.addEventListener('analyser-export-csv', handleExportEvent as EventListener);
+    window.addEventListener('analyser-export-csv', handleExportEvent);
     return () => {
-      window.removeEventListener('analyser-export-csv', handleExportEvent as EventListener);
+      window.removeEventListener('analyser-export-csv', handleExportEvent);
     };
   }, [handleExportCSV]);
 
@@ -992,7 +998,7 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       {/* Verification Sidebar */}
       {sidebarMode !== 'none' && documentForSidebar && (
         <div 
-          className={`h-[600px] transition-all duration-300 ease-in-out border-l border-slate-200 bg-white ${
+          className={`h-full transition-all duration-300 ease-in-out border-l border-slate-200 bg-white ${
             isSidebarExpanded ? 'w-[900px]' : 'w-[400px]'
           }`}
         >
