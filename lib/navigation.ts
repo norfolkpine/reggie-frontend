@@ -1,4 +1,20 @@
-import { BookOpen, FolderGit2, MessageSquare, Search, FileText, LayoutGrid, Shield, Workflow, Database } from "lucide-react"
+import {
+  BadgeCheck,
+  BarChart3,
+  BookOpen,
+  Calendar,
+  Database,
+  FileText,
+  FolderGit2,
+  Inbox,
+  LayoutGrid,
+  ListChecks,
+  MessageSquare,
+  Search,
+  Shield,
+  Workflow,
+  Zap,
+} from "lucide-react"
 
 export type Route = {
   name: string
@@ -37,6 +53,42 @@ export const routes = {
     path: "/documents",
     icon: FileText,
     description: "Create and manage documents"
+  },
+  compliance: {
+    name: "Compliance",
+    path: "/compliance",
+    icon: BadgeCheck,
+    description: "Compliance tools and reporting"
+  },
+  complianceInbox: {
+    name: "Inbox",
+    path: "/compliance/inbox",
+    icon: Inbox,
+    description: "Compliance inbox"
+  },
+  complianceSchedule: {
+    name: "Schedule",
+    path: "/compliance/schedule",
+    icon: Calendar,
+    description: "Compliance schedule"
+  },
+  complianceAllTasks: {
+    name: "All Tasks",
+    path: "/compliance/all-tasks",
+    icon: ListChecks,
+    description: "All compliance tasks"
+  },
+  complianceReports: {
+    name: "Reports",
+    path: "/compliance/reports",
+    icon: BarChart3,
+    description: "Compliance reporting"
+  },
+  complianceAutomations: {
+    name: "Automations",
+    path: "/compliance/automations",
+    icon: Zap,
+    description: "Compliance automations"
   },
   appIntegration: {
     name: "Apps",
