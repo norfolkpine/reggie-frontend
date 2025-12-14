@@ -1339,34 +1339,7 @@ export function FileManager() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">File Manager</h2>
-          <div className="flex gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button>
-                  New
-                  <Plus className="h-4 w-4 mr-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  File
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsCreateCollectionOpen(true)}>
-                  <Folder className="h-4 w-4 mr-2" />
-                  Collection
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsCreateFolderOpen(true)}>
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  Folder
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleGoogleDriveClick()}>
-                  <Cloud className="h-4 w-4 mr-2" />
-                  Google Drive
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          
         </div>
       </div>
 
@@ -1474,6 +1447,33 @@ export function FileManager() {
                 }}
               >
                 Clear All Filters
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* New button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" /> New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)}>
+                <FileText className="h-4 w-4 mr-2" />
+                File
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsCreateCollectionOpen(true)}>
+                <Folder className="h-4 w-4 mr-2" />
+                Collection
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsCreateFolderOpen(true)}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleGoogleDriveClick()}>
+                <Cloud className="h-4 w-4 mr-2" />
+                Google Drive
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
