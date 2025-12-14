@@ -79,11 +79,6 @@ export async function uploadFiles({
     shared_with_teams.forEach((team) => formData.append('shared_with_teams', String(team)));
   }
 
-
-  for (const [key, value] of formData.entries()) {
-    console.log(key, value);
-  }
-
   const csrfToken = getCSRFToken();
 
   try {
@@ -216,7 +211,6 @@ export async function createFolder({
   }
 
   try {
-    console.log("payload", payload);
     const response = await api.post('/opie/api/v1/vault-files/', payload);
     return response as VaultFile;
   } catch (error: any) {

@@ -83,11 +83,6 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
       convertingToastRef.current?.dismiss();
       convertingToastRef.current = null;
     };
-    return () => {
-      // Cleanup: dismiss toast if still present on unmount
-      convertingToastRef.current?.dismiss();
-      convertingToastRef.current = null;
-    };
   }, [isConverting, toast]);
   const [addColumnAnchor, setAddColumnAnchor] = React.useState<DOMRect | null>(null);
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null);

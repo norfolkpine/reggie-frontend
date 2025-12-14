@@ -77,18 +77,6 @@ export default function Projects() {
     try {
       setLoading(true);
       const response = await getProjects();
-      console.log("API Response:", response);
-      console.log("First project:", response.results[0]);
-      console.log("First project ID field:", response.results[0]?.id);
-      console.log("First project UUID field:", response.results[0]?.uuid);
-      console.log(
-        "First project project_id field:",
-        response.results[0]?.project_id
-      );
-      console.log(
-        "First project project_uuid field:",
-        response.results[0]?.project_uuid
-      );
 
       setProjects(
         response.results.map((project) => ({
@@ -337,22 +325,7 @@ export default function Projects() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => {
-              console.log("Raw project object:", project);
-              console.log("Project.id:", project.id);
-              console.log("Project.uuid:", project.uuid);
-              console.log("Project.project_id:", project.project_id);
-              console.log("Project.project_uuid:", project.project_uuid);
-
               const projectId = getProjectId(project);
-              console.log("getProjectId result:", projectId);
-              console.log(
-                "Project:",
-                project.name,
-                "Project ID:",
-                projectId,
-                "Full project object:",
-                project
-              );
 
               if (!projectId) {
                 console.error("No project ID found in:", project);
