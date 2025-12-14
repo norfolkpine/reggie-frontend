@@ -183,8 +183,10 @@ export const ResizableContent = memo(function ResizableContent({
   const isDraggingRef = useRef(false)
   const isMobile = useMediaQuery("(max-width: 1024px)")
 
-  // Drag and drop functionality
-  const { isDragOver, dragHandlers, error } = useDragDropFiles(dragDropOptions)
+  // Drag and drop functionality - only enable if dragDropOptions is provided
+  const { isDragOver, dragHandlers, error } = useDragDropFiles(
+    dragDropOptions || { enabled: false }
+  )
 
   const handleMouseDown = useCallback(() => {
     setIsDragging(true)
@@ -240,12 +242,12 @@ export const ResizableContent = memo(function ResizableContent({
       ref={containerRef} 
       className={cn(
         "h-full relative overflow-hidden",
-        isDragOver && "ring-2 ring-primary ring-offset-2"
+        isDragOver && dragDropOptions && "ring-2 ring-primary ring-offset-2"
       )}
-      {...dragHandlers}
+      {...(dragDropOptions ? dragHandlers : {})}
     >
-      {/* Drag overlay - shows when files are being dragged over */}
-      {isDragOver && (
+      {/* Drag overlay - shows when files are being dragged over AND dragDropOptions is provided */}
+      {isDragOver && dragDropOptions && (
         <div className="absolute inset-0 bg-primary/10 border-4 border-dotted border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
           <div className="text-center">
             <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
@@ -255,7 +257,7 @@ export const ResizableContent = memo(function ResizableContent({
       )}
 
       {/* Error overlay - shows validation errors */}
-      {error && (
+      {error && dragDropOptions && (
         <div className="absolute inset-0 bg-destructive/10 border-4 border-dotted border-destructive rounded-lg flex items-center justify-center z-50 pointer-events-none">
           <div className="text-center">
             <p className="text-2xl font-semibold text-destructive">Invalid files</p>
