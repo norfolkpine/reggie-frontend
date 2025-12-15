@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { TabsContent } from "@/components/ui/tabs";
 import SearchInput from "@/components/ui/search-input";
 import { FileFilters } from "./file-filters";
 import { BulkActions } from "./bulk-actions";
@@ -46,10 +45,7 @@ interface TrashTabContentProps {
 
 export function TrashTabContent(props: TrashTabContentProps) {
   return (
-    <TabsContent
-      value="trash"
-      className="mt-4 relative"
-    >
+    <div className="mt-4 relative">
       <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}
@@ -121,7 +117,7 @@ export function TrashTabContent(props: TrashTabContentProps) {
           </div>
         )}
       </div>
-    </TabsContent>
+    </div>
   );
 }
 
