@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProject } from "@/api/projects";
 import { Project } from "@/types/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -459,14 +459,16 @@ export function VaultManager() {
               projectId={projectId}
             />
 
-            <TrashTab
-              ref={(ref) => {
-                trashTabRef.current = ref;
-              }}
-              projectId={projectId || ''}
-              projectName={project?.name}
-              onFilesTabRefresh={() => filesTabRef.current?.refreshFiles()}
-            />
+            <TabsContent value="trash" className="mt-4">
+              <TrashTab
+                ref={(ref) => {
+                  trashTabRef.current = ref;
+                }}
+                projectId={projectId || ''}
+                projectName={project?.name}
+                onFilesTabRefresh={() => filesTabRef.current?.refreshFiles()}
+              />
+            </TabsContent>
           </Tabs>
         )}
       </div>

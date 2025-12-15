@@ -206,13 +206,61 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
 
   // Run analysis on all documents with all columns
   const runAnalysis = React.useCallback(async () => {
+    const rowsWithFiles = data.filter((row) => {
+      const files = row.content;
+      return Array.isArray(files) && files.length > 0;
+    });
+
     // Filter rows that have processed content (ready for analysis)
-    const rowsToAnalyze = data.filter(row => row.processedContent);
-    
-    if (rowsToAnalyze.length === 0) {
+    const rowsToAnalyze = rowsWithFiles.filter((row) => {
+      const content = row.processedContent;
+      return typeof content === "string" && content.trim().length > 0;
+    });
+
+    // UX: distinguish between "no files added" vs "still processing/failed"
+    if (rowsWithFiles.length === 0) {
       toast({
         title: "No Documents",
         description: "Please add documents to analyze first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (rowsToAnalyze.length === 0) {
+      const processingCount = rowsWithFiles.filter(
+        (row) =>
+          row.processingStatus === ("pending" as ProcessingStatus) ||
+          row.processingStatus === ("processing" as ProcessingStatus),
+      ).length;
+      const errorRows = rowsWithFiles.filter(
+        (row) => row.processingStatus === ("error" as ProcessingStatus),
+      );
+
+      if (processingCount > 0 || isConverting) {
+        toast({
+          title: "Documents Still Processing",
+          description:
+            "Your document(s) are still being converted to text. Please wait until processing completes, then click Analyse again.",
+          variant: "default",
+        });
+        return;
+      }
+
+      if (errorRows.length > 0) {
+        const firstError = errorRows.find((r) => typeof r.errorMessage === "string" && r.errorMessage.trim());
+        toast({
+          title: "Document Processing Failed",
+          description: firstError?.errorMessage || "One or more documents could not be converted for analysis.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "No Processed Documents",
+        description:
+          "Documents were added but no text could be extracted. Try re-uploading or use a different file format.",
         variant: "destructive",
       });
       return;
@@ -829,9 +877,9 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
   }, []);
     
   return (
-    <TabsContent value="analyser" className="mt-4 flex flex-row">
-      <div 
-        className={`flex-1 flex flex-col min-w-0 bg-white relative ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
+    <TabsContent value="analyser" className="mt-4 flex flex-row min-h-[calc(100vh-8rem)] z-10">
+      <div
+        className={`flex-1 flex flex-col min-w-0 bg-white relative min-h-[calc(100vh-8rem)] ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();

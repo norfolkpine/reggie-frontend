@@ -109,6 +109,14 @@ body {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
   }
+
+  /* Ensure Radix inactive tab panels never affect layout.
+     If something in the app overrides the native [hidden] behavior,
+     Radix Tabs can leave large "empty" panels (e.g. vault files/analyser min-h panels). */
+  [role="tabpanel"][data-state="inactive"] {
+    display: none !important;
+  }
+
   html {
     @apply overflow-x-hidden;
   }

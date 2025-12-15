@@ -519,6 +519,7 @@ export const FilesTab = React.forwardRef<{
         setUploadDialogOpen={setIsUploadDialogOpen}
         projectId={projectId}
         onUploadComplete={handleFileUpload}
+        onFilesDrop={processFilesDrop}
       />
 
       <RenameDialog

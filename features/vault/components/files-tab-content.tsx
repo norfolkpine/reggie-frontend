@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import SearchInput from "@/components/ui/search-input";
 import { FileFilters } from "./file-filters";
@@ -10,6 +10,7 @@ import { FileTable } from "./file-table";
 import { Loader } from "lucide-react";
 import { FileUploadDialog } from "./file-upload-dialog";
 import { VaultFile } from "../types/vault";
+import { Upload } from "./Icons";
 
 interface FilesTabContentProps {
   searchQuery: string;
@@ -55,14 +56,127 @@ interface FilesTabContentProps {
   setUploadDialogOpen: (open: boolean) => void;
   projectId: string;
   onUploadComplete: (uploadedFiles: any[]) => void;
+  onFilesDrop?: (files: File[]) => Promise<void>;
 }
 
 export function FilesTabContent(props: FilesTabContentProps) {
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = React.useRef(0);
+
+  useEffect(() => {
+    const hide = () => {
+      setIsDraggingOver(false);
+      dragCounterRef.current = 0;
+    };
+
+    const handleWindowBlur = () => {
+      hide();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Drag-cancel (Esc) doesn't reliably fire dragleave/drop on the drop target.
+      if (e.key === "Escape") hide();
+    };
+
+    const handleWindowDrop = () => {
+      // Dropping outside this container should still clear the overlay.
+      hide();
+    };
+
+    const handleWindowDragEnd = () => {
+      // Drag was cancelled or completed - always hide
+      hide();
+    };
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      // When leaving the browser window during a drag, many browsers report 0/0.
+      // This helps clear the overlay if the element never receives onDragLeave.
+      if (e.clientX === 0 && e.clientY === 0) hide();
+    };
+
+    const handleMouseUp = () => {
+      // Mouse up can indicate drag was cancelled
+      setTimeout(hide, 100);
+    };
+
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("drop", handleWindowDrop, true);
+    window.addEventListener("dragend", handleWindowDragEnd, true);
+    window.addEventListener("dragleave", handleWindowDragLeave, true);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("drop", handleWindowDrop, true);
+      window.removeEventListener("dragend", handleWindowDragEnd, true);
+      window.removeEventListener("dragleave", handleWindowDragLeave, true);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounterRef.current++;
+      setIsDraggingOver(true);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Keep dragCounter symmetric with handleDragEnter to avoid going negative
+    // (e.g. dragging text/URLs over the container).
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    }
+    if (dragCounterRef.current === 0) {
+      setIsDraggingOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+
+    const fileList = e.dataTransfer.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList) as File[];
+    if (files.length === 0) return;
+
+    if (props.onFilesDrop) {
+      await props.onFilesDrop(files);
+    }
+  }, [props]);
+
   return (
     <TabsContent
       value="files"
-      className="mt-4 relative"
+      className={`mt-4 relative min-h-[calc(100vh-8rem)] z-10 ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-indigo-50/80 backdrop-blur-sm border-2 border-indigo-400 border-dashed rounded-xl pointer-events-none">
+          <div className="flex flex-col items-center">
+            <Upload className="w-12 h-12 text-indigo-600 mb-2" />
+            <p className="text-lg font-bold text-indigo-800">Drop files to upload</p>
+          </div>
+        </div>
+      )}
       <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}
