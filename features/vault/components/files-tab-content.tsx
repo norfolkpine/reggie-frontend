@@ -159,23 +159,21 @@ export function FilesTabContent(props: FilesTabContentProps) {
   return (
     <TabsContent
       value="files"
-      className="mt-4 relative"
+      className={`mt-4 relative min-h-[calc(100vh-8rem)] z-10 ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
-      <div
-        className={`space-y-4 relative ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {isDraggingOver && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-indigo-50/80 backdrop-blur-sm border-2 border-indigo-400 border-dashed rounded-xl pointer-events-none">
-            <div className="flex flex-col items-center">
-              <Upload className="w-12 h-12 text-indigo-600 mb-2" />
-              <p className="text-lg font-bold text-indigo-800">Drop files to upload</p>
-            </div>
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-indigo-50/80 backdrop-blur-sm border-2 border-indigo-400 border-dashed rounded-xl pointer-events-none">
+          <div className="flex flex-col items-center">
+            <Upload className="w-12 h-12 text-indigo-600 mb-2" />
+            <p className="text-lg font-bold text-indigo-800">Drop files to upload</p>
           </div>
-        )}
+        </div>
+      )}
+      <div className="space-y-4">
         <div className="mb-4">
           {/* Toolbar with search and actions */}
           <div className={`flex items-stretch gap-3 ${

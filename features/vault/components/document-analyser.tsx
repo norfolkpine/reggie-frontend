@@ -877,9 +877,9 @@ export function AnalyserTabContent({ projectId, teamId }: AnalyserTabContentProp
   }, []);
     
   return (
-    <TabsContent value="analyser" className="mt-4 flex flex-row">
-      <div 
-        className={`flex-1 flex flex-col min-w-0 bg-white relative ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
+    <TabsContent value="analyser" className="mt-4 flex flex-row min-h-[calc(100vh-8rem)] z-10">
+      <div
+        className={`flex-1 flex flex-col min-w-0 bg-white relative min-h-[calc(100vh-8rem)] ${isDraggingOver ? 'bg-indigo-50/30' : ''}`}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
