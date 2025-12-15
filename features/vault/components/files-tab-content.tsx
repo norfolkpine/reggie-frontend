@@ -133,7 +133,11 @@ export function FilesTabContent(props: FilesTabContentProps) {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounterRef.current--;
+    // Keep dragCounter symmetric with handleDragEnter to avoid going negative
+    // (e.g. dragging text/URLs over the container).
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    }
     if (dragCounterRef.current === 0) {
       setIsDraggingOver(false);
     }
