@@ -54,42 +54,43 @@ export const routes = {
     icon: FileText,
     description: "Create and manage documents"
   },
-  compliance: {
-    name: "Compliance",
-    path: "/compliance",
-    icon: BadgeCheck,
-    description: "Compliance tools and reporting"
-  },
-  complianceInbox: {
-    name: "Inbox",
-    path: "/compliance/inbox",
-    icon: Inbox,
-    description: "Compliance inbox"
-  },
-  complianceSchedule: {
-    name: "Schedule",
-    path: "/compliance/schedule",
-    icon: Calendar,
-    description: "Compliance schedule"
-  },
-  complianceAllTasks: {
-    name: "All Tasks",
-    path: "/compliance/all-tasks",
-    icon: ListChecks,
-    description: "All compliance tasks"
-  },
-  complianceReports: {
-    name: "Reports",
-    path: "/compliance/reports",
-    icon: BarChart3,
-    description: "Compliance reporting"
-  },
-  complianceAutomations: {
-    name: "Automations",
-    path: "/compliance/automations",
-    icon: Zap,
-    description: "Compliance automations"
-  },
+  // Compliance routes (commented out - might use later)
+  // compliance: {
+  //   name: "Compliance",
+  //   path: "/compliance",
+  //   icon: BadgeCheck,
+  //   description: "Compliance tools and reporting"
+  // },
+  // complianceInbox: {
+  //   name: "Inbox",
+  //   path: "/compliance/inbox",
+  //   icon: Inbox,
+  //   description: "Compliance inbox"
+  // },
+  // complianceSchedule: {
+  //   name: "Schedule",
+  //   path: "/compliance/schedule",
+  //   icon: Calendar,
+  //   description: "Compliance schedule"
+  // },
+  // complianceAllTasks: {
+  //   name: "All Tasks",
+  //   path: "/compliance/all-tasks",
+  //   icon: ListChecks,
+  //   description: "All compliance tasks"
+  // },
+  // complianceReports: {
+  //   name: "Reports",
+  //   path: "/compliance/reports",
+  //   icon: BarChart3,
+  //   description: "Compliance reporting"
+  // },
+  // complianceAutomations: {
+  //   name: "Automations",
+  //   path: "/compliance/automations",
+  //   icon: Zap,
+  //   description: "Compliance automations"
+  // },
   appIntegration: {
     name: "Apps",
     path: "/settings/integrations",
