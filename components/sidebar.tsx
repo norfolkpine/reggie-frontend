@@ -120,19 +120,20 @@ const navigationItems: NavigationItem[] = [
   { type: "divider" }, 
   // { name: "Library", icon: BookOpen, url: "/library" },
   { name: "Documents", icon: FileText, url: "/documents" },
-  { name: "Compliance", icon: BadgeCheck, url: "/compliance" },
+  // { name: "Compliance", icon: BadgeCheck, url: "/compliance" },
   { type: "divider" },
   // SuperUser/Staff Only. Future feature: Allow and restrict for Enterprise users
   { name: "Admin", icon: Shield, url: "/admin" },
 ];
 
-const complianceSubItems = [
-  { name: "Inbox", icon: Inbox, url: "/compliance/inbox" },
-  { name: "Schedule", icon: Calendar, url: "/compliance/schedule" },
-  { name: "All Tasks", icon: ListChecks, url: "/compliance/all-tasks" },
-  { name: "Reports", icon: BarChart3, url: "/compliance/reports" },
-  { name: "Automations", icon: Zap, url: "/compliance/automations" },
-] as const;
+// Compliance sub-items (commented out - might use later)
+// const complianceSubItems = [
+//   { name: "Inbox", icon: Inbox, url: "/compliance/inbox" },
+//   { name: "Schedule", icon: Calendar, url: "/compliance/schedule" },
+//   { name: "All Tasks", icon: ListChecks, url: "/compliance/all-tasks" },
+//   { name: "Reports", icon: BarChart3, url: "/compliance/reports" },
+//   { name: "Automations", icon: Zap, url: "/compliance/automations" },
+// ] as const;
 
 // const navigationItems: ChatItem[] = [
 //   { name: "Assistant", icon: Bot, url: "/chat" },
@@ -195,9 +196,9 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   
-  // Compliance state
-  const [complianceExpanded, setComplianceExpanded] = useState(false);
-  const [hoveredCompliance, setHoveredCompliance] = useState(false);
+  // Compliance state (commented out - might use later)
+  // const [complianceExpanded, setComplianceExpanded] = useState(false);
+  // const [hoveredCompliance, setHoveredCompliance] = useState(false);
   
   // Image loading states
   const [mainLogoError, setMainLogoError] = useState(false);
@@ -535,44 +536,46 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    ) : item.name === "Compliance" ? (
-                      <div
-                        className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
-                        onMouseEnter={() => setHoveredCompliance(true)}
-                        onMouseLeave={() => setHoveredCompliance(false)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
-                            {hoveredCompliance ? (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 p-0 rounded-full hover:bg-sidebar-accent"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  setComplianceExpanded((prev) => !prev);
-                                }}
-                                tabIndex={-1}
-                                aria-label={complianceExpanded ? "Collapse" : "Expand"}
-                              >
-                                {complianceExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                              </Button>
-                            ) : (
-                              renderIcon(item.icon)
-                            )}
-                          </span>
-                          <span
-                            className="select-none"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleNavItemClick(item.url);
-                            }}
-                          >
-                            {item.name}
-                          </span>
-                        </div>
-                      </div>
                     ) : (
+                      // Compliance item (commented out - might use later)
+                      // item.name === "Compliance" ? (
+                      //   <div
+                      //     className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
+                      //     onMouseEnter={() => setHoveredCompliance(true)}
+                      //     onMouseLeave={() => setHoveredCompliance(false)}
+                      //   >
+                      //     <div className="flex items-center gap-2">
+                      //       <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
+                      //         {hoveredCompliance ? (
+                      //           <Button
+                      //             variant="ghost"
+                      //             size="icon"
+                      //             className="h-5 w-5 p-0 rounded-full hover:bg-sidebar-accent"
+                      //             onClick={e => {
+                      //               e.stopPropagation();
+                      //               setComplianceExpanded((prev) => !prev);
+                      //             }}
+                      //             tabIndex={-1}
+                      //             aria-label={complianceExpanded ? "Collapse" : "Expand"}
+                      //           >
+                      //             {complianceExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      //           </Button>
+                      //         ) : (
+                      //           renderIcon(item.icon)
+                      //         )}
+                      //       </span>
+                      //       <span
+                      //         className="select-none"
+                      //         onClick={e => {
+                      //           e.stopPropagation();
+                      //           handleNavItemClick(item.url);
+                      //         }}
+                      //       >
+                      //         {item.name}
+                      //       </span>
+                      //     </div>
+                      //   </div>
+                      // ) : (
                       <div
                         className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                         onClick={() => handleNavItemClick(item.url)}
@@ -661,8 +664,8 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                         )}
                       </div>
                     )}
-                    {/* Sub nav for Compliance */}
-                    {item.name === "Compliance" && complianceExpanded && (
+                    {/* Sub nav for Compliance (commented out - might use later) */}
+                    {/* {item.name === "Compliance" && complianceExpanded && (
                       <div className="ml-6 mt-1 flex flex-col gap-1">
                         {complianceSubItems.map((subItem) => (
                           <div
@@ -678,7 +681,7 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                           </div>
                         ))}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )
               ))}
@@ -822,8 +825,8 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                         )}
                       </div>
                     )}
-                    {/* Compliance popover */}
-                    {item.name === "Compliance" && pathname.startsWith("/compliance") && (
+                    {/* Compliance popover (commented out - might use later) */}
+                    {/* {item.name === "Compliance" && pathname.startsWith("/compliance") && (
                       <div className="absolute left-12 top-0 z-10 bg-background border rounded shadow p-2 flex flex-col gap-1 min-w-[160px]">
                         {complianceSubItems.map((subItem) => (
                           <div
@@ -839,7 +842,7 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                           </div>
                         ))}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )
               ))}
