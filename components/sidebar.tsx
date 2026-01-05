@@ -577,7 +577,6 @@ export default function Sidebar({ isMobile }: { isMobile?: boolean } = {}) {
                       //   </div>
                       // ) : (
                       <div
-                      <div
                         className={`flex items-center justify-between w-full p-2 rounded-md gap-2 font-normal cursor-pointer hover:bg-sidebar-accent ${pathname.startsWith(item.url) ? "bg-sidebar-accent" : ""}`}
                         onClick={() => handleNavItemClick(item.url)}
                       >
